@@ -27,14 +27,14 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/filter.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/crop_box.h> 
+#include <pcl/filters/crop_box.h>
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
- 
+
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -59,9 +59,8 @@ typedef pcl::PointXYZI PointType;
 
 enum class SensorType { VELODYNE, OUSTER };
 
-class ParamServer
-{
-public:
+class ParamServer {
+  public:
 
     ros::NodeHandle nh;
 
@@ -123,7 +122,7 @@ public:
     float mappingCornerLeafSize;
     float mappingSurfLeafSize ;
 
-    float z_tollerance; 
+    float z_tollerance;
     float rotation_tollerance;
 
     // CPU Params
@@ -131,11 +130,11 @@ public:
     double mappingProcessInterval;
 
     // Surrounding map
-    float surroundingkeyframeAddingDistThreshold; 
-    float surroundingkeyframeAddingAngleThreshold; 
+    float surroundingkeyframeAddingDistThreshold;
+    float surroundingkeyframeAddingAngleThreshold;
     float surroundingKeyframeDensity;
     float surroundingKeyframeSearchRadius;
-    
+
     // Loop closure
     bool  loopClosureEnableFlag;
     float loopClosureFrequency;
@@ -150,8 +149,7 @@ public:
     float globalMapVisualizationPoseDensity;
     float globalMapVisualizationLeafSize;
 
-    ParamServer()
-    {
+    ParamServer() {
         nh.param<std::string>("/robot_id", robot_id, "roboat");
 
         nh.param<std::string>("lio_sam/pointCloudTopic", pointCloudTopic, "points_raw");
@@ -174,16 +172,11 @@ public:
 
         std::string sensorStr;
         nh.param<std::string>("lio_sam/sensor", sensorStr, "");
-        if (sensorStr == "velodyne")
-        {
+        if (sensorStr == "velodyne") {
             sensor = SensorType::VELODYNE;
-        }
-        else if (sensorStr == "ouster")
-        {
+        } else if (sensorStr == "ouster") {
             sensor = SensorType::OUSTER;
-        }
-        else
-        {
+        } else {
             ROS_ERROR_STREAM(
                 "Invalid sensor type (must be either 'velodyne' or 'ouster'): " << sensorStr);
             ros::shutdown();
@@ -244,8 +237,7 @@ public:
         usleep(100);
     }
 
-    sensor_msgs::Imu imuConverter(const sensor_msgs::Imu& imu_in)
-    {
+    sensor_msgs::Imu imuConverter(const sensor_msgs::Imu& imu_in) {
         sensor_msgs::Imu imu_out = imu_in;
         // rotate acceleration
         Eigen::Vector3d acc(imu_in.linear_acceleration.x, imu_in.linear_acceleration.y, imu_in.linear_acceleration.z);
@@ -267,8 +259,7 @@ public:
         imu_out.orientation.z = q_final.z();
         imu_out.orientation.w = q_final.w();
 
-        if (sqrt(q_final.x()*q_final.x() + q_final.y()*q_final.y() + q_final.z()*q_final.z() + q_final.w()*q_final.w()) < 0.1)
-        {
+        if (sqrt(q_final.x()*q_final.x() + q_final.y()*q_final.y() + q_final.z()*q_final.z() + q_final.w()*q_final.w()) < 0.1) {
             ROS_ERROR("Invalid quaternion, please use a 9-axis IMU!");
             ros::shutdown();
         }
@@ -278,8 +269,7 @@ public:
 };
 
 
-sensor_msgs::PointCloud2 publishCloud(ros::Publisher *thisPub, pcl::PointCloud<PointType>::Ptr thisCloud, ros::Time thisStamp, std::string thisFrame)
-{
+sensor_msgs::PointCloud2 publishCloud(ros::Publisher *thisPub, pcl::PointCloud<PointType>::Ptr thisCloud, ros::Time thisStamp, std::string thisFrame) {
     sensor_msgs::PointCloud2 tempCloud;
     pcl::toROSMsg(*thisCloud, tempCloud);
     tempCloud.header.stamp = thisStamp;
@@ -290,15 +280,13 @@ sensor_msgs::PointCloud2 publishCloud(ros::Publisher *thisPub, pcl::PointCloud<P
 }
 
 template<typename T>
-double ROS_TIME(T msg)
-{
+double ROS_TIME(T msg) {
     return msg->header.stamp.toSec();
 }
 
 
 template<typename T>
-void imuAngular2rosAngular(sensor_msgs::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z)
-{
+void imuAngular2rosAngular(sensor_msgs::Imu *thisImuMsg, T *angular_x, T *angular_y, T *angular_z) {
     *angular_x = thisImuMsg->angular_velocity.x;
     *angular_y = thisImuMsg->angular_velocity.y;
     *angular_z = thisImuMsg->angular_velocity.z;
@@ -306,8 +294,7 @@ void imuAngular2rosAngular(sensor_msgs::Imu *thisImuMsg, T *angular_x, T *angula
 
 
 template<typename T>
-void imuAccel2rosAccel(sensor_msgs::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z)
-{
+void imuAccel2rosAccel(sensor_msgs::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_z) {
     *acc_x = thisImuMsg->linear_acceleration.x;
     *acc_y = thisImuMsg->linear_acceleration.y;
     *acc_z = thisImuMsg->linear_acceleration.z;
@@ -315,8 +302,7 @@ void imuAccel2rosAccel(sensor_msgs::Imu *thisImuMsg, T *acc_x, T *acc_y, T *acc_
 
 
 template<typename T>
-void imuRPY2rosRPY(sensor_msgs::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw)
-{
+void imuRPY2rosRPY(sensor_msgs::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *rosYaw) {
     double imuRoll, imuPitch, imuYaw;
     tf::Quaternion orientation;
     tf::quaternionMsgToTF(thisImuMsg->orientation, orientation);
@@ -328,14 +314,12 @@ void imuRPY2rosRPY(sensor_msgs::Imu *thisImuMsg, T *rosRoll, T *rosPitch, T *ros
 }
 
 
-float pointDistance(PointType p)
-{
+float pointDistance(PointType p) {
     return sqrt(p.x*p.x + p.y*p.y + p.z*p.z);
 }
 
 
-float pointDistance(PointType p1, PointType p2)
-{
+float pointDistance(PointType p1, PointType p2) {
     return sqrt((p1.x-p2.x)*(p1.x-p2.x) + (p1.y-p2.y)*(p1.y-p2.y) + (p1.z-p2.z)*(p1.z-p2.z));
 }
 
