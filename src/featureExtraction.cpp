@@ -37,11 +37,17 @@ class FeatureExtraction : public ParamServer {
     int *cloudLabel;
 
     FeatureExtraction() {
-        subLaserCloudInfo = nh.subscribe<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1, &FeatureExtraction::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
+        subLaserCloudInfo =
+            nh.subscribe<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1,
+                                              &FeatureExtraction::laserCloudInfoHandler, this,
+                                              ros::TransportHints().tcpNoDelay());
 
-        pubLaserCloudInfo = nh.advertise<lio_sam::cloud_info> ("lio_sam/feature/cloud_info", 1);
-        pubCornerPoints = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1);
-        pubSurfacePoints = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
+        pubLaserCloudInfo =
+            nh.advertise<lio_sam::cloud_info> ("lio_sam/feature/cloud_info", 1);
+        pubCornerPoints =
+            nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1);
+        pubSurfacePoints =
+            nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
 
         initializationValue();
     }
@@ -49,7 +55,8 @@ class FeatureExtraction : public ParamServer {
     void initializationValue() {
         cloudSmoothness.resize(N_SCAN*Horizon_SCAN);
 
-        downSizeFilter.setLeafSize(odometrySurfLeafSize, odometrySurfLeafSize, odometrySurfLeafSize);
+        downSizeFilter.setLeafSize(odometrySurfLeafSize, odometrySurfLeafSize,
+                                   odometrySurfLeafSize);
 
         extractedCloud.reset(new pcl::PointCloud<PointType>());
         cornerCloud.reset(new pcl::PointCloud<PointType>());
@@ -63,7 +70,8 @@ class FeatureExtraction : public ParamServer {
     void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
         cloudInfo = *msgIn; // new cloud info
         cloudHeader = msgIn->header; // new cloud header
-        pcl::fromROSMsg(msgIn->cloud_deskewed, *extractedCloud); // new cloud for extraction
+        pcl::fromROSMsg(msgIn->cloud_deskewed,
+                        *extractedCloud); // new cloud for extraction
 
         calculateSmoothness();
 
@@ -84,7 +92,8 @@ class FeatureExtraction : public ParamServer {
                               + cloudInfo.pointRange[i+3] + cloudInfo.pointRange[i+4]
                               + cloudInfo.pointRange[i+5];
 
-            cloudCurvature[i] = diffRange*diffRange;//diffX * diffX + diffY * diffY + diffZ * diffZ;
+            cloudCurvature[i] =
+                diffRange*diffRange;//diffX * diffX + diffY * diffY + diffZ * diffZ;
 
             cloudNeighborPicked[i] = 0;
             cloudLabel[i] = 0;
@@ -101,7 +110,8 @@ class FeatureExtraction : public ParamServer {
             // occluded points
             float depth1 = cloudInfo.pointRange[i];
             float depth2 = cloudInfo.pointRange[i+1];
-            int columnDiff = std::abs(int(cloudInfo.pointColInd[i+1] - cloudInfo.pointColInd[i]));
+            int columnDiff = std::abs(int(cloudInfo.pointColInd[i+1] -
+                                          cloudInfo.pointColInd[i]));
 
             if (columnDiff < 10) {
                 // 10 pixel diff in range image
@@ -122,10 +132,13 @@ class FeatureExtraction : public ParamServer {
                 }
             }
             // parallel beam
-            float diff1 = std::abs(float(cloudInfo.pointRange[i-1] - cloudInfo.pointRange[i]));
-            float diff2 = std::abs(float(cloudInfo.pointRange[i+1] - cloudInfo.pointRange[i]));
+            float diff1 = std::abs(float(cloudInfo.pointRange[i-1] -
+                                         cloudInfo.pointRange[i]));
+            float diff2 = std::abs(float(cloudInfo.pointRange[i+1] -
+                                         cloudInfo.pointRange[i]));
 
-            if (diff1 > 0.02 * cloudInfo.pointRange[i] && diff2 > 0.02 * cloudInfo.pointRange[i])
+            if (diff1 > 0.02 * cloudInfo.pointRange[i]
+                    && diff2 > 0.02 * cloudInfo.pointRange[i])
                 cloudNeighborPicked[i] = 1;
         }
     }
@@ -134,16 +147,20 @@ class FeatureExtraction : public ParamServer {
         cornerCloud->clear();
         surfaceCloud->clear();
 
-        pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfaceCloudScanDS(new pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new
+                pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr surfaceCloudScanDS(new
+                pcl::PointCloud<PointType>());
 
         for (int i = 0; i < N_SCAN; i++) {
             surfaceCloudScan->clear();
 
             for (int j = 0; j < 6; j++) {
 
-                int sp = (cloudInfo.startRingIndex[i] * (6 - j) + cloudInfo.endRingIndex[i] * j) / 6;
-                int ep = (cloudInfo.startRingIndex[i] * (5 - j) + cloudInfo.endRingIndex[i] * (j + 1)) / 6 - 1;
+                int sp = (cloudInfo.startRingIndex[i] * (6 - j) + cloudInfo.endRingIndex[i] *
+                          j) / 6;
+                int ep = (cloudInfo.startRingIndex[i] * (5 - j) + cloudInfo.endRingIndex[i] *
+                          (j + 1)) / 6 - 1;
 
                 if (sp >= ep)
                     continue;
@@ -164,13 +181,15 @@ class FeatureExtraction : public ParamServer {
 
                         cloudNeighborPicked[ind] = 1;
                         for (int l = 1; l <= 5; l++) {
-                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] - cloudInfo.pointColInd[ind + l - 1]));
+                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
+                                                          cloudInfo.pointColInd[ind + l - 1]));
                             if (columnDiff > 10)
                                 break;
                             cloudNeighborPicked[ind + l] = 1;
                         }
                         for (int l = -1; l >= -5; l--) {
-                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] - cloudInfo.pointColInd[ind + l + 1]));
+                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
+                                                          cloudInfo.pointColInd[ind + l + 1]));
                             if (columnDiff > 10)
                                 break;
                             cloudNeighborPicked[ind + l] = 1;
@@ -187,7 +206,8 @@ class FeatureExtraction : public ParamServer {
 
                         for (int l = 1; l <= 5; l++) {
 
-                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] - cloudInfo.pointColInd[ind + l - 1]));
+                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
+                                                          cloudInfo.pointColInd[ind + l - 1]));
                             if (columnDiff > 10)
                                 break;
 
@@ -195,7 +215,8 @@ class FeatureExtraction : public ParamServer {
                         }
                         for (int l = -1; l >= -5; l--) {
 
-                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] - cloudInfo.pointColInd[ind + l + 1]));
+                            int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
+                                                          cloudInfo.pointColInd[ind + l + 1]));
                             if (columnDiff > 10)
                                 break;
 
@@ -230,8 +251,10 @@ class FeatureExtraction : public ParamServer {
         // free cloud info memory
         freeCloudInfoMemory();
         // save newly extracted features
-        cloudInfo.cloud_corner  = publishCloud(&pubCornerPoints,  cornerCloud,  cloudHeader.stamp, lidarFrame);
-        cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surfaceCloud, cloudHeader.stamp, lidarFrame);
+        cloudInfo.cloud_corner  = publishCloud(&pubCornerPoints,  cornerCloud,
+                                               cloudHeader.stamp, lidarFrame);
+        cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surfaceCloud,
+                                               cloudHeader.stamp, lidarFrame);
         // publish to mapOptimization
         pubLaserCloudInfo.publish(cloudInfo);
     }

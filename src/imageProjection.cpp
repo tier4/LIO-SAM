@@ -86,12 +86,18 @@ class ImageProjection : public ParamServer {
   public:
     ImageProjection():
         deskewFlag(0) {
-        subImu        = nh.subscribe<sensor_msgs::Imu>(imuTopic, 2000, &ImageProjection::imuHandler, this, ros::TransportHints().tcpNoDelay());
-        subOdom       = nh.subscribe<nav_msgs::Odometry>(odomTopic+"_incremental", 2000, &ImageProjection::odometryHandler, this, ros::TransportHints().tcpNoDelay());
-        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 5, &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
+        subImu        = nh.subscribe<sensor_msgs::Imu>(imuTopic, 2000,
+                        &ImageProjection::imuHandler, this, ros::TransportHints().tcpNoDelay());
+        subOdom       = nh.subscribe<nav_msgs::Odometry>(odomTopic+"_incremental",
+                        2000, &ImageProjection::odometryHandler, this,
+                        ros::TransportHints().tcpNoDelay());
+        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 5,
+                        &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
 
-        pubExtractedCloud = nh.advertise<sensor_msgs::PointCloud2> ("lio_sam/deskew/cloud_deskewed", 1);
-        pubLaserCloudInfo = nh.advertise<lio_sam::cloud_info> ("lio_sam/deskew/cloud_info", 1);
+        pubExtractedCloud =
+            nh.advertise<sensor_msgs::PointCloud2> ("lio_sam/deskew/cloud_deskewed", 1);
+        pubLaserCloudInfo =
+            nh.advertise<lio_sam::cloud_info> ("lio_sam/deskew/cloud_info", 1);
 
         allocateMemory();
         resetParameters();
@@ -260,7 +266,8 @@ class ImageProjection : public ParamServer {
         std::lock_guard<std::mutex> lock2(odoLock);
 
         // make sure IMU data available for the scan
-        if (imuQueue.empty() || imuQueue.front().header.stamp.toSec() > timeScanCur || imuQueue.back().header.stamp.toSec() < timeScanEnd) {
+        if (imuQueue.empty() || imuQueue.front().header.stamp.toSec() > timeScanCur
+                || imuQueue.back().header.stamp.toSec() < timeScanEnd) {
             ROS_DEBUG("Waiting for IMU data ...");
             return false;
         }
@@ -293,7 +300,8 @@ class ImageProjection : public ParamServer {
 
             // get roll, pitch, and yaw estimation for this scan
             if (currentImuTime <= timeScanCur)
-                imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imuRollInit, &cloudInfo.imuPitchInit, &cloudInfo.imuYawInit);
+                imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imuRollInit, &cloudInfo.imuPitchInit,
+                              &cloudInfo.imuYawInit);
 
             if (currentImuTime > timeScanEnd + 0.01)
                 break;
@@ -389,24 +397,31 @@ class ImageProjection : public ParamServer {
                 break;
         }
 
-        if (int(round(startOdomMsg.pose.covariance[0])) != int(round(endOdomMsg.pose.covariance[0])))
+        if (int(round(startOdomMsg.pose.covariance[0])) != int(round(
+                    endOdomMsg.pose.covariance[0])))
             return;
 
-        Eigen::Affine3f transBegin = pcl::getTransformation(startOdomMsg.pose.pose.position.x, startOdomMsg.pose.pose.position.y, startOdomMsg.pose.pose.position.z, roll, pitch, yaw);
+        Eigen::Affine3f transBegin = pcl::getTransformation(
+                                         startOdomMsg.pose.pose.position.x, startOdomMsg.pose.pose.position.y,
+                                         startOdomMsg.pose.pose.position.z, roll, pitch, yaw);
 
         tf::quaternionMsgToTF(endOdomMsg.pose.pose.orientation, orientation);
         tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
-        Eigen::Affine3f transEnd = pcl::getTransformation(endOdomMsg.pose.pose.position.x, endOdomMsg.pose.pose.position.y, endOdomMsg.pose.pose.position.z, roll, pitch, yaw);
+        Eigen::Affine3f transEnd = pcl::getTransformation(
+                                       endOdomMsg.pose.pose.position.x, endOdomMsg.pose.pose.position.y,
+                                       endOdomMsg.pose.pose.position.z, roll, pitch, yaw);
 
         Eigen::Affine3f transBt = transBegin.inverse() * transEnd;
 
         float rollIncre, pitchIncre, yawIncre;
-        pcl::getTranslationAndEulerAngles(transBt, odomIncreX, odomIncreY, odomIncreZ, rollIncre, pitchIncre, yawIncre);
+        pcl::getTranslationAndEulerAngles(transBt, odomIncreX, odomIncreY, odomIncreZ,
+                                          rollIncre, pitchIncre, yawIncre);
 
         odomDeskewFlag = true;
     }
 
-    void findRotation(double pointTime, float *rotXCur, float *rotYCur, float *rotZCur) {
+    void findRotation(double pointTime, float *rotXCur, float *rotYCur,
+                      float *rotZCur) {
         *rotXCur = 0;
         *rotYCur = 0;
         *rotZCur = 0;
@@ -424,15 +439,21 @@ class ImageProjection : public ParamServer {
             *rotZCur = imuRotZ[imuPointerFront];
         } else {
             int imuPointerBack = imuPointerFront - 1;
-            double ratioFront = (pointTime - imuTime[imuPointerBack]) / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-            double ratioBack = (imuTime[imuPointerFront] - pointTime) / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-            *rotXCur = imuRotX[imuPointerFront] * ratioFront + imuRotX[imuPointerBack] * ratioBack;
-            *rotYCur = imuRotY[imuPointerFront] * ratioFront + imuRotY[imuPointerBack] * ratioBack;
-            *rotZCur = imuRotZ[imuPointerFront] * ratioFront + imuRotZ[imuPointerBack] * ratioBack;
+            double ratioFront = (pointTime - imuTime[imuPointerBack]) /
+                                (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
+            double ratioBack = (imuTime[imuPointerFront] - pointTime) /
+                               (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
+            *rotXCur = imuRotX[imuPointerFront] * ratioFront + imuRotX[imuPointerBack] *
+                       ratioBack;
+            *rotYCur = imuRotY[imuPointerFront] * ratioFront + imuRotY[imuPointerBack] *
+                       ratioBack;
+            *rotZCur = imuRotZ[imuPointerFront] * ratioFront + imuRotZ[imuPointerBack] *
+                       ratioBack;
         }
     }
 
-    void findPosition(double relTime, float *posXCur, float *posYCur, float *posZCur) {
+    void findPosition(double relTime, float *posXCur, float *posYCur,
+                      float *posZCur) {
         *posXCur = 0;
         *posYCur = 0;
         *posZCur = 0;
@@ -462,18 +483,23 @@ class ImageProjection : public ParamServer {
         findPosition(relTime, &posXCur, &posYCur, &posZCur);
 
         if (firstPointFlag == true) {
-            transStartInverse = (pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur)).inverse();
+            transStartInverse = (pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur,
+                                 rotYCur, rotZCur)).inverse();
             firstPointFlag = false;
         }
 
         // transform points to start
-        Eigen::Affine3f transFinal = pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur);
+        Eigen::Affine3f transFinal = pcl::getTransformation(posXCur, posYCur, posZCur,
+                                     rotXCur, rotYCur, rotZCur);
         Eigen::Affine3f transBt = transStartInverse * transFinal;
 
         PointType newPoint;
-        newPoint.x = transBt(0,0) * point->x + transBt(0,1) * point->y + transBt(0,2) * point->z + transBt(0,3);
-        newPoint.y = transBt(1,0) * point->x + transBt(1,1) * point->y + transBt(1,2) * point->z + transBt(1,3);
-        newPoint.z = transBt(2,0) * point->x + transBt(2,1) * point->y + transBt(2,2) * point->z + transBt(2,3);
+        newPoint.x = transBt(0,0) * point->x + transBt(0,1) * point->y + transBt(0,
+                     2) * point->z + transBt(0,3);
+        newPoint.y = transBt(1,0) * point->x + transBt(1,1) * point->y + transBt(1,
+                     2) * point->z + transBt(1,3);
+        newPoint.z = transBt(2,0) * point->x + transBt(2,1) * point->y + transBt(2,
+                     2) * point->z + transBt(2,3);
         newPoint.intensity = point->intensity;
 
         return newPoint;
@@ -546,7 +572,8 @@ class ImageProjection : public ParamServer {
 
     void publishClouds() {
         cloudInfo.header = cloudHeader;
-        cloudInfo.cloud_deskewed  = publishCloud(&pubExtractedCloud, extractedCloud, cloudHeader.stamp, lidarFrame);
+        cloudInfo.cloud_deskewed  = publishCloud(&pubExtractedCloud, extractedCloud,
+                                    cloudHeader.stamp, lidarFrame);
         pubLaserCloudInfo.publish(cloudInfo);
     }
 };
