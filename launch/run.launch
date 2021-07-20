@@ -1,7 +1,9 @@
 <launch>
 
     <arg name="project" default="lio_sam"/>
-    
+
+    <env name="ROSCONSOLE_CONFIG_FILE" value="$(find lio_sam)/custom_rosconsole.conf"/>
+
     <!-- Parameters -->
     <rosparam file="$(find lio_sam)/config/params.yaml" command="load" />
 
