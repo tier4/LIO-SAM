@@ -85,15 +85,15 @@ class FeatureExtraction : public ParamServer {
     void calculateSmoothness() {
         int cloudSize = extractedCloud->points.size();
         for (int i = 5; i < cloudSize - 5; i++) {
-            float diffRange = cloudInfo.pointRange[i-5] + cloudInfo.pointRange[i-4]
-                              + cloudInfo.pointRange[i-3] + cloudInfo.pointRange[i-2]
-                              + cloudInfo.pointRange[i-1] - cloudInfo.pointRange[i] * 10
-                              + cloudInfo.pointRange[i+1] + cloudInfo.pointRange[i+2]
-                              + cloudInfo.pointRange[i+3] + cloudInfo.pointRange[i+4]
-                              + cloudInfo.pointRange[i+5];
+            float d = cloudInfo.pointRange[i-5] + cloudInfo.pointRange[i-4]
+                    + cloudInfo.pointRange[i-3] + cloudInfo.pointRange[i-2]
+                    + cloudInfo.pointRange[i-1] - cloudInfo.pointRange[i] * 10
+                    + cloudInfo.pointRange[i+1] + cloudInfo.pointRange[i+2]
+                    + cloudInfo.pointRange[i+3] + cloudInfo.pointRange[i+4]
+                    + cloudInfo.pointRange[i+5];
 
-            cloudCurvature[i] =
-                diffRange*diffRange;//diffX * diffX + diffY * diffY + diffZ * diffZ;
+            //diffX * diffX + diffY * diffY + diffZ * diffZ;
+            cloudCurvature[i] = d * d;
 
             cloudNeighborPicked[i] = 0;
             cloudLabel[i] = 0;
@@ -147,12 +147,14 @@ class FeatureExtraction : public ParamServer {
         cornerCloud->clear();
         surfaceCloud->clear();
 
-        pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new
-                pcl::PointCloud<PointType>());
-        pcl::PointCloud<PointType>::Ptr surfaceCloudScanDS(new
-                pcl::PointCloud<PointType>());
+        pcl::PointCloud<PointType>::Ptr surfaceCloudScanDS(
+            new pcl::PointCloud<PointType>()
+        );
 
         for (int i = 0; i < N_SCAN; i++) {
+            pcl::PointCloud<PointType>::Ptr surfaceCloudScan(
+                new pcl::PointCloud<PointType>()
+            );
             surfaceCloudScan->clear();
 
             for (int j = 0; j < 6; j++) {
