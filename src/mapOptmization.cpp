@@ -1694,12 +1694,9 @@ class mapOptimization : public ParamServer {
                 cloudKeyPoses6D->points[i].x = cloudKeyPoses3D->points[i].x;
                 cloudKeyPoses6D->points[i].y = cloudKeyPoses3D->points[i].y;
                 cloudKeyPoses6D->points[i].z = cloudKeyPoses3D->points[i].z;
-                cloudKeyPoses6D->points[i].roll  = isamCurrentEstimate.at<Pose3>
-                                                   (i).rotation().roll();
-                cloudKeyPoses6D->points[i].pitch = isamCurrentEstimate.at<Pose3>
-                                                   (i).rotation().pitch();
-                cloudKeyPoses6D->points[i].yaw   = isamCurrentEstimate.at<Pose3>
-                                                   (i).rotation().yaw();
+                cloudKeyPoses6D->points[i].roll  = isamCurrentEstimate.at<Pose3>(i).rotation().roll();
+                cloudKeyPoses6D->points[i].pitch = isamCurrentEstimate.at<Pose3>(i).rotation().pitch();
+                cloudKeyPoses6D->points[i].yaw   = isamCurrentEstimate.at<Pose3>(i).rotation().yaw();
 
                 updatePath(cloudKeyPoses6D->points[i]);
             }
@@ -1715,8 +1712,9 @@ class mapOptimization : public ParamServer {
         pose_stamped.pose.position.x = pose_in.x;
         pose_stamped.pose.position.y = pose_in.y;
         pose_stamped.pose.position.z = pose_in.z;
-        tf::Quaternion q = tf::createQuaternionFromRPY(pose_in.roll, pose_in.pitch,
-                           pose_in.yaw);
+        tf::Quaternion q = tf::createQuaternionFromRPY(
+            pose_in.roll, pose_in.pitch, pose_in.yaw
+        );
         pose_stamped.pose.orientation.x = q.x();
         pose_stamped.pose.orientation.y = q.y();
         pose_stamped.pose.orientation.z = q.z();
@@ -1734,17 +1732,19 @@ class mapOptimization : public ParamServer {
         laserOdometryROS.pose.pose.position.x = transformTobeMapped[3];
         laserOdometryROS.pose.pose.position.y = transformTobeMapped[4];
         laserOdometryROS.pose.pose.position.z = transformTobeMapped[5];
-        laserOdometryROS.pose.pose.orientation =
-            tf::createQuaternionMsgFromRollPitchYaw(transformTobeMapped[0],
-                    transformTobeMapped[1], transformTobeMapped[2]);
+        laserOdometryROS.pose.pose.orientation =\
+            tf::createQuaternionMsgFromRollPitchYaw(
+                transformTobeMapped[0],
+                transformTobeMapped[1],
+                transformTobeMapped[2]);
         pubLaserOdometryGlobal.publish(laserOdometryROS);
 
         // Publish TF
         static tf::TransformBroadcaster br;
-        tf::Transform t_odom_to_lidar = tf::Transform(tf::createQuaternionFromRPY(
-                                            transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]),
-                                        tf::Vector3(transformTobeMapped[3], transformTobeMapped[4],
-                                                transformTobeMapped[5]));
+        tf::Transform t_odom_to_lidar = tf::Transform(
+            tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]),
+            tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5])
+        );
         tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(
                     t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
         br.sendTransform(trans_odom_to_lidar);

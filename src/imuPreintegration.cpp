@@ -205,43 +205,44 @@ class IMUPreintegration : public ParamServer {
                                           gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
 
     IMUPreintegration() {
-        subImu      = nh.subscribe<sensor_msgs::Imu>  (imuTopic,
-                      2000, &IMUPreintegration::imuHandler,      this,
-                      ros::TransportHints().tcpNoDelay());
-        subOdometry =
-            nh.subscribe<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 5,
-                                             &IMUPreintegration::odometryHandler, this, ros::TransportHints().tcpNoDelay());
+        subImu = nh.subscribe<sensor_msgs::Imu>  (
+            imuTopic, 2000, &IMUPreintegration::imuHandler,
+            this, ros::TransportHints().tcpNoDelay());
+        subOdometry = nh.subscribe<nav_msgs::Odometry>(
+            "lio_sam/mapping/odometry_incremental", 5,
+            &IMUPreintegration::odometryHandler,
+            this, ros::TransportHints().tcpNoDelay());
+        pubImuOdometry = nh.advertise<nav_msgs::Odometry>(odomTopic+"_incremental", 2000);
 
-        pubImuOdometry = nh.advertise<nav_msgs::Odometry> (odomTopic+"_incremental",
-                         2000);
+        boost::shared_ptr<gtsam::PreintegrationParams> p = gtsam::PreintegrationParams::MakeSharedU(imuGravity);
+        p->accelerometerCovariance  = gtsam::Matrix33::Identity(3,3) * pow(imuAccNoise, 2); // acc white noise in continuous
+        p->gyroscopeCovariance      = gtsam::Matrix33::Identity(3,3) * pow(imuGyrNoise, 2); // gyro white noise in continuous
+        p->integrationCovariance    = gtsam::Matrix33::Identity(3,3) * pow(1e-4, 2); // error committed in integrating position from velocities
+        gtsam::imuBias::ConstantBias prior_imu_bias((gtsam::Vector(6) << 0, 0, 0, 0, 0, 0).finished());; // assume zero initial bias
 
-        boost::shared_ptr<gtsam::PreintegrationParams> p =
-            gtsam::PreintegrationParams::MakeSharedU(imuGravity);
-        p->accelerometerCovariance  = gtsam::Matrix33::Identity(3,3) * pow(imuAccNoise,
-                                      2); // acc white noise in continuous
-        p->gyroscopeCovariance      = gtsam::Matrix33::Identity(3,3) * pow(imuGyrNoise,
-                                      2); // gyro white noise in continuous
-        p->integrationCovariance    = gtsam::Matrix33::Identity(3,3) * pow(1e-4,
-                                      2); // error committed in integrating position from velocities
-        gtsam::imuBias::ConstantBias prior_imu_bias((gtsam::Vector(6) << 0, 0, 0, 0, 0,
-                0).finished());; // assume zero initial bias
-
-        priorPoseNoise  = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(
-                              6) << 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2).finished()); // rad,rad,rad,m, m, m
+        // rad,rad,rad,m, m, m
+        priorPoseNoise  = gtsam::noiseModel::Diagonal::Sigmas(
+            (gtsam::Vector(6) << 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2).finished()
+        );
         priorVelNoise   = gtsam::noiseModel::Isotropic::Sigma(3, 1e4); // m/s
-        priorBiasNoise  = gtsam::noiseModel::Isotropic::Sigma(6,
-                          1e-3); // 1e-2 ~ 1e-3 seems to be good
-        correctionNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(
-                              6) << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished()); // rad,rad,rad,m, m, m
-        correctionNoise2 = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1,
-                           1, 1, 1, 1, 1).finished()); // rad,rad,rad,m, m, m
-        noiseModelBetweenBias = (gtsam::Vector(6) << imuAccBiasN, imuAccBiasN,
-                                 imuAccBiasN, imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished();
+        // 1e-2 ~ 1e-3 seems to be good
+        priorBiasNoise  = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
+        // rad,rad,rad,m, m, m
+        correctionNoise = gtsam::noiseModel::Diagonal::Sigmas(
+            (gtsam::Vector(6) << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished()
+        );
+        // rad,rad,rad,m, m, m
+        correctionNoise2 = gtsam::noiseModel::Diagonal::Sigmas(
+            (gtsam::Vector(6) << 1, 1, 1, 1, 1, 1).finished()
+        );
+        noiseModelBetweenBias =\
+            (gtsam::Vector(6) << imuAccBiasN, imuAccBiasN, imuAccBiasN,
+                                 imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished();
 
-        imuIntegratorImu_ = new gtsam::PreintegratedImuMeasurements(p,
-                prior_imu_bias); // setting up the IMU integration for IMU message thread
-        imuIntegratorOpt_ = new gtsam::PreintegratedImuMeasurements(p,
-                prior_imu_bias); // setting up the IMU integration for optimization
+        // setting up the IMU integration for IMU message thread
+        imuIntegratorImu_ = new gtsam::PreintegratedImuMeasurements(p, prior_imu_bias);
+        // setting up the IMU integration for optimization
+        imuIntegratorOpt_ = new gtsam::PreintegratedImuMeasurements(p, prior_imu_bias);
     }
 
     void resetOptimization() {
@@ -492,11 +493,17 @@ class IMUPreintegration : public ParamServer {
         lastImuT_imu = imuTime;
 
         // integrate this single imu message
-        imuIntegratorImu_->integrateMeasurement(gtsam::Vector3(
-                thisImu.linear_acceleration.x, thisImu.linear_acceleration.y,
+        imuIntegratorImu_->integrateMeasurement(
+            gtsam::Vector3(
+                thisImu.linear_acceleration.x,
+                thisImu.linear_acceleration.y,
                 thisImu.linear_acceleration.z),
-                                                gtsam::Vector3(thisImu.angular_velocity.x,    thisImu.angular_velocity.y,
-                                                        thisImu.angular_velocity.z), dt);
+            gtsam::Vector3(
+                thisImu.angular_velocity.x,
+                thisImu.angular_velocity.y,
+                thisImu.angular_velocity.z),
+            dt
+        );
 
         // predict odometry
         gtsam::NavState currentState = imuIntegratorImu_->predict(prevStateOdom,
