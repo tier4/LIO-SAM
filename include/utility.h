@@ -321,15 +321,6 @@ void imuAngular2rosAngular(sensor_msgs::Imu *thisImuMsg, T *angular_x,
 
 
 template<typename T>
-void imuAccel2rosAccel(sensor_msgs::Imu *thisImuMsg, T *acc_x, T *acc_y,
-                       T *acc_z) {
-  *acc_x = thisImuMsg->linear_acceleration.x;
-  *acc_y = thisImuMsg->linear_acceleration.y;
-  *acc_z = thisImuMsg->linear_acceleration.z;
-}
-
-
-template<typename T>
 void imuRPY2rosRPY(const geometry_msgs::Quaternion& imu_orientation,
                    T *rosRoll, T *rosPitch, T *rosYaw) {
   double imuRoll, imuPitch, imuYaw;
