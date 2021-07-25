@@ -330,11 +330,11 @@ void imuAccel2rosAccel(sensor_msgs::Imu *thisImuMsg, T *acc_x, T *acc_y,
 
 
 template<typename T>
-void imuRPY2rosRPY(sensor_msgs::Imu *thisImuMsg, T *rosRoll, T *rosPitch,
-                   T *rosYaw) {
+void imuRPY2rosRPY(const geometry_msgs::Quaternion& imu_orientation,
+                   T *rosRoll, T *rosPitch, T *rosYaw) {
   double imuRoll, imuPitch, imuYaw;
   tf::Quaternion orientation;
-  tf::quaternionMsgToTF(thisImuMsg->orientation, orientation);
+  tf::quaternionMsgToTF(imu_orientation, orientation);
   tf::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
 
   *rosRoll = imuRoll;

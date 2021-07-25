@@ -300,7 +300,9 @@ class ImageProjection : public ParamServer {
 
       // get roll, pitch, and yaw estimation for this scan
       if (currentImuTime <= timeScanCur)
-        imuRPY2rosRPY(&thisImuMsg, &cloudInfo.imuRollInit, &cloudInfo.imuPitchInit,
+        imuRPY2rosRPY(thisImuMsg.orientation,
+                      &cloudInfo.imuRollInit,
+                      &cloudInfo.imuPitchInit,
                       &cloudInfo.imuYawInit);
 
       if (currentImuTime > timeScanEnd + 0.01)
