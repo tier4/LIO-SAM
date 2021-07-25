@@ -301,9 +301,9 @@ class ImageProjection : public ParamServer {
       // get roll, pitch, and yaw estimation for this scan
       if (currentImuTime <= timeScanCur)
         imuRPY2rosRPY(thisImuMsg.orientation,
-                      &cloudInfo.imuRollInit,
-                      &cloudInfo.imuPitchInit,
-                      &cloudInfo.imuYawInit);
+                      cloudInfo.imuRollInit,
+                      cloudInfo.imuPitchInit,
+                      cloudInfo.imuYawInit);
 
       if (currentImuTime > timeScanEnd + 0.01)
         break;
@@ -319,7 +319,8 @@ class ImageProjection : public ParamServer {
 
       // get angular velocity
       double angular_x, angular_y, angular_z;
-      imuAngular2rosAngular(&thisImuMsg, &angular_x, &angular_y, &angular_z);
+      imuAngular2rosAngular(thisImuMsg.angular_velocity,
+                            angular_x, angular_y, angular_z);
 
       // integrate rotation
       double timeDiff = currentImuTime - imuTime[imuPointerCur-1];

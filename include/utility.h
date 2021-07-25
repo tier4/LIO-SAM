@@ -312,25 +312,25 @@ double ROS_TIME(T msg) {
 
 
 template<typename T>
-void imuAngular2rosAngular(sensor_msgs::Imu *thisImuMsg, T *angular_x,
-                           T *angular_y, T *angular_z) {
-  *angular_x = thisImuMsg->angular_velocity.x;
-  *angular_y = thisImuMsg->angular_velocity.y;
-  *angular_z = thisImuMsg->angular_velocity.z;
+void imuAngular2rosAngular(const geometry_msgs::Vector3& angular_velocity,
+                           T &angular_x, T &angular_y, T &angular_z) {
+  angular_x = angular_velocity.x;
+  angular_y = angular_velocity.y;
+  angular_z = angular_velocity.z;
 }
 
 
 template<typename T>
 void imuRPY2rosRPY(const geometry_msgs::Quaternion& imu_orientation,
-                   T *rosRoll, T *rosPitch, T *rosYaw) {
+                   T &rosRoll, T &rosPitch, T &rosYaw) {
   double imuRoll, imuPitch, imuYaw;
   tf::Quaternion orientation;
   tf::quaternionMsgToTF(imu_orientation, orientation);
   tf::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
 
-  *rosRoll = imuRoll;
-  *rosPitch = imuPitch;
-  *rosYaw = imuYaw;
+  rosRoll = imuRoll;
+  rosPitch = imuPitch;
+  rosYaw = imuYaw;
 }
 
 
