@@ -481,9 +481,10 @@ class ImageProjection : public ParamServer {
     float posXCur, posYCur, posZCur;
     findPosition(relTime, posXCur, posYCur, posZCur);
 
-    if (firstPointFlag == true) {
-      transStartInverse = (pcl::getTransformation(posXCur, posYCur, posZCur,
-                                                  rotXCur, rotYCur, rotZCur)).inverse();
+    if (firstPointFlag) {
+      const auto transform = pcl::getTransformation(posXCur, posYCur, posZCur,
+                                                    rotXCur, rotYCur, rotZCur);
+      transStartInverse = transform.inverse();
       firstPointFlag = false;
     }
 
@@ -493,12 +494,18 @@ class ImageProjection : public ParamServer {
     Eigen::Affine3f transBt = transStartInverse * transFinal;
 
     PointType newPoint;
-    newPoint.x = transBt(0, 0) * point->x + transBt(0, 1) * point->y
-               + transBt(0, 2) * point->z + transBt(0, 3);
-    newPoint.y = transBt(1, 0) * point->x + transBt(1, 1) * point->y
-               + transBt(1, 2) * point->z + transBt(1, 3);
-    newPoint.z = transBt(2, 0) * point->x + transBt(2, 1) * point->y
-               + transBt(2, 2) * point->z + transBt(2, 3);
+    newPoint.x = transBt(0, 0) * point->x
+               + transBt(0, 1) * point->y
+               + transBt(0, 2) * point->z
+               + transBt(0, 3);
+    newPoint.y = transBt(1, 0) * point->x
+               + transBt(1, 1) * point->y
+               + transBt(1, 2) * point->z
+               + transBt(1, 3);
+    newPoint.z = transBt(2, 0) * point->x
+               + transBt(2, 1) * point->y
+               + transBt(2, 2) * point->z
+               + transBt(2, 3);
     newPoint.intensity = point->intensity;
 
     return newPoint;
