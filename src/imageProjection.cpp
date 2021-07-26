@@ -422,11 +422,10 @@ class ImageProjection : public ParamServer {
     odomDeskewFlag = true;
   }
 
-  void findRotation(const double pointTime,
-                    float &rotXCur, float &rotYCur, float &rotZCur) {
-    rotXCur = 0;
-    rotYCur = 0;
-    rotZCur = 0;
+  std::tuple<float, float, float> findRotation(const double pointTime) {
+    float rotXCur = 0;
+    float rotYCur = 0;
+    float rotZCur = 0;
 
     int imuPointerFront = 0;
     while (imuPointerFront < imuPointerCur) {
@@ -449,12 +448,13 @@ class ImageProjection : public ParamServer {
       rotYCur = imuRotY[imuPointerFront] * ratioFront + imuRotY[imuPointerBack] * ratioBack;
       rotZCur = imuRotZ[imuPointerFront] * ratioFront + imuRotZ[imuPointerBack] * ratioBack;
     }
+    return {rotXCur, rotYCur, rotZCur};
   }
 
-  void findPosition(double relTime, float &posXCur, float &posYCur, float &posZCur) {
-    posXCur = 0;
-    posYCur = 0;
-    posZCur = 0;
+  std::tuple<float, float, float> findPosition(double relTime) {
+    float posXCur = 0;
+    float posYCur = 0;
+    float posZCur = 0;
 
     // If the sensor moves relatively slow, like walking speed,
     // positional deskew seems to have little benefits. Thus code below is commented.
@@ -467,6 +467,7 @@ class ImageProjection : public ParamServer {
     // posXCur = ratio * odomIncreX;
     // posYCur = ratio * odomIncreY;
     // posZCur = ratio * odomIncreZ;
+    return {posXCur, posYCur, posZCur};
   }
 
   PointType deskewPoint(PointType *point, double relTime) {
@@ -475,11 +476,9 @@ class ImageProjection : public ParamServer {
 
     double pointTime = timeScanCur + relTime;
 
-    float rotXCur, rotYCur, rotZCur;
-    findRotation(pointTime, rotXCur, rotYCur, rotZCur);
+    const auto [rotXCur, rotYCur, rotZCur] = findRotation(pointTime);
 
-    float posXCur, posYCur, posZCur;
-    findPosition(relTime, posXCur, posYCur, posZCur);
+    const auto [posXCur, posYCur, posZCur] = findPosition(relTime);
 
     if (firstPointFlag) {
       const auto transform = pcl::getTransformation(posXCur, posYCur, posZCur,
