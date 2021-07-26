@@ -470,42 +470,40 @@ class ImageProjection : public ParamServer {
     return {posXCur, posYCur, posZCur};
   }
 
-  PointType deskewPoint(PointType *point, double relTime) {
-    if (deskewFlag == -1 || cloudInfo.imuAvailable == false)
-      return *point;
+  PointType deskewPoint(const PointType& point, double relTime) {
+    if (deskewFlag == -1 || cloudInfo.imuAvailable == false) {
+      return point;
+    }
 
     double pointTime = timeScanCur + relTime;
 
     const auto [rotXCur, rotYCur, rotZCur] = findRotation(pointTime);
-
     const auto [posXCur, posYCur, posZCur] = findPosition(relTime);
 
+    const auto transform = pcl::getTransformation(posXCur, posYCur, posZCur,
+                                                  rotXCur, rotYCur, rotZCur);
     if (firstPointFlag) {
-      const auto transform = pcl::getTransformation(posXCur, posYCur, posZCur,
-                                                    rotXCur, rotYCur, rotZCur);
       transStartInverse = transform.inverse();
       firstPointFlag = false;
     }
 
     // transform points to start
-    Eigen::Affine3f transFinal = pcl::getTransformation(posXCur, posYCur, posZCur,
-                                 rotXCur, rotYCur, rotZCur);
-    Eigen::Affine3f transBt = transStartInverse * transFinal;
+    Eigen::Affine3f transBt = transStartInverse * transform;
 
     PointType newPoint;
-    newPoint.x = transBt(0, 0) * point->x
-               + transBt(0, 1) * point->y
-               + transBt(0, 2) * point->z
+    newPoint.x = transBt(0, 0) * point.x
+               + transBt(0, 1) * point.y
+               + transBt(0, 2) * point.z
                + transBt(0, 3);
-    newPoint.y = transBt(1, 0) * point->x
-               + transBt(1, 1) * point->y
-               + transBt(1, 2) * point->z
+    newPoint.y = transBt(1, 0) * point.x
+               + transBt(1, 1) * point.y
+               + transBt(1, 2) * point.z
                + transBt(1, 3);
-    newPoint.z = transBt(2, 0) * point->x
-               + transBt(2, 1) * point->y
-               + transBt(2, 2) * point->z
+    newPoint.z = transBt(2, 0) * point.x
+               + transBt(2, 1) * point.y
+               + transBt(2, 2) * point.z
                + transBt(2, 3);
-    newPoint.intensity = point->intensity;
+    newPoint.intensity = point.intensity;
 
     return newPoint;
   }
@@ -544,7 +542,7 @@ class ImageProjection : public ParamServer {
       if (rangeMat.at<float>(rowIdn, columnIdn) != FLT_MAX)
         continue;
 
-      thisPoint = deskewPoint(&thisPoint, laserCloudIn->points[i].time);
+      thisPoint = deskewPoint(thisPoint, laserCloudIn->points[i].time);
 
       rangeMat.at<float>(rowIdn, columnIdn) = range;
 
