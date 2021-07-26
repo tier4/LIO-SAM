@@ -490,19 +490,13 @@ class ImageProjection : public ParamServer {
     // transform points to start
     Eigen::Affine3f transBt = transStartInverse * transform;
 
+    Eigen::Vector3f p(point.x, point.y, point.z);
+
+    const Eigen::Vector3f q = transBt * p;
     PointType newPoint;
-    newPoint.x = transBt(0, 0) * point.x
-               + transBt(0, 1) * point.y
-               + transBt(0, 2) * point.z
-               + transBt(0, 3);
-    newPoint.y = transBt(1, 0) * point.x
-               + transBt(1, 1) * point.y
-               + transBt(1, 2) * point.z
-               + transBt(1, 3);
-    newPoint.z = transBt(2, 0) * point.x
-               + transBt(2, 1) * point.y
-               + transBt(2, 2) * point.z
-               + transBt(2, 3);
+    newPoint.x = q(0);
+    newPoint.y = q(1);
+    newPoint.z = q(2);
     newPoint.intensity = point.intensity;
 
     return newPoint;
