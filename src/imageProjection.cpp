@@ -318,9 +318,7 @@ class ImageProjection : public ParamServer {
       }
 
       // get angular velocity
-      double angular_x, angular_y, angular_z;
-      imuAngular2rosAngular(thisImuMsg.angular_velocity,
-                            angular_x, angular_y, angular_z);
+      const auto [angular_x, angular_y, angular_z] = imuAngular2rosAngular(thisImuMsg.angular_velocity);
 
       // integrate rotation
       double timeDiff = currentImuTime - imuTime[imuPointerCur-1];

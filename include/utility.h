@@ -312,12 +312,9 @@ double ROS_TIME(T msg) {
 }
 
 
-template<typename T>
-void imuAngular2rosAngular(const geometry_msgs::Vector3& angular_velocity,
-                           T &angular_x, T &angular_y, T &angular_z) {
-  angular_x = angular_velocity.x;
-  angular_y = angular_velocity.y;
-  angular_z = angular_velocity.z;
+std::tuple<double, double, double> imuAngular2rosAngular(
+    const geometry_msgs::Vector3& angular_velocity) {
+  return {angular_velocity.x, angular_velocity.y, angular_velocity.z};
 }
 
 
