@@ -51,6 +51,7 @@
 #include <iomanip>
 #include <array>
 #include <thread>
+#include <tuple>
 #include <mutex>
 
 using namespace std;
@@ -320,17 +321,13 @@ void imuAngular2rosAngular(const geometry_msgs::Vector3& angular_velocity,
 }
 
 
-template<typename T>
-void imuRPY2rosRPY(const geometry_msgs::Quaternion& imu_orientation,
-                   T &rosRoll, T &rosPitch, T &rosYaw) {
-  double imuRoll, imuPitch, imuYaw;
+std::tuple<double, double, double> imuRPY2rosRPY(
+    const geometry_msgs::Quaternion& imu_orientation) {
+  double rosRoll, rosPitch, rosYaw;
   tf::Quaternion orientation;
   tf::quaternionMsgToTF(imu_orientation, orientation);
-  tf::Matrix3x3(orientation).getRPY(imuRoll, imuPitch, imuYaw);
-
-  rosRoll = imuRoll;
-  rosPitch = imuPitch;
-  rosYaw = imuYaw;
+  tf::Matrix3x3(orientation).getRPY(rosRoll, rosPitch, rosYaw);
+  return {rosRoll, rosPitch, rosYaw};
 }
 
 

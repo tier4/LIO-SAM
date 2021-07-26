@@ -300,10 +300,10 @@ class ImageProjection : public ParamServer {
 
       // get roll, pitch, and yaw estimation for this scan
       if (currentImuTime <= timeScanCur)
-        imuRPY2rosRPY(thisImuMsg.orientation,
-                      cloudInfo.imuRollInit,
-                      cloudInfo.imuPitchInit,
-                      cloudInfo.imuYawInit);
+
+        std::tie(cloudInfo.imuRollInit,
+                 cloudInfo.imuPitchInit,
+                 cloudInfo.imuYawInit) = imuRPY2rosRPY(thisImuMsg.orientation);
 
       if (currentImuTime > timeScanEnd + 0.01)
         break;
