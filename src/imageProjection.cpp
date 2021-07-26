@@ -299,14 +299,15 @@ class ImageProjection : public ParamServer {
       double currentImuTime = thisImuMsg.header.stamp.toSec();
 
       // get roll, pitch, and yaw estimation for this scan
-      if (currentImuTime <= timeScanCur)
-
+      if (currentImuTime <= timeScanCur) {
         std::tie(cloudInfo.imuRollInit,
                  cloudInfo.imuPitchInit,
                  cloudInfo.imuYawInit) = imuRPY2rosRPY(thisImuMsg.orientation);
+      }
 
-      if (currentImuTime > timeScanEnd + 0.01)
+      if (currentImuTime > timeScanEnd + 0.01) {
         break;
+      }
 
       if (imuPointerCur == 0) {
         imuRotX[0] = 0;
@@ -421,11 +422,11 @@ class ImageProjection : public ParamServer {
     odomDeskewFlag = true;
   }
 
-  void findRotation(double pointTime, float *rotXCur, float *rotYCur,
-                    float *rotZCur) {
-    *rotXCur = 0;
-    *rotYCur = 0;
-    *rotZCur = 0;
+  void findRotation(const double pointTime,
+                    float &rotXCur, float &rotYCur, float &rotZCur) {
+    rotXCur = 0;
+    rotYCur = 0;
+    rotZCur = 0;
 
     int imuPointerFront = 0;
     while (imuPointerFront < imuPointerCur) {
@@ -435,40 +436,37 @@ class ImageProjection : public ParamServer {
     }
 
     if (pointTime > imuTime[imuPointerFront] || imuPointerFront == 0) {
-      *rotXCur = imuRotX[imuPointerFront];
-      *rotYCur = imuRotY[imuPointerFront];
-      *rotZCur = imuRotZ[imuPointerFront];
+      rotXCur = imuRotX[imuPointerFront];
+      rotYCur = imuRotY[imuPointerFront];
+      rotZCur = imuRotZ[imuPointerFront];
     } else {
       int imuPointerBack = imuPointerFront - 1;
       double ratioFront = (pointTime - imuTime[imuPointerBack]) /
                           (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
       double ratioBack = (imuTime[imuPointerFront] - pointTime) /
                          (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-      *rotXCur = imuRotX[imuPointerFront] * ratioFront + imuRotX[imuPointerBack] *
-                 ratioBack;
-      *rotYCur = imuRotY[imuPointerFront] * ratioFront + imuRotY[imuPointerBack] *
-                 ratioBack;
-      *rotZCur = imuRotZ[imuPointerFront] * ratioFront + imuRotZ[imuPointerBack] *
-                 ratioBack;
+      rotXCur = imuRotX[imuPointerFront] * ratioFront + imuRotX[imuPointerBack] * ratioBack;
+      rotYCur = imuRotY[imuPointerFront] * ratioFront + imuRotY[imuPointerBack] * ratioBack;
+      rotZCur = imuRotZ[imuPointerFront] * ratioFront + imuRotZ[imuPointerBack] * ratioBack;
     }
   }
 
-  void findPosition(double relTime, float *posXCur, float *posYCur,
-                    float *posZCur) {
-    *posXCur = 0;
-    *posYCur = 0;
-    *posZCur = 0;
+  void findPosition(double relTime, float &posXCur, float &posYCur, float &posZCur) {
+    posXCur = 0;
+    posYCur = 0;
+    posZCur = 0;
 
-    // If the sensor moves relatively slow, like walking speed, positional deskew seems to have little benefits. Thus code below is commented.
+    // If the sensor moves relatively slow, like walking speed,
+    // positional deskew seems to have little benefits. Thus code below is commented.
 
     // if (cloudInfo.odomAvailable == false || odomDeskewFlag == false)
     //     return;
 
     // float ratio = relTime / (timeScanEnd - timeScanCur);
 
-    // *posXCur = ratio * odomIncreX;
-    // *posYCur = ratio * odomIncreY;
-    // *posZCur = ratio * odomIncreZ;
+    // posXCur = ratio * odomIncreX;
+    // posYCur = ratio * odomIncreY;
+    // posZCur = ratio * odomIncreZ;
   }
 
   PointType deskewPoint(PointType *point, double relTime) {
@@ -478,14 +476,14 @@ class ImageProjection : public ParamServer {
     double pointTime = timeScanCur + relTime;
 
     float rotXCur, rotYCur, rotZCur;
-    findRotation(pointTime, &rotXCur, &rotYCur, &rotZCur);
+    findRotation(pointTime, rotXCur, rotYCur, rotZCur);
 
     float posXCur, posYCur, posZCur;
-    findPosition(relTime, &posXCur, &posYCur, &posZCur);
+    findPosition(relTime, posXCur, posYCur, posZCur);
 
     if (firstPointFlag == true) {
-      transStartInverse = (pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur,
-                           rotYCur, rotZCur)).inverse();
+      transStartInverse = (pcl::getTransformation(posXCur, posYCur, posZCur,
+                                                  rotXCur, rotYCur, rotZCur)).inverse();
       firstPointFlag = false;
     }
 
@@ -495,12 +493,12 @@ class ImageProjection : public ParamServer {
     Eigen::Affine3f transBt = transStartInverse * transFinal;
 
     PointType newPoint;
-    newPoint.x = transBt(0,0) * point->x + transBt(0,1) * point->y + transBt(0,
-                 2) * point->z + transBt(0,3);
-    newPoint.y = transBt(1,0) * point->x + transBt(1,1) * point->y + transBt(1,
-                 2) * point->z + transBt(1,3);
-    newPoint.z = transBt(2,0) * point->x + transBt(2,1) * point->y + transBt(2,
-                 2) * point->z + transBt(2,3);
+    newPoint.x = transBt(0, 0) * point->x + transBt(0, 1) * point->y
+               + transBt(0, 2) * point->z + transBt(0, 3);
+    newPoint.y = transBt(1, 0) * point->x + transBt(1, 1) * point->y
+               + transBt(1, 2) * point->z + transBt(1, 3);
+    newPoint.z = transBt(2, 0) * point->x + transBt(2, 1) * point->y
+               + transBt(2, 2) * point->z + transBt(2, 3);
     newPoint.intensity = point->intensity;
 
     return newPoint;
