@@ -2,6 +2,8 @@
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/save_map.h"
 
+#include <opencv2/core/eigen.hpp>
+
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
@@ -1061,10 +1063,6 @@ class mapOptimization : public ParamServer {
       kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
                                           pointSearchSqDis);
 
-      cv::Mat matA1(3, 3, CV_32F, cv::Scalar::all(0));
-      cv::Mat matD1(1, 3, CV_32F, cv::Scalar::all(0));
-      cv::Mat matV1(3, 3, CV_32F, cv::Scalar::all(0));
-
       if (pointSearchSqDis[4] < 1.0) {
         float cx = 0, cy = 0, cz = 0;
         for (int j = 0; j < 5; j++) {
@@ -1076,36 +1074,23 @@ class mapOptimization : public ParamServer {
         cy /= 5;
         cz /= 5;
 
-        float a11 = 0, a12 = 0, a13 = 0, a22 = 0, a23 = 0, a33 = 0;
+        Eigen::Matrix3f sa = Eigen::Matrix3f::Zero();
+
         for (int j = 0; j < 5; j++) {
           float ax = laserCloudCornerFromMapDS->points[pointSearchInd[j]].x - cx;
           float ay = laserCloudCornerFromMapDS->points[pointSearchInd[j]].y - cy;
           float az = laserCloudCornerFromMapDS->points[pointSearchInd[j]].z - cz;
 
-          a11 += ax * ax;
-          a12 += ax * ay;
-          a13 += ax * az;
-          a22 += ay * ay;
-          a23 += ay * az;
-          a33 += az * az;
+          const Eigen::Vector3f a(ax, ay, az);
+          sa += a * a.transpose();
         }
-        a11 /= 5;
-        a12 /= 5;
-        a13 /= 5;
-        a22 /= 5;
-        a23 /= 5;
-        a33 /= 5;
 
-        matA1.at<float>(0, 0) = a11;
-        matA1.at<float>(0, 1) = a12;
-        matA1.at<float>(0, 2) = a13;
-        matA1.at<float>(1, 0) = a12;
-        matA1.at<float>(1, 1) = a22;
-        matA1.at<float>(1, 2) = a23;
-        matA1.at<float>(2, 0) = a13;
-        matA1.at<float>(2, 1) = a23;
-        matA1.at<float>(2, 2) = a33;
+        sa = sa / 5.0;
 
+        cv::Mat matA1(3, 3, CV_32F, cv::Scalar::all(0));
+        cv::eigen2cv(sa, matA1);
+        cv::Mat matD1(1, 3, CV_32F, cv::Scalar::all(0));
+        cv::Mat matV1(3, 3, CV_32F, cv::Scalar::all(0));
         cv::eigen(matA1, matD1, matV1);
 
         if (matD1.at<float>(0, 0) > 3 * matD1.at<float>(0, 1)) {
