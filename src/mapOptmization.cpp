@@ -803,9 +803,7 @@ class mapOptimization : public ParamServer {
 
       if (pointSearchSqDis[4] < 1.0) {
         for (int j = 0; j < 5; j++) {
-          matA0(j, 0) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].x;
-          matA0(j, 1) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].y;
-          matA0(j, 2) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].z;
+          matA0.row(j) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].getVector3fMap();
         }
 
         matX0 = matA0.colPivHouseholderQr().solve(matB0);
