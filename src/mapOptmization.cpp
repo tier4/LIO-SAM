@@ -221,8 +221,7 @@ class mapOptimization : public ParamServer {
     coeffSelSurfVec.resize(N_SCAN * Horizon_SCAN);
     laserCloudOriSurfFlag.resize(N_SCAN * Horizon_SCAN);
 
-    std::fill(laserCloudOriCornerFlag.begin(), laserCloudOriCornerFlag.end(),
-              false);
+    std::fill(laserCloudOriCornerFlag.begin(), laserCloudOriCornerFlag.end(), false);
     std::fill(laserCloudOriSurfFlag.begin(), laserCloudOriSurfFlag.end(), false);
 
     laserCloudCornerFromMap.reset(new pcl::PointCloud<PointType>());
@@ -437,7 +436,7 @@ class mapOptimization : public ParamServer {
       publishGlobalMap();
     }
 
-    if (savePCD == false)
+    if (!savePCD)
       return;
 
     lio_sam::save_mapRequest  req;
@@ -452,7 +451,7 @@ class mapOptimization : public ParamServer {
     if (pubLaserCloudSurround.getNumSubscribers() == 0)
       return;
 
-    if (cloudKeyPoses3D->points.empty() == true)
+    if (cloudKeyPoses3D->points.empty())
       return;
 
     pcl::KdTreeFLANN<PointType>::Ptr kdtreeGlobalMap(new
@@ -506,9 +505,10 @@ class mapOptimization : public ParamServer {
                              &cloudKeyPoses6D->points[thisKeyInd]);
     }
     // downsample visualized points
-    pcl::VoxelGrid<PointType>
-    downSizeFilterGlobalMapKeyFrames; // for global map visualization
-    downSizeFilterGlobalMapKeyFrames.setLeafSize(globalMapVisualizationLeafSize,
+    // for global map visualization
+    pcl::VoxelGrid<PointType> downSizeFilterGlobalMapKeyFrames;
+    downSizeFilterGlobalMapKeyFrames.setLeafSize(
+        globalMapVisualizationLeafSize,
         globalMapVisualizationLeafSize,
         globalMapVisualizationLeafSize); // for global map visualization
     downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
@@ -567,7 +567,7 @@ class mapOptimization : public ParamServer {
     }
 
     // use imu incremental estimation for pose guess (only rotation)
-    if (cloudInfo.imuAvailable == true) {
+    if (cloudInfo.imuAvailable) {
       Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0,
                                   cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
       Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
@@ -678,10 +678,10 @@ class mapOptimization : public ParamServer {
   }
 
   void extractSurroundingKeyFrames() {
-    if (cloudKeyPoses3D->points.empty() == true)
+    if (cloudKeyPoses3D->points.empty())
       return;
 
-    // if (loopClosureEnableFlag == true)
+    // if (loopClosureEnableFlag)
     // {
     //     extractForLoopClosure();
     // } else {
@@ -877,14 +877,14 @@ class mapOptimization : public ParamServer {
   void combineOptimizationCoeffs() {
     // combine corner coeffs
     for (int i = 0; i < laserCloudCornerLastDSNum; ++i) {
-      if (laserCloudOriCornerFlag[i] == true) {
+      if (laserCloudOriCornerFlag[i]) {
         laserCloudOri->push_back(laserCloudOriCornerVec[i]);
         coeffSel->push_back(coeffSelCornerVec[i]);
       }
     }
     // combine surf coeffs
     for (int i = 0; i < laserCloudSurfLastDSNum; ++i) {
-      if (laserCloudOriSurfFlag[i] == true) {
+      if (laserCloudOriSurfFlag[i]) {
         laserCloudOri->push_back(laserCloudOriSurfVec[i]);
         coeffSel->push_back(coeffSelSurfVec[i]);
       }
@@ -1039,7 +1039,7 @@ class mapOptimization : public ParamServer {
 
         combineOptimizationCoeffs();
 
-        if (LMOptimization(iterCount) == true)
+        if (LMOptimization(iterCount))
           break;
       }
 
@@ -1051,7 +1051,7 @@ class mapOptimization : public ParamServer {
   }
 
   void transformUpdate() {
-    if (cloudInfo.imuAvailable == true) {
+    if (cloudInfo.imuAvailable) {
       if (std::abs(cloudInfo.imuPitchInit) < 1.4) {
         double imuWeight = imuRPYWeight;
         tf::Quaternion imuQuaternion;
@@ -1209,7 +1209,7 @@ class mapOptimization : public ParamServer {
   }
 
   void saveKeyFramesAndFactor() {
-    if (saveFrame() == false)
+    if (!saveFrame())
       return;
 
     // odom factor
@@ -1225,7 +1225,7 @@ class mapOptimization : public ParamServer {
     isam->update(gtSAMgraph, initialEstimate);
     isam->update();
 
-    if (aLoopIsClosed == true) {
+    if (aLoopIsClosed) {
       isam->update();
       isam->update();
       isam->update();
@@ -1295,7 +1295,7 @@ class mapOptimization : public ParamServer {
     if (cloudKeyPoses3D->points.empty())
       return;
 
-    if (aLoopIsClosed == true) {
+    if (aLoopIsClosed) {
       // clear map cache
       laserCloudMapContainer.clear();
       // clear path
@@ -1370,7 +1370,7 @@ class mapOptimization : public ParamServer {
     static bool lastIncreOdomPubFlag = false;
     static nav_msgs::Odometry laserOdomIncremental; // incremental odometry msg
     static Eigen::Affine3f increOdomAffine; // incremental odometry in affine
-    if (lastIncreOdomPubFlag == false) {
+    if (!lastIncreOdomPubFlag) {
       lastIncreOdomPubFlag = true;
       laserOdomIncremental = laserOdometryROS;
       increOdomAffine = trans2Affine3f(transformTobeMapped);
@@ -1380,7 +1380,7 @@ class mapOptimization : public ParamServer {
       increOdomAffine = increOdomAffine * affineIncre;
       float x, y, z, roll, pitch, yaw;
       pcl::getTranslationAndEulerAngles (increOdomAffine, x, y, z, roll, pitch, yaw);
-      if (cloudInfo.imuAvailable == true) {
+      if (cloudInfo.imuAvailable) {
         if (std::abs(cloudInfo.imuPitchInit) < 1.4) {
           double imuWeight = 0.1;
           tf::Quaternion imuQuaternion;
