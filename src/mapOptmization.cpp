@@ -164,8 +164,7 @@ class mapOptimization : public ParamServer {
       nh.advertise<nav_msgs::Odometry> ("lio_sam/mapping/odometry", 1);
     pubLaserOdometryIncremental =
       nh.advertise<nav_msgs::Odometry> ("lio_sam/mapping/odometry_incremental", 1);
-    pubPath                     =
-      nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1);
+    pubPath = nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1);
 
     subCloud = nh.subscribe<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1,
                &mapOptimization::laserCloudInfoHandler, this,
@@ -361,20 +360,6 @@ class mapOptimization : public ParamServer {
     thisPose6D.yaw   = transformIn[2];
     return thisPose6D;
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   bool saveMapService(lio_sam::save_mapRequest& req,
                       lio_sam::save_mapResponse& res) {
@@ -582,8 +567,8 @@ class mapOptimization : public ParamServer {
         Eigen::Affine3f transIncre = lastImuPreTransformation.inverse() * transBack;
         Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
         Eigen::Affine3f transFinal = transTobe * transIncre;
-        pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped[3],
-                                          transformTobeMapped[4], transformTobeMapped[5],
+        pcl::getTranslationAndEulerAngles(transFinal,
+                                          transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
                                           transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
 
         lastImuPreTransformation = transBack;
@@ -1331,22 +1316,19 @@ class mapOptimization : public ParamServer {
       // update key poses
       int numPoses = isamCurrentEstimate.size();
       for (int i = 0; i < numPoses; ++i) {
-        cloudKeyPoses3D->points[i].x = isamCurrentEstimate.at<Pose3>
-                                       (i).translation().x();
-        cloudKeyPoses3D->points[i].y = isamCurrentEstimate.at<Pose3>
-                                       (i).translation().y();
-        cloudKeyPoses3D->points[i].z = isamCurrentEstimate.at<Pose3>
-                                       (i).translation().z();
+        const auto t = isamCurrentEstimate.at<Pose3>(i).translation();
+        cloudKeyPoses3D->points[i].x = t.x();
+        cloudKeyPoses3D->points[i].y = t.y();
+        cloudKeyPoses3D->points[i].z = t.z();
 
-        cloudKeyPoses6D->points[i].x = cloudKeyPoses3D->points[i].x;
-        cloudKeyPoses6D->points[i].y = cloudKeyPoses3D->points[i].y;
-        cloudKeyPoses6D->points[i].z = cloudKeyPoses3D->points[i].z;
-        cloudKeyPoses6D->points[i].roll  = isamCurrentEstimate.at<Pose3>
-                                           (i).rotation().roll();
-        cloudKeyPoses6D->points[i].pitch = isamCurrentEstimate.at<Pose3>
-                                           (i).rotation().pitch();
-        cloudKeyPoses6D->points[i].yaw   = isamCurrentEstimate.at<Pose3>
-                                           (i).rotation().yaw();
+        const auto p = cloudKeyPoses3D->points[i];
+        cloudKeyPoses6D->points[i].x = p.x;
+        cloudKeyPoses6D->points[i].y = p.y;
+        cloudKeyPoses6D->points[i].z = p.z;
+        const auto r = isamCurrentEstimate.at<Pose3>(i).rotation();
+        cloudKeyPoses6D->points[i].roll = r.roll();
+        cloudKeyPoses6D->points[i].pitch = r.pitch();
+        cloudKeyPoses6D->points[i].yaw = r.yaw();
 
         updatePath(cloudKeyPoses6D->points[i]);
       }
@@ -1362,13 +1344,8 @@ class mapOptimization : public ParamServer {
     pose_stamped.pose.position.x = pose_in.x;
     pose_stamped.pose.position.y = pose_in.y;
     pose_stamped.pose.position.z = pose_in.z;
-    tf::Quaternion q = tf::createQuaternionFromRPY(
-                         pose_in.roll, pose_in.pitch, pose_in.yaw
-                       );
-    pose_stamped.pose.orientation.x = q.x();
-    pose_stamped.pose.orientation.y = q.y();
-    pose_stamped.pose.orientation.z = q.z();
-    pose_stamped.pose.orientation.w = q.w();
+    pose_stamped.pose.orientation =\
+        tf::createQuaternionMsgFromRollPitchYaw(pose_in.roll, pose_in.pitch, pose_in.yaw);
 
     globalPath.poses.push_back(pose_stamped);
   }
@@ -1382,6 +1359,7 @@ class mapOptimization : public ParamServer {
     laserOdometryROS.pose.pose.position.x = transformTobeMapped[3];
     laserOdometryROS.pose.pose.position.y = transformTobeMapped[4];
     laserOdometryROS.pose.pose.position.z = transformTobeMapped[5];
+    // geometry_msgs/Quaternion
     laserOdometryROS.pose.pose.orientation =\
                                             tf::createQuaternionMsgFromRollPitchYaw(
                                                 transformTobeMapped[0],
