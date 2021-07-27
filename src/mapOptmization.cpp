@@ -816,9 +816,10 @@ class mapOptimization : public ParamServer {
 
         bool planeValid = true;
         for (int j = 0; j < 5; j++) {
-          if (fabs(pa * laserCloudSurfFromMapDS->points[pointSearchInd[j]].x +
-                   pb * laserCloudSurfFromMapDS->points[pointSearchInd[j]].y +
-                   pc * laserCloudSurfFromMapDS->points[pointSearchInd[j]].z + pd) > 0.2) {
+          const Eigen::Vector3f p = laserCloudSurfFromMapDS->points[pointSearchInd[j]].getVector3fMap();
+          const Eigen::Vector4f q = toHomogeneous(p);
+
+          if (fabs(x.transpose() * q) > 0.2) {
             planeValid = false;
             break;
           }
