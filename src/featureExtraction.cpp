@@ -22,11 +22,6 @@ class FeatureExtraction : public ParamServer {
   ros::Publisher pubCornerPoints;
   ros::Publisher pubSurfacePoints;
 
-  pcl::VoxelGrid<PointType> downSizeFilter;
-
-  lio_sam::cloud_info cloudInfo;
-  std_msgs::Header cloudHeader;
-
   std::vector<smoothness_t> cloudSmoothness;
   std::vector<float> cloudCurvature;
   std::vector<int> cloudNeighborPicked;
@@ -47,9 +42,6 @@ class FeatureExtraction : public ParamServer {
 
     cloudSmoothness.resize(N_SCAN*Horizon_SCAN);
 
-    downSizeFilter.setLeafSize(odometrySurfLeafSize, odometrySurfLeafSize,
-                               odometrySurfLeafSize);
-
     cloudCurvature.resize(N_SCAN*Horizon_SCAN);
     cloudNeighborPicked.resize(N_SCAN*Horizon_SCAN);
     cloudLabel.resize(N_SCAN*Horizon_SCAN);
@@ -64,8 +56,13 @@ class FeatureExtraction : public ParamServer {
     cornerCloud.reset(new pcl::PointCloud<PointType>());
     surfaceCloud.reset(new pcl::PointCloud<PointType>());
 
-    cloudInfo = *msgIn; // new cloud info
-    cloudHeader = msgIn->header; // new cloud header
+    pcl::VoxelGrid<PointType> downSizeFilter;
+
+    downSizeFilter.setLeafSize(odometrySurfLeafSize, odometrySurfLeafSize,
+                               odometrySurfLeafSize);
+
+    lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
+    std_msgs::Header cloudHeader = msgIn->header; // new cloud header
     // new cloud for extraction
     pcl::fromROSMsg(msgIn->cloud_deskewed, *extractedCloud);
 
