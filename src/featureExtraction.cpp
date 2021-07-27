@@ -22,10 +22,6 @@ class FeatureExtraction : public ParamServer {
   ros::Publisher pubCornerPoints;
   ros::Publisher pubSurfacePoints;
 
-  pcl::PointCloud<PointType>::Ptr extractedCloud;
-  pcl::PointCloud<PointType>::Ptr cornerCloud;
-  pcl::PointCloud<PointType>::Ptr surfaceCloud;
-
   pcl::VoxelGrid<PointType> downSizeFilter;
 
   lio_sam::cloud_info cloudInfo;
@@ -54,16 +50,20 @@ class FeatureExtraction : public ParamServer {
     downSizeFilter.setLeafSize(odometrySurfLeafSize, odometrySurfLeafSize,
                                odometrySurfLeafSize);
 
-    extractedCloud.reset(new pcl::PointCloud<PointType>());
-    cornerCloud.reset(new pcl::PointCloud<PointType>());
-    surfaceCloud.reset(new pcl::PointCloud<PointType>());
-
     cloudCurvature.resize(N_SCAN*Horizon_SCAN);
     cloudNeighborPicked.resize(N_SCAN*Horizon_SCAN);
     cloudLabel.resize(N_SCAN*Horizon_SCAN);
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
+    pcl::PointCloud<PointType>::Ptr extractedCloud;
+    pcl::PointCloud<PointType>::Ptr cornerCloud;
+    pcl::PointCloud<PointType>::Ptr surfaceCloud;
+
+    extractedCloud.reset(new pcl::PointCloud<PointType>());
+    cornerCloud.reset(new pcl::PointCloud<PointType>());
+    surfaceCloud.reset(new pcl::PointCloud<PointType>());
+
     cloudInfo = *msgIn; // new cloud info
     cloudHeader = msgIn->header; // new cloud header
     // new cloud for extraction
