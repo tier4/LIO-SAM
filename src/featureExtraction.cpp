@@ -70,10 +70,10 @@ class FeatureExtraction : public ParamServer {
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
     cloudInfo = *msgIn; // new cloud info
     cloudHeader = msgIn->header; // new cloud header
-    pcl::fromROSMsg(msgIn->cloud_deskewed,
-                    *extractedCloud); // new cloud for extraction
+    // new cloud for extraction
+    pcl::fromROSMsg(msgIn->cloud_deskewed, *extractedCloud);
 
-    calculateSmoothness();
+    calculateSmoothness(extractedCloud, cloudInfo);
 
     markOccludedPoints();
 
@@ -82,8 +82,9 @@ class FeatureExtraction : public ParamServer {
     publishFeatureCloud();
   }
 
-  void calculateSmoothness() {
-    int cloudSize = extractedCloud->points.size();
+  void calculateSmoothness(const pcl::PointCloud<PointType>::Ptr& extractedCloud,
+                           const lio_sam::cloud_info& cloudInfo) {
+    const int cloudSize = extractedCloud->points.size();
     for (int i = 5; i < cloudSize - 5; i++) {
       float d = cloudInfo.pointRange[i-5] + cloudInfo.pointRange[i-4]
               + cloudInfo.pointRange[i-3] + cloudInfo.pointRange[i-2]
