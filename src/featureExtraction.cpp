@@ -6,10 +6,14 @@ struct smoothness_t {
   size_t ind;
 };
 
-struct by_value {
-  bool operator()(smoothness_t const &left, smoothness_t const &right) {
-    return left.value < right.value;
+class by_value {
+ public:
+  by_value(const std::vector<float>& values) : values_(values) {}
+  bool operator()(const int &left, const int &right) {
+    return values_[left] < values_[right];
   }
+ private:
+  std::vector<float> values_;
 };
 
 class FeatureExtraction : public ParamServer {
@@ -21,9 +25,7 @@ class FeatureExtraction : public ParamServer {
   ros::Publisher pubLaserCloudInfo;
   ros::Publisher pubCornerPoints;
   ros::Publisher pubSurfacePoints;
-
-  std::vector<smoothness_t> cloudSmoothness;
-
+  std::vector<int> cloudSmoothness;
   FeatureExtraction() {
     subLaserCloudInfo =
       nh.subscribe<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1,
@@ -74,8 +76,7 @@ class FeatureExtraction : public ParamServer {
               + cloudInfo.pointRange[i+5];
 
       cloudCurvature[i] = d * d;
-      cloudSmoothness[i].value = cloudCurvature[i];
-      cloudSmoothness[i].ind = i;
+      cloudSmoothness[i] = i;
     }
 
     for (int i = 5; i < cloudSize - 5; i++) {
@@ -146,11 +147,11 @@ class FeatureExtraction : public ParamServer {
         if (sp >= ep)
           continue;
 
-        std::sort(cloudSmoothness.begin()+sp, cloudSmoothness.begin()+ep, by_value());
+        std::sort(cloudSmoothness.begin()+sp, cloudSmoothness.begin()+ep, by_value(cloudCurvature));
 
         int largestPickedNum = 0;
         for (int k = ep; k >= sp; k--) {
-          int ind = cloudSmoothness[k].ind;
+          int ind = cloudSmoothness[k];
           if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] > edgeThreshold) {
             largestPickedNum++;
             if (largestPickedNum <= 20) {
@@ -179,7 +180,7 @@ class FeatureExtraction : public ParamServer {
         }
 
         for (int k = sp; k <= ep; k++) {
-          int ind = cloudSmoothness[k].ind;
+          int ind = cloudSmoothness[k];
           if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] < surfThreshold) {
 
             cloudLabel[ind] = -1;
