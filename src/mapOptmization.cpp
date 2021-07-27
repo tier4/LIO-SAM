@@ -584,20 +584,6 @@ class mapOptimization : public ParamServer {
     }
   }
 
-  void extractForLoopClosure() {
-    pcl::PointCloud<PointType>::Ptr cloudToExtract(new
-        pcl::PointCloud<PointType>());
-    int numPoses = cloudKeyPoses3D->size();
-    for (int i = numPoses-1; i >= 0; --i) {
-      if ((int)cloudToExtract->size() <= surroundingKeyframeSize)
-        cloudToExtract->push_back(cloudKeyPoses3D->points[i]);
-      else
-        break;
-    }
-
-    extractCloud(cloudToExtract);
-  }
-
   void extractNearby() {
     pcl::PointCloud<PointType>::Ptr surroundingKeyPoses(new
         pcl::PointCloud<PointType>());
@@ -680,13 +666,6 @@ class mapOptimization : public ParamServer {
   void extractSurroundingKeyFrames() {
     if (cloudKeyPoses3D->points.empty())
       return;
-
-    // if (loopClosureEnableFlag)
-    // {
-    //     extractForLoopClosure();
-    // } else {
-    //     extractNearby();
-    // }
 
     extractNearby();
   }
