@@ -49,10 +49,6 @@ class FeatureExtraction : public ParamServer {
     pubSurfacePoints =
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
 
-    initializationValue();
-  }
-
-  void initializationValue() {
     cloudSmoothness.resize(N_SCAN*Horizon_SCAN);
 
     downSizeFilter.setLeafSize(odometrySurfLeafSize, odometrySurfLeafSize,
@@ -73,18 +69,8 @@ class FeatureExtraction : public ParamServer {
     // new cloud for extraction
     pcl::fromROSMsg(msgIn->cloud_deskewed, *extractedCloud);
 
-    calculateSmoothness(extractedCloud, cloudInfo);
-
-    markOccludedPoints();
-
-    extractFeatures();
-
-    publishFeatureCloud();
-  }
-
-  void calculateSmoothness(const pcl::PointCloud<PointType>::Ptr& extractedCloud,
-                           const lio_sam::cloud_info& cloudInfo) {
     const int cloudSize = extractedCloud->points.size();
+
     for (int i = 5; i < cloudSize - 5; i++) {
       float d = cloudInfo.pointRange[i-5] + cloudInfo.pointRange[i-4]
               + cloudInfo.pointRange[i-3] + cloudInfo.pointRange[i-2]
@@ -93,19 +79,19 @@ class FeatureExtraction : public ParamServer {
               + cloudInfo.pointRange[i+3] + cloudInfo.pointRange[i+4]
               + cloudInfo.pointRange[i+5];
 
-      //diffX * diffX + diffY * diffY + diffZ * diffZ;
       cloudCurvature[i] = d * d;
-
-      cloudNeighborPicked[i] = 0;
-      cloudLabel[i] = 0;
-      // cloudSmoothness for sorting
       cloudSmoothness[i].value = cloudCurvature[i];
       cloudSmoothness[i].ind = i;
     }
-  }
 
-  void markOccludedPoints() {
-    int cloudSize = extractedCloud->points.size();
+    for (int i = 5; i < cloudSize - 5; i++) {
+      cloudLabel[i] = 0;
+    }
+
+    for (int i = 5; i < cloudSize - 5; i++) {
+      cloudNeighborPicked[i] = 0;
+    }
+
     // mark occluded points and parallel beam points
     for (int i = 5; i < cloudSize - 6; ++i) {
       // occluded points
@@ -142,9 +128,7 @@ class FeatureExtraction : public ParamServer {
           && diff2 > 0.02 * cloudInfo.pointRange[i])
         cloudNeighborPicked[i] = 1;
     }
-  }
 
-  void extractFeatures() {
     cornerCloud->clear();
     surfaceCloud->clear();
 
@@ -160,10 +144,10 @@ class FeatureExtraction : public ParamServer {
 
       for (int j = 0; j < 6; j++) {
 
-        int sp = (cloudInfo.startRingIndex[i] * (6 - j) + cloudInfo.endRingIndex[i] *
-                  j) / 6;
-        int ep = (cloudInfo.startRingIndex[i] * (5 - j) + cloudInfo.endRingIndex[i] *
-                  (j + 1)) / 6 - 1;
+        int sp = (cloudInfo.startRingIndex[i] * (6 - j) +
+                  cloudInfo.endRingIndex[i] * j) / 6;
+        int ep = (cloudInfo.startRingIndex[i] * (5 - j) +
+                  cloudInfo.endRingIndex[i] * (j + 1)) / 6 - 1;
 
         if (sp >= ep)
           continue;
@@ -241,9 +225,7 @@ class FeatureExtraction : public ParamServer {
 
       *surfaceCloud += *surfaceCloudScanDS;
     }
-  }
 
-  void publishFeatureCloud() {
     // free cloud info memory
     cloudInfo.startRingIndex.clear();
     cloudInfo.endRingIndex.clear();
