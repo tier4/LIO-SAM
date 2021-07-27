@@ -65,12 +65,9 @@ class mapOptimization : public ParamServer {
   ros::Publisher pubKeyPoses;
   ros::Publisher pubPath;
 
-  ros::Publisher pubHistoryKeyFrames;
-  ros::Publisher pubIcpKeyFrames;
   ros::Publisher pubRecentKeyFrames;
   ros::Publisher pubRecentKeyFrame;
   ros::Publisher pubCloudRegisteredRaw;
-  ros::Publisher pubLoopConstraintEdge;
 
   ros::Subscriber subCloud;
   ros::Subscriber subGPS;
@@ -174,16 +171,6 @@ class mapOptimization : public ParamServer {
 
     srvSaveMap  = nh.advertiseService("lio_sam/save_map",
                                       &mapOptimization::saveMapService, this);
-
-    pubHistoryKeyFrames   =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud",
-          1);
-    pubIcpKeyFrames       =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_corrected_cloud",
-          1);
-    pubLoopConstraintEdge =
-      nh.advertise<visualization_msgs::MarkerArray>("/lio_sam/mapping/loop_closure_constraints",
-          1);
 
     pubRecentKeyFrames    =
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1);
