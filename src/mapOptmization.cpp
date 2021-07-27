@@ -809,10 +809,6 @@ class mapOptimization : public ParamServer {
         matX0 = matA0.colPivHouseholderQr().solve(matB0);
 
         const Eigen::VectorXf x = toHomogeneous(matX0) / matX0.norm();
-        float pa = x(0);
-        float pb = x(1);
-        float pc = x(2);
-        float pd = x(3);
 
         bool planeValid = true;
         for (int j = 0; j < 5; j++) {
@@ -826,14 +822,14 @@ class mapOptimization : public ParamServer {
         }
 
         if (planeValid) {
-          float pd2 = pa * pointSel.x + pb * pointSel.y + pc * pointSel.z + pd;
+          const Eigen::Vector3f p = pointSel.getVector3fMap();
+          const Eigen::Vector4f q = toHomogeneous(p);
+          float pd2 = x.transpose() * q;
+          float s = 1 - 0.9 * fabs(pd2) / sqrt(p.norm());
 
-          float s = 1 - 0.9 * fabs(pd2) / sqrt(sqrt(pointSel.x * pointSel.x
-                                               + pointSel.y * pointSel.y + pointSel.z * pointSel.z));
-
-          coeff.x = s * pa;
-          coeff.y = s * pb;
-          coeff.z = s * pc;
+          coeff.x = s * x(0);
+          coeff.y = s * x(1);
+          coeff.z = s * x(2);
           coeff.intensity = s * pd2;
 
           if (s > 0.1) {
