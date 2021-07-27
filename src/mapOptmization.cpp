@@ -108,6 +108,18 @@ pcl::PointCloud<PointType>::Ptr transformPointCloud(
   return cloudOut;
 }
 
+PointType pointAssociateToMap(const Eigen::Affine3f& transPointAssociateToMap,
+                              const PointType& pi) {
+  const Eigen::Vector3f p(pi.x, pi.y, pi.z);
+  const Eigen::Vector3f q = transPointAssociateToMap * p;
+  PointType po;
+  po.x = q(0);
+  po.y = q(1);
+  po.z = q(2);
+  po.intensity = pi.intensity;
+  return po;
+}
+
 class mapOptimization : public ParamServer {
 
  public:
@@ -335,17 +347,6 @@ class mapOptimization : public ParamServer {
 
   void gpsHandler(const nav_msgs::Odometry::ConstPtr& gpsMsg) {
     gpsQueue.push_back(*gpsMsg);
-  }
-
-  PointType pointAssociateToMap(const PointType& pi) {
-    const Eigen::Vector3f p(pi.x, pi.y, pi.z);
-    const Eigen::Vector3f q = transPointAssociateToMap * p;
-    PointType po;
-    po.x = q(0);
-    po.y = q(1);
-    po.z = q(2);
-    po.intensity = pi.intensity;
-    return po;
   }
 
   bool saveMapService(lio_sam::save_mapRequest& req,
@@ -694,7 +695,7 @@ class mapOptimization : public ParamServer {
       std::vector<float> pointSearchSqDis;
 
       pointOri = laserCloudCornerLastDS->points[i];
-      pointSel = pointAssociateToMap(pointOri);
+      pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
                                           pointSearchSqDis);
 
@@ -787,7 +788,7 @@ class mapOptimization : public ParamServer {
       std::vector<float> pointSearchSqDis;
 
       pointOri = laserCloudSurfLastDS->points[i];
-      pointSel = pointAssociateToMap(pointOri);
+      pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeSurfFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
                                         pointSearchSqDis);
 
