@@ -1,4 +1,5 @@
 #include "utility.h"
+#include "homogeneous.h"
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/save_map.h"
 
@@ -809,16 +810,11 @@ class mapOptimization : public ParamServer {
 
         matX0 = matA0.colPivHouseholderQr().solve(matB0);
 
-        float pa = matX0(0, 0);
-        float pb = matX0(1, 0);
-        float pc = matX0(2, 0);
-        float pd = 1;
-
-        float ps = sqrt(pa * pa + pb * pb + pc * pc);
-        pa /= ps;
-        pb /= ps;
-        pc /= ps;
-        pd /= ps;
+        const Eigen::VectorXf x = toHomogeneous(matX0) / matX0.norm();
+        float pa = x(0);
+        float pb = x(1);
+        float pc = x(2);
+        float pd = x(3);
 
         bool planeValid = true;
         for (int j = 0; j < 5; j++) {
