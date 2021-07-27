@@ -32,9 +32,9 @@ class FeatureExtraction : public ParamServer {
   std_msgs::Header cloudHeader;
 
   std::vector<smoothness_t> cloudSmoothness;
-  float *cloudCurvature;
-  int *cloudNeighborPicked;
-  int *cloudLabel;
+  std::vector<float> cloudCurvature;
+  std::vector<int> cloudNeighborPicked;
+  std::vector<int> cloudLabel;
 
   FeatureExtraction() {
     subLaserCloudInfo =
@@ -62,9 +62,9 @@ class FeatureExtraction : public ParamServer {
     cornerCloud.reset(new pcl::PointCloud<PointType>());
     surfaceCloud.reset(new pcl::PointCloud<PointType>());
 
-    cloudCurvature = new float[N_SCAN*Horizon_SCAN];
-    cloudNeighborPicked = new int[N_SCAN*Horizon_SCAN];
-    cloudLabel = new int[N_SCAN*Horizon_SCAN];
+    cloudCurvature.resize(N_SCAN*Horizon_SCAN);
+    cloudNeighborPicked.resize(N_SCAN*Horizon_SCAN);
+    cloudLabel.resize(N_SCAN*Horizon_SCAN);
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
