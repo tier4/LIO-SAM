@@ -558,19 +558,8 @@ class mapOptimization : public ParamServer {
                  odometryFrame);
   }
 
-
-
-
-
-
-
-
-
-
-
-
   void loopClosureThread() {
-    if (loopClosureEnableFlag == false)
+    if (!loopClosureEnableFlag)
       return;
 
     ros::Rate rate(loopClosureFrequency);
@@ -851,16 +840,6 @@ class mapOptimization : public ParamServer {
     pubLoopConstraintEdge.publish(markerArray);
   }
 
-
-
-
-
-
-
-
-
-
-
   void updateInitialGuess() {
     // save current transformation before any processing
     incrementalOdometryAffineFront = trans2Affine3f(transformTobeMapped);
@@ -875,20 +854,23 @@ class mapOptimization : public ParamServer {
       if (!useImuHeadingInitialization)
         transformTobeMapped[2] = 0;
 
-      lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit,
-                              cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+      lastImuTransformation = pcl::getTransformation(0, 0, 0,
+                                                     cloudInfo.imuRollInit,
+                                                     cloudInfo.imuPitchInit,
+                                                     cloudInfo.imuYawInit);
+      // save imu before return;
       return;
     }
 
     // use imu pre-integration estimation for pose guess
     static bool lastImuPreTransAvailable = false;
     static Eigen::Affine3f lastImuPreTransformation;
-    if (cloudInfo.odomAvailable == true) {
+    if (cloudInfo.odomAvailable) {
       Eigen::Affine3f transBack = pcl::getTransformation(cloudInfo.initialGuessX,
                                   cloudInfo.initialGuessY,     cloudInfo.initialGuessZ,
                                   cloudInfo.initialGuessRoll, cloudInfo.initialGuessPitch,
                                   cloudInfo.initialGuessYaw);
-      if (lastImuPreTransAvailable == false) {
+      if (!lastImuPreTransAvailable) {
         lastImuPreTransformation = transBack;
         lastImuPreTransAvailable = true;
       } else {

@@ -242,16 +242,13 @@ class FeatureExtraction : public ParamServer {
     }
   }
 
-  void freeCloudInfoMemory() {
+  void publishFeatureCloud() {
+    // free cloud info memory
     cloudInfo.startRingIndex.clear();
     cloudInfo.endRingIndex.clear();
     cloudInfo.pointColInd.clear();
     cloudInfo.pointRange.clear();
-  }
 
-  void publishFeatureCloud() {
-    // free cloud info memory
-    freeCloudInfoMemory();
     // save newly extracted features
     cloudInfo.cloud_corner = publishCloud(&pubCornerPoints,  cornerCloud,
                                            cloudHeader.stamp, lidarFrame);
