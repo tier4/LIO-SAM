@@ -47,6 +47,40 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 
 typedef PointXYZIRPYT  PointTypePose;
 
+gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint) {
+  return gtsam::Pose3(gtsam::Rot3::RzRyRx(double(thisPoint.roll),
+                                          double(thisPoint.pitch),
+                                          double(thisPoint.yaw)),
+                      gtsam::Point3(double(thisPoint.x),
+                                    double(thisPoint.y),
+                                    double(thisPoint.z)));
+}
+
+gtsam::Pose3 trans2gtsamPose(float transformIn[]) {
+  return gtsam::Pose3(gtsam::Rot3::RzRyRx(transformIn[0], transformIn[1], transformIn[2]),
+                      gtsam::Point3(transformIn[3], transformIn[4], transformIn[5]));
+}
+
+Eigen::Affine3f pclPointToAffine3f(PointTypePose thisPoint) {
+  return pcl::getTransformation(thisPoint.x, thisPoint.y, thisPoint.z,
+                                thisPoint.roll, thisPoint.pitch, thisPoint.yaw);
+}
+
+Eigen::Affine3f trans2Affine3f(float transformIn[]) {
+  return pcl::getTransformation(transformIn[3], transformIn[4], transformIn[5],
+                                transformIn[0], transformIn[1], transformIn[2]);
+}
+
+PointTypePose trans2PointTypePose(float transformIn[]) {
+  PointTypePose thisPose6D;
+  thisPose6D.x = transformIn[3];
+  thisPose6D.y = transformIn[4];
+  thisPose6D.z = transformIn[5];
+  thisPose6D.roll  = transformIn[0];
+  thisPose6D.pitch = transformIn[1];
+  thisPose6D.yaw   = transformIn[2];
+  return thisPose6D;
+}
 
 class mapOptimization : public ParamServer {
 
@@ -311,40 +345,6 @@ class mapOptimization : public ParamServer {
       cloudOut->points[i].intensity = pointFrom.intensity;
     }
     return cloudOut;
-  }
-
-  gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint) {
-    return gtsam::Pose3(gtsam::Rot3::RzRyRx(double(thisPoint.roll),
-                                            double(thisPoint.pitch), double(thisPoint.yaw)),
-                        gtsam::Point3(double(thisPoint.x),    double(thisPoint.y),
-                                      double(thisPoint.z)));
-  }
-
-  gtsam::Pose3 trans2gtsamPose(float transformIn[]) {
-    return gtsam::Pose3(gtsam::Rot3::RzRyRx(transformIn[0], transformIn[1],
-                                            transformIn[2]),
-                        gtsam::Point3(transformIn[3], transformIn[4], transformIn[5]));
-  }
-
-  Eigen::Affine3f pclPointToAffine3f(PointTypePose thisPoint) {
-    return pcl::getTransformation(thisPoint.x, thisPoint.y, thisPoint.z,
-                                  thisPoint.roll, thisPoint.pitch, thisPoint.yaw);
-  }
-
-  Eigen::Affine3f trans2Affine3f(float transformIn[]) {
-    return pcl::getTransformation(transformIn[3], transformIn[4], transformIn[5],
-                                  transformIn[0], transformIn[1], transformIn[2]);
-  }
-
-  PointTypePose trans2PointTypePose(float transformIn[]) {
-    PointTypePose thisPose6D;
-    thisPose6D.x = transformIn[3];
-    thisPose6D.y = transformIn[4];
-    thisPose6D.z = transformIn[5];
-    thisPose6D.roll  = transformIn[0];
-    thisPose6D.pitch = transformIn[1];
-    thisPose6D.yaw   = transformIn[2];
-    return thisPose6D;
   }
 
   bool saveMapService(lio_sam::save_mapRequest& req,
