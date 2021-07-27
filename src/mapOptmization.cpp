@@ -82,6 +82,32 @@ PointTypePose trans2PointTypePose(float transformIn[]) {
   return thisPose6D;
 }
 
+pcl::PointCloud<PointType>::Ptr transformPointCloud(
+  const pcl::PointCloud<PointType>::Ptr cloudIn, const PointTypePose* transformIn,
+  const int numberOfCores = 2) {
+  pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
+
+  int cloudSize = cloudIn->size();
+  cloudOut->resize(cloudSize);
+
+  const Eigen::Affine3f transCur = pcl::getTransformation(
+      transformIn->x, transformIn->y, transformIn->z,
+      transformIn->roll, transformIn->pitch, transformIn->yaw
+  );
+
+  #pragma omp parallel for num_threads(numberOfCores)
+  for (int i = 0; i < cloudSize; ++i) {
+    const auto &pointFrom = cloudIn->points[i];
+    const Eigen::Vector3f p(pointFrom.x, pointFrom.y, pointFrom.z);
+    const Eigen::Vector3f q = transCur * p;
+    cloudOut->points[i].x = q(0);
+    cloudOut->points[i].y = q(1);
+    cloudOut->points[i].z = q(2);
+    cloudOut->points[i].intensity = pointFrom.intensity;
+  }
+  return cloudOut;
+}
+
 class mapOptimization : public ParamServer {
 
  public:
@@ -320,31 +346,6 @@ class mapOptimization : public ParamServer {
     po.z = q(2);
     po.intensity = pi.intensity;
     return po;
-  }
-
-  pcl::PointCloud<PointType>::Ptr transformPointCloud(
-    const pcl::PointCloud<PointType>::Ptr cloudIn, const PointTypePose* transformIn) {
-    pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
-
-    int cloudSize = cloudIn->size();
-    cloudOut->resize(cloudSize);
-
-    const Eigen::Affine3f transCur = pcl::getTransformation(
-        transformIn->x, transformIn->y, transformIn->z,
-        transformIn->roll, transformIn->pitch, transformIn->yaw
-    );
-
-    #pragma omp parallel for num_threads(numberOfCores)
-    for (int i = 0; i < cloudSize; ++i) {
-      const auto &pointFrom = cloudIn->points[i];
-      const Eigen::Vector3f p(pointFrom.x, pointFrom.y, pointFrom.z);
-      const Eigen::Vector3f q = transCur * p;
-      cloudOut->points[i].x = q(0);
-      cloudOut->points[i].y = q(1);
-      cloudOut->points[i].z = q(2);
-      cloudOut->points[i].intensity = pointFrom.intensity;
-    }
-    return cloudOut;
   }
 
   bool saveMapService(lio_sam::save_mapRequest& req,
