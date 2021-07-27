@@ -23,9 +23,6 @@ class FeatureExtraction : public ParamServer {
   ros::Publisher pubSurfacePoints;
 
   std::vector<smoothness_t> cloudSmoothness;
-  std::vector<float> cloudCurvature;
-  std::vector<int> cloudNeighborPicked;
-  std::vector<int> cloudLabel;
 
   FeatureExtraction() {
     subLaserCloudInfo =
@@ -41,13 +38,13 @@ class FeatureExtraction : public ParamServer {
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
 
     cloudSmoothness.resize(N_SCAN*Horizon_SCAN);
-
-    cloudCurvature.resize(N_SCAN*Horizon_SCAN);
-    cloudNeighborPicked.resize(N_SCAN*Horizon_SCAN);
-    cloudLabel.resize(N_SCAN*Horizon_SCAN);
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
+    std::vector<float> cloudCurvature(N_SCAN*Horizon_SCAN);
+    std::vector<int> cloudNeighborPicked(N_SCAN*Horizon_SCAN);
+    std::vector<int> cloudLabel(N_SCAN*Horizon_SCAN);
+
     pcl::PointCloud<PointType>::Ptr extractedCloud;
     pcl::PointCloud<PointType>::Ptr cornerCloud;
     pcl::PointCloud<PointType>::Ptr surfaceCloud;
