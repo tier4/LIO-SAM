@@ -683,12 +683,8 @@ class mapOptimization : public ParamServer {
     laserCloudSurfLastDSNum = laserCloudSurfLastDS->size();
   }
 
-  void updatePointAssociateToMap() {
-    transPointAssociateToMap = trans2Affine3f(transformTobeMapped);
-  }
-
   void cornerOptimization() {
-    updatePointAssociateToMap();
+    transPointAssociateToMap = trans2Affine3f(transformTobeMapped);
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
@@ -781,7 +777,7 @@ class mapOptimization : public ParamServer {
   }
 
   void surfOptimization() {
-    updatePointAssociateToMap();
+    transPointAssociateToMap = trans2Affine3f(transformTobeMapped);
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
