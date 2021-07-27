@@ -86,11 +86,11 @@ class FeatureExtraction : public ParamServer {
     int cloudSize = extractedCloud->points.size();
     for (int i = 5; i < cloudSize - 5; i++) {
       float d = cloudInfo.pointRange[i-5] + cloudInfo.pointRange[i-4]
-                + cloudInfo.pointRange[i-3] + cloudInfo.pointRange[i-2]
-                + cloudInfo.pointRange[i-1] - cloudInfo.pointRange[i] * 10
-                + cloudInfo.pointRange[i+1] + cloudInfo.pointRange[i+2]
-                + cloudInfo.pointRange[i+3] + cloudInfo.pointRange[i+4]
-                + cloudInfo.pointRange[i+5];
+              + cloudInfo.pointRange[i-3] + cloudInfo.pointRange[i-2]
+              + cloudInfo.pointRange[i-1] - cloudInfo.pointRange[i] * 10
+              + cloudInfo.pointRange[i+1] + cloudInfo.pointRange[i+2]
+              + cloudInfo.pointRange[i+3] + cloudInfo.pointRange[i+4]
+              + cloudInfo.pointRange[i+5];
 
       //diffX * diffX + diffY * diffY + diffZ * diffZ;
       cloudCurvature[i] = d * d;
@@ -253,7 +253,7 @@ class FeatureExtraction : public ParamServer {
     // free cloud info memory
     freeCloudInfoMemory();
     // save newly extracted features
-    cloudInfo.cloud_corner  = publishCloud(&pubCornerPoints,  cornerCloud,
+    cloudInfo.cloud_corner = publishCloud(&pubCornerPoints,  cornerCloud,
                                            cloudHeader.stamp, lidarFrame);
     cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surfaceCloud,
                                            cloudHeader.stamp, lidarFrame);

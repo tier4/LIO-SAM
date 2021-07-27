@@ -393,13 +393,16 @@ class ImageProjection : public ParamServer {
     tf::quaternionMsgToTF(endOdomMsg.pose.pose.orientation, orientation);
     tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
     Eigen::Affine3f transEnd = pcl::getTransformation(
-                                 endOdomMsg.pose.pose.position.x, endOdomMsg.pose.pose.position.y,
-                                 endOdomMsg.pose.pose.position.z, roll, pitch, yaw);
+        endOdomMsg.pose.pose.position.x,
+        endOdomMsg.pose.pose.position.y,
+        endOdomMsg.pose.pose.position.z,
+        roll, pitch, yaw);
 
     Eigen::Affine3f transBt = transBegin.inverse() * transEnd;
 
     float rollIncre, pitchIncre, yawIncre;
-    pcl::getTranslationAndEulerAngles(transBt, odomIncreX, odomIncreY, odomIncreZ,
+    pcl::getTranslationAndEulerAngles(transBt,
+                                      odomIncreX, odomIncreY, odomIncreZ,
                                       rollIncre, pitchIncre, yawIncre);
 
     odomDeskewFlag = true;
@@ -463,8 +466,10 @@ class ImageProjection : public ParamServer {
     const auto [rotXCur, rotYCur, rotZCur] = findRotation(pointTime);
     const auto [posXCur, posYCur, posZCur] = findPosition(relTime);
 
-    const auto transform = pcl::getTransformation(posXCur, posYCur, posZCur,
-                                                  rotXCur, rotYCur, rotZCur);
+    const Eigen::Affine3f transform = pcl::getTransformation(
+        posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur
+    );
+
     if (firstPointFlag) {
       transStartInverse = transform.inverse();
       firstPointFlag = false;
