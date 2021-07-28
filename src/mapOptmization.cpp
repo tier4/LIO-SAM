@@ -740,11 +740,14 @@ class mapOptimization : public ParamServer {
                                       d01(2) * d02(0) - d01(0) * d02(2),
                                       d01(0) * d02(1) - d01(1) * d02(0));
 
-          const Eigen::Vector3f d012(cross(2), -cross(1), cross(0));
-
-          const float a012 = d012.norm();
+          const float a012 = cross.norm();
 
           const float l12 = d12.norm();
+
+          // possible bag. maybe the commented one is correct
+          // float la = (d12(1) * cross(2) - cross(2) * d12(1)) / a012 / l12;
+          // float lb = (d12(2) * cross(0) - cross(0) * d12(2)) / a012 / l12;
+          // float lc = (d12(0) * cross(1) - cross(1) * d12(0)) / a012 / l12;
 
           float la = (d12(1) * cross(2) - d12(2) * cross(1)) / a012 / l12;
           float lb = (d12(2) * cross(0) - d12(0) * cross(2)) / a012 / l12;
