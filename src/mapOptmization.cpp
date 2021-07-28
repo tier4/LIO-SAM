@@ -691,34 +691,26 @@ class mapOptimization : public ParamServer {
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
-      PointType pointOri, pointSel, coeff;
       std::vector<int> pointSearchInd;
       std::vector<float> pointSearchSqDis;
 
-      pointOri = laserCloudCornerLastDS->points[i];
-      pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
+      PointType pointOri = laserCloudCornerLastDS->points[i];
+      PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
                                           pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
-        float cx = 0, cy = 0, cz = 0;
+        Eigen::Vector3f c = Eigen::Vector3f::Zero();
         for (int j = 0; j < 5; j++) {
-          cx += laserCloudCornerFromMapDS->points[pointSearchInd[j]].x;
-          cy += laserCloudCornerFromMapDS->points[pointSearchInd[j]].y;
-          cz += laserCloudCornerFromMapDS->points[pointSearchInd[j]].z;
+          c += laserCloudCornerFromMapDS->points[pointSearchInd[j]].getVector3fMap();
         }
-        cx /= 5;
-        cy /= 5;
-        cz /= 5;
+        c /= 5.0;
 
         Eigen::Matrix3f sa = Eigen::Matrix3f::Zero();
 
         for (int j = 0; j < 5; j++) {
-          float ax = laserCloudCornerFromMapDS->points[pointSearchInd[j]].x - cx;
-          float ay = laserCloudCornerFromMapDS->points[pointSearchInd[j]].y - cy;
-          float az = laserCloudCornerFromMapDS->points[pointSearchInd[j]].z - cz;
-
-          const Eigen::Vector3f a(ax, ay, az);
+          const Eigen::Vector3f x = laserCloudCornerFromMapDS->points[pointSearchInd[j]].getVector3fMap();
+          const Eigen::Vector3f a = x - c;
           sa += a * a.transpose();
         }
 
@@ -734,12 +726,12 @@ class mapOptimization : public ParamServer {
           float x0 = pointSel.x;
           float y0 = pointSel.y;
           float z0 = pointSel.z;
-          float x1 = cx + 0.1 * matV1.at<float>(0, 0);
-          float y1 = cy + 0.1 * matV1.at<float>(0, 1);
-          float z1 = cz + 0.1 * matV1.at<float>(0, 2);
-          float x2 = cx - 0.1 * matV1.at<float>(0, 0);
-          float y2 = cy - 0.1 * matV1.at<float>(0, 1);
-          float z2 = cz - 0.1 * matV1.at<float>(0, 2);
+          float x1 = c(0) + 0.1 * matV1.at<float>(0, 0);
+          float y1 = c(1) + 0.1 * matV1.at<float>(0, 1);
+          float z1 = c(2) + 0.1 * matV1.at<float>(0, 2);
+          float x2 = c(0) - 0.1 * matV1.at<float>(0, 0);
+          float y2 = c(1) - 0.1 * matV1.at<float>(0, 1);
+          float z2 = c(2) - 0.1 * matV1.at<float>(0, 2);
 
           float a012 = sqrt(((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) *
                             ((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) +
@@ -764,6 +756,7 @@ class mapOptimization : public ParamServer {
 
           float s = 1 - 0.9 * fabs(ld2);
 
+          PointType coeff;
           coeff.x = s * la;
           coeff.y = s * lb;
           coeff.z = s * lc;
