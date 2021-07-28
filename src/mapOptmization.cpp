@@ -746,9 +746,9 @@ class mapOptimization : public ParamServer {
 
           const float l12 = d12.norm();
 
-          float la = +(d12(1) * d012(0) + d12(2) * d012(1)) / a012 / l12;
-          float lb = -(d12(0) * d012(0) - d12(2) * d012(2)) / a012 / l12;
-          float lc = -(d12(0) * d012(1) + d12(1) * d012(2)) / a012 / l12;
+          float la = (d12(1) * cross(2) - d12(2) * cross(1)) / a012 / l12;
+          float lb = (d12(2) * cross(0) - d12(0) * cross(2)) / a012 / l12;
+          float lc = (d12(0) * cross(1) - d12(1) * cross(0)) / a012 / l12;
 
           float ld2 = a012 / l12;
 
