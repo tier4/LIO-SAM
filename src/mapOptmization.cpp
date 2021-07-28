@@ -733,20 +733,22 @@ class mapOptimization : public ParamServer {
           const Eigen::Vector3f d02 = p0 - p2;
           const Eigen::Vector3f d12 = p1 - p2;
 
-          const Eigen::Vector3f d012(d01(0) * d02(1) - d02(0) * d01(1),
-                                     d01(0) * d02(2) - d02(0) * d01(2),
-                                     d01(1) * d02(2) - d02(1) * d01(2));
+          // const Eigen::Vector3f d012(d01(0) * d02(1) - d02(0) * d01(1),
+          //                            d01(0) * d02(2) - d02(0) * d01(2),
+          //                            d01(1) * d02(2) - d02(1) * d01(2));
+          const Eigen::Vector3f cross(d01(1) * d02(2) - d01(2) * d02(1),
+                                      d01(2) * d02(0) - d01(0) * d02(2),
+                                      d01(0) * d02(1) - d01(1) * d02(0));
+
+          const Eigen::Vector3f d012(cross(2), -cross(1), cross(0));
+
           const float a012 = d012.norm();
 
           const float l12 = d12.norm();
 
-          float ka = d01(0) * d02(1) - d02(0) * d01(1);
-          float kb = d01(0) * d02(2) - d02(0) * d01(2);
-          float kc = d01(1) * d02(2) - d02(1) * d01(2);
-
-          float la = +(d12(1) * ka + d12(2) * kb) / a012 / l12;
-          float lb = -(d12(0) * ka - d12(2) * kc) / a012 / l12;
-          float lc = -(d12(0) * kb + d12(1) * kc) / a012 / l12;
+          float la = +(d12(1) * d012(0) + d12(2) * d012(1)) / a012 / l12;
+          float lb = -(d12(0) * d012(0) - d12(2) * d012(2)) / a012 / l12;
+          float lc = -(d12(0) * d012(1) + d12(1) * d012(2)) / a012 / l12;
 
           float ld2 = a012 / l12;
 
