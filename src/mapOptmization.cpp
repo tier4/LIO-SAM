@@ -740,14 +740,13 @@ class mapOptimization : public ParamServer {
 
           const float l12 = d12.norm();
 
-          float la = +(d12(1) * (d01(0) * d02(1) - d02(0) * d01(1)) +
-                       d12(2) * (d01(0) * d02(2) - d02(0) * d01(2))) / a012 / l12;
+          float ka = d01(0) * d02(1) - d02(0) * d01(1);
+          float kb = d01(0) * d02(2) - d02(0) * d01(2);
+          float kc = d01(1) * d02(2) - d02(1) * d01(2);
 
-          float lb = -(d12(0) * (d01(0) * d02(1) - d02(0) * d01(1)) -
-                       d12(2) * (d01(1) * d02(2) - d02(1) * d01(2))) / a012 / l12;
-
-          float lc = -(d12(0) * (d01(0) * d02(2) - d02(0) * d01(2)) +
-                       d12(1) * (d01(1) * d02(2) - d02(1) * d01(2))) / a012 / l12;
+          float la = +(d12(1) * ka + d12(2) * kb) / a012 / l12;
+          float lb = -(d12(0) * ka - d12(2) * kc) / a012 / l12;
+          float lc = -(d12(0) * kb + d12(1) * kc) / a012 / l12;
 
           float ld2 = a012 / l12;
 
