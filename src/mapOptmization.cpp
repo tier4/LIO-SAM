@@ -723,9 +723,7 @@ class mapOptimization : public ParamServer {
         cv::eigen(matA1, matD1, matV1);
 
         if (matD1.at<float>(0, 0) > 3 * matD1.at<float>(0, 1)) {
-          float x0 = pointSel.x;
-          float y0 = pointSel.y;
-          float z0 = pointSel.z;
+          const Eigen::Vector3f p0 = pointSel.getVector3fMap();
           float x1 = c(0) + 0.1 * matV1.at<float>(0, 0);
           float y1 = c(1) + 0.1 * matV1.at<float>(0, 1);
           float z1 = c(2) + 0.1 * matV1.at<float>(0, 2);
@@ -733,24 +731,25 @@ class mapOptimization : public ParamServer {
           float y2 = c(1) - 0.1 * matV1.at<float>(0, 1);
           float z2 = c(2) - 0.1 * matV1.at<float>(0, 2);
 
-          float a012 = sqrt(((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) *
-                            ((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) +
-                            ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1)) *
-                            ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1)) +
-                            ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1)) *
-                            ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1)));
+          float a012 = sqrt(((p0(0) - x1) * (p0(1) - y2) - (p0(0) - x2) * (p0(1) - y1)) *
+                            ((p0(0) - x1) * (p0(1) - y2) - (p0(0) - x2) * (p0(1) - y1)) +
+                            ((p0(0) - x1) * (p0(2) - z2) - (p0(0) - x2) * (p0(2) - z1)) *
+                            ((p0(0) - x1) * (p0(2) - z2) - (p0(0) - x2) * (p0(2) - z1)) +
+                            ((p0(1) - y1) * (p0(2) - z2) - (p0(1) - y2) * (p0(2) - z1)) *
+                            ((p0(1) - y1) * (p0(2) - z2) - (p0(1) - y2) * (p0(2) - z1)));
 
-          float l12 = sqrt((x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) + (z1 - z2)*
-                           (z1 - z2));
+          float l12 = sqrt((x1 - x2)*(x1 - x2) +
+                           (y1 - y2)*(y1 - y2) +
+                           (z1 - z2)*(z1 - z2));
 
-          float la = +((y1 - y2) * ((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) +
-                       (z1 - z2) * ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1))) / a012 / l12;
+          float la = +((y1 - y2) * ((p0(0) - x1) * (p0(1) - y2) - (p0(0) - x2) * (p0(1) - y1)) +
+                       (z1 - z2) * ((p0(0) - x1) * (p0(2) - z2) - (p0(0) - x2) * (p0(2) - z1))) / a012 / l12;
 
-          float lb = -((x1 - x2) * ((x0 - x1) * (y0 - y2) - (x0 - x2) * (y0 - y1)) -
-                       (z1 - z2) * ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1))) / a012 / l12;
+          float lb = -((x1 - x2) * ((p0(0) - x1) * (p0(1) - y2) - (p0(0) - x2) * (p0(1) - y1)) -
+                       (z1 - z2) * ((p0(1) - y1) * (p0(2) - z2) - (p0(1) - y2) * (p0(2) - z1))) / a012 / l12;
 
-          float lc = -((x1 - x2) * ((x0 - x1) * (z0 - z2) - (x0 - x2) * (z0 - z1)) +
-                       (y1 - y2) * ((y0 - y1) * (z0 - z2) - (y0 - y2) * (z0 - z1))) / a012 / l12;
+          float lc = -((x1 - x2) * ((p0(0) - x1) * (p0(2) - z2) - (p0(0) - x2) * (p0(2) - z1)) +
+                       (y1 - y2) * ((p0(1) - y1) * (p0(2) - z2) - (p0(1) - y2) * (p0(2) - z1))) / a012 / l12;
 
           float ld2 = a012 / l12;
 
