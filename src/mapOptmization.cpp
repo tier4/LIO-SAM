@@ -912,8 +912,8 @@ class mapOptimization : public ParamServer {
 
     cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
     cv::transpose(matA, matAt);
-    cv::Mat matAtA = matAt * matA;
-    cv::Mat matAtB = matAt * matB;
+    const cv::Mat matAtA = matAt * matA;
+    const cv::Mat matAtB = matAt * matB;
 
     cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
     cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
@@ -925,7 +925,6 @@ class mapOptimization : public ParamServer {
       cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
 
       cv::eigen(matAtA, matE, matV);
-      matV.copyTo(matV2);
 
       isDegenerate = false;
       float eignThre[6] = {100, 100, 100, 100, 100, 100};
