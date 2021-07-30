@@ -52,10 +52,12 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 typedef PointXYZIRPYT  PointTypePose;
 
 float constraintTransformation(const float value, const float limit) {
-  if (value < -limit)
-    value = -limit;
-  if (value > limit)
-    value = limit;
+  if (value < -limit) {
+    return -limit;
+  }
+  if (value > limit) {
+    return limit;
+  }
 
   return value;
 }
