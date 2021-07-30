@@ -881,23 +881,19 @@ class mapOptimization : public ParamServer {
     cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
     cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
 
-    PointType pointOri, coeff;
-
     for (int i = 0; i < laserCloudSelNum; i++) {
       // lidar -> camera
-      pointOri.x = laserCloudOri->points[i].y;
-      pointOri.y = laserCloudOri->points[i].z;
-      pointOri.z = laserCloudOri->points[i].x;
-      // lidar -> camera
-      coeff.x = coeffSel->points[i].y;
-      coeff.y = coeffSel->points[i].z;
-      coeff.z = coeffSel->points[i].x;
-      coeff.intensity = coeffSel->points[i].intensity;
+      const float intensity = coeffSel->points[i].intensity;
 
       // in camera
 
-      const Eigen::Vector3f point_ori(pointOri.x, pointOri.y, pointOri.z);
-      const Eigen::Vector3f coeff_vec(coeff.x, coeff.y, coeff.z);
+      const Eigen::Vector3f point_ori(laserCloudOri->points[i].y,
+                                      laserCloudOri->points[i].z,
+                                      laserCloudOri->points[i].x);
+
+      const Eigen::Vector3f coeff_vec(coeffSel->points[i].y,
+                                      coeffSel->points[i].z,
+                                      coeffSel->points[i].x);
 
       const Eigen::Matrix3f MX = dRdx(transformTobeMapped[0], transformTobeMapped[2], transformTobeMapped[1]);
       const float arx = (MX * point_ori).dot(coeff_vec);
@@ -912,10 +908,10 @@ class mapOptimization : public ParamServer {
       matA.at<float>(i, 0) = arz;
       matA.at<float>(i, 1) = arx;
       matA.at<float>(i, 2) = ary;
-      matA.at<float>(i, 3) = coeff.z;
-      matA.at<float>(i, 4) = coeff.x;
-      matA.at<float>(i, 5) = coeff.y;
-      matB.at<float>(i, 0) = -coeff.intensity;
+      matA.at<float>(i, 3) = coeffSel->points[i].x;
+      matA.at<float>(i, 4) = coeffSel->points[i].y;
+      matA.at<float>(i, 5) = coeffSel->points[i].z;
+      matB.at<float>(i, 0) = -intensity;
     }
 
     cv::transpose(matA, matAt);
