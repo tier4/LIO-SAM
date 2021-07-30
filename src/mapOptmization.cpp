@@ -525,19 +525,21 @@ class mapOptimization : public ParamServer {
     incrementalOdometryAffineFront = trans2Affine3f(transformTobeMapped);
 
     static Eigen::Affine3f lastImuTransformation;
+
+    const float roll = cloudInfo.imuRollInit;
+    const float pitch = cloudInfo.imuPitchInit;
+    const float yaw = cloudInfo.imuYawInit;
+
     // initialization
     if (cloudKeyPoses3D->points.empty()) {
-      transformTobeMapped(0) = cloudInfo.imuRollInit;
-      transformTobeMapped(1) = cloudInfo.imuPitchInit;
-      transformTobeMapped(2) = cloudInfo.imuYawInit;
+      transformTobeMapped(0) = roll;
+      transformTobeMapped(1) = pitch;
+      transformTobeMapped(2) = yaw;
 
       if (!useImuHeadingInitialization)
         transformTobeMapped(2) = 0;
 
-      lastImuTransformation = pcl::getTransformation(0, 0, 0,
-                                                     cloudInfo.imuRollInit,
-                                                     cloudInfo.imuPitchInit,
-                                                     cloudInfo.imuYawInit);
+      lastImuTransformation = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
       // save imu before return;
       return;
     }
@@ -563,8 +565,8 @@ class mapOptimization : public ParamServer {
 
         lastImuPreTransformation = transBack;
 
-        lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit,
-                                cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+        // save imu before return;
+        lastImuTransformation = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
         return;
       }
     }
@@ -572,7 +574,7 @@ class mapOptimization : public ParamServer {
     // use imu incremental estimation for pose guess (only rotation)
     if (cloudInfo.imuAvailable) {
       Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0,
-                                  cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
+                                  roll, pitch, yaw);
       Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
 
       Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
@@ -581,8 +583,8 @@ class mapOptimization : public ParamServer {
                                         transformTobeMapped(4), transformTobeMapped(5),
                                         transformTobeMapped(0), transformTobeMapped(1), transformTobeMapped(2));
 
-      lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit,
-                              cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+      // save imu before return;
+      lastImuTransformation = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
       return;
     }
   }
