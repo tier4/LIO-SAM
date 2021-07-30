@@ -1022,18 +1022,17 @@ class mapOptimization : public ParamServer {
         // slerp pitch
         transformQuaternion.setRPY(0, transformTobeMapped[1], 0);
         imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
-        tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion,
-                                                imuWeight)).getRPY(rollMid, pitchMid, yawMid);
+        tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
         transformTobeMapped[1] = pitchMid;
       }
     }
 
     transformTobeMapped[0] = constraintTransformation(transformTobeMapped[0],
-                             rotation_tollerance);
+                             rotation_tolerance);
     transformTobeMapped[1] = constraintTransformation(transformTobeMapped[1],
-                             rotation_tollerance);
+                             rotation_tolerance);
     transformTobeMapped[5] = constraintTransformation(transformTobeMapped[5],
-                             z_tollerance);
+                             z_tolerance);
 
     incrementalOdometryAffineBack = trans2Affine3f(transformTobeMapped);
   }
