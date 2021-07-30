@@ -206,7 +206,6 @@ class mapOptimization : public ParamServer {
   std::mutex mtx;
 
   bool isDegenerate = false;
-  cv::Mat matP;
 
   int laserCloudCornerFromMapDSNum = 0;
   int laserCloudSurfFromMapDSNum = 0;
@@ -309,8 +308,6 @@ class mapOptimization : public ParamServer {
     for (int i = 0; i < 6; ++i) {
       transformTobeMapped[i] = 0;
     }
-
-    matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr& msgIn) {
@@ -918,6 +915,7 @@ class mapOptimization : public ParamServer {
     cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
     cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
 
+    cv::Mat matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
     if (iterCount == 0) {
 
       cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
