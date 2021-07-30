@@ -868,12 +868,12 @@ class mapOptimization : public ParamServer {
     // yaw = pitch          ---     yaw = roll
 
     // lidar -> camera
-    float srx = sin(transformTobeMapped[1]);
-    float crx = cos(transformTobeMapped[1]);
-    float sry = sin(transformTobeMapped[2]);
-    float cry = cos(transformTobeMapped[2]);
-    float srz = sin(transformTobeMapped[0]);
-    float crz = cos(transformTobeMapped[0]);
+    float sx = sin(transformTobeMapped[0]);
+    float cx = cos(transformTobeMapped[0]);
+    float sz = sin(transformTobeMapped[1]);
+    float cz = cos(transformTobeMapped[1]);
+    float sy = sin(transformTobeMapped[2]);
+    float cy = cos(transformTobeMapped[2]);
 
     int laserCloudSelNum = laserCloudOri->size();
     if (laserCloudSelNum < 50) {
@@ -906,25 +906,25 @@ class mapOptimization : public ParamServer {
       const Eigen::Vector3f coeff_vec(coeff.x, coeff.y, coeff.z);
 
       const Eigen::Matrix3f MX = (Eigen::Matrix3f() <<
-           crx*sry*srz, + crx*crz*sry, - srx*sry,
-          -srx*srz    , - crz*srx    , - crx    ,
-           crx*cry*srz, + crx*cry*crz, - cry*srx
+           cz*sy*sx, + cz*sy*cx, - sz*sy,
+          -sz   *sx, - sz   *cx, -    cz,
+           cz*cy*sx, + cz*cy*cx, - sz*cy
       ).finished();
 
       const float arx = (MX * point_ori).dot(coeff_vec);
 
       const Eigen::Matrix3f MY = (Eigen::Matrix3f() <<
-          +cry*srx*srz - crz*sry, sry*srz + cry*crz*srx, + crx*cry,
-                              0.,                    0.,        0.,
-          -cry*crz - srx*sry*srz, cry*srz - crz*srx*sry, - crx*sry
+          +sz*cy*sx - sy*cx, sy*sx + sz*cy*cx, + cz*cy,
+                         0.,               0.,      0.,
+          -cy*cx - sz*sy*sx, cy*sx - sz*sy*cx, - cz*sy
       ).finished();
 
       const float ary = (MY * point_ori).dot(coeff_vec);
 
       const Eigen::Matrix3f MZ = (Eigen::Matrix3f() <<
-          crz*srx*sry - cry*srz, -cry*crz-srx*sry*srz, 0.,
-          crx*crz              , -   crx*srz         , 0.,
-          sry*srz + cry*crz*srx, +crz*sry-cry*srx*srz, 0.
+          sz*sy*cx - cy*sx, -cy*cx-sz*sy*sx, 0.,
+          cz*cx           , -cz*sx         , 0.,
+          sy*sx + sz*cy*cx, +sy*cx-sz*cy*sx, 0.
       ).finished();
 
       const float arz = (MZ * point_ori).dot(coeff_vec);
