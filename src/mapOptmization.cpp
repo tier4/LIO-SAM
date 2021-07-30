@@ -869,13 +869,6 @@ class mapOptimization : public ParamServer {
     // yaw = pitch          ---     yaw = roll
 
     // lidar -> camera
-    float sx = sin(transformTobeMapped[0]);
-    float cx = cos(transformTobeMapped[0]);
-    float sy = sin(transformTobeMapped[2]);
-    float cy = cos(transformTobeMapped[2]);
-    float sz = sin(transformTobeMapped[1]);
-    float cz = cos(transformTobeMapped[1]);
-
     int laserCloudSelNum = laserCloudOri->size();
     if (laserCloudSelNum < 50) {
       return false;
