@@ -51,6 +51,15 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 
 typedef PointXYZIRPYT  PointTypePose;
 
+float constraintTransformation(const float value, const float limit) {
+  if (value < -limit)
+    value = -limit;
+  if (value > limit)
+    value = limit;
+
+  return value;
+}
+
 Vector6f getPoseVec(const Eigen::Affine3f& transform) {
   Vector6f posevec;
   pcl::getTranslationAndEulerAngles(transform,
@@ -1025,23 +1034,11 @@ class mapOptimization : public ParamServer {
       }
     }
 
-    posevec(0) = constraintTransformation(posevec(0),
-                             rotation_tolerance);
-    posevec(1) = constraintTransformation(posevec(1),
-                             rotation_tolerance);
-    posevec(5) = constraintTransformation(posevec(5),
-                             z_tolerance);
+    posevec(0) = constraintTransformation(posevec(0), rotation_tolerance);
+    posevec(1) = constraintTransformation(posevec(1), rotation_tolerance);
+    posevec(5) = constraintTransformation(posevec(5), z_tolerance);
 
     incrementalOdometryAffineBack = trans2Affine3f(posevec);
-  }
-
-  float constraintTransformation(float value, float limit) {
-    if (value < -limit)
-      value = -limit;
-    if (value > limit)
-      value = limit;
-
-    return value;
   }
 
   bool saveFrame() {
