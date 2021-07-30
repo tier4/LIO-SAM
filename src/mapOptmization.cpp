@@ -28,6 +28,8 @@ using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using symbol_shorthand::G; // GPS pose
 
+using Vector6f = Eigen::Matrix<float, 6, 1>;
+
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
     */
@@ -58,9 +60,9 @@ gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint) {
                                     double(thisPoint.z)));
 }
 
-gtsam::Pose3 trans2gtsamPose(float transformIn[]) {
-  return gtsam::Pose3(gtsam::Rot3::RzRyRx(transformIn[0], transformIn[1], transformIn[2]),
-                      gtsam::Point3(transformIn[3], transformIn[4], transformIn[5]));
+gtsam::Pose3 trans2gtsamPose(const Vector6f& transformIn) {
+  return gtsam::Pose3(gtsam::Rot3::RzRyRx(transformIn(0), transformIn(1), transformIn(2)),
+                      gtsam::Point3(transformIn(3), transformIn(4), transformIn(5)));
 }
 
 Eigen::Affine3f pclPointToAffine3f(PointTypePose thisPoint) {
@@ -68,19 +70,19 @@ Eigen::Affine3f pclPointToAffine3f(PointTypePose thisPoint) {
                                 thisPoint.roll, thisPoint.pitch, thisPoint.yaw);
 }
 
-Eigen::Affine3f trans2Affine3f(float transformIn[]) {
-  return pcl::getTransformation(transformIn[3], transformIn[4], transformIn[5],
-                                transformIn[0], transformIn[1], transformIn[2]);
+Eigen::Affine3f trans2Affine3f(const Vector6f& transformIn) {
+  return pcl::getTransformation(transformIn(3), transformIn(4), transformIn(5),
+                                transformIn(0), transformIn(1), transformIn(2));
 }
 
-PointTypePose trans2PointTypePose(float transformIn[]) {
+PointTypePose trans2PointTypePose(const Vector6f& transformIn) {
   PointTypePose thisPose6D;
-  thisPose6D.x = transformIn[3];
-  thisPose6D.y = transformIn[4];
-  thisPose6D.z = transformIn[5];
-  thisPose6D.roll  = transformIn[0];
-  thisPose6D.pitch = transformIn[1];
-  thisPose6D.yaw   = transformIn[2];
+  thisPose6D.x = transformIn(3);
+  thisPose6D.y = transformIn(4);
+  thisPose6D.z = transformIn(5);
+  thisPose6D.roll  = transformIn(0);
+  thisPose6D.pitch = transformIn(1);
+  thisPose6D.yaw   = transformIn(2);
   return thisPose6D;
 }
 
@@ -201,7 +203,7 @@ class mapOptimization : public ParamServer {
   ros::Time timeLaserInfoStamp;
   double timeLaserInfoCur;
 
-  float transformTobeMapped[6];
+  Vector6f transformTobeMapped;
 
   std::mutex mtx;
 
@@ -306,7 +308,7 @@ class mapOptimization : public ParamServer {
     kdtreeSurfFromMap.reset(new pcl::KdTreeFLANN<PointType>());
 
     for (int i = 0; i < 6; ++i) {
-      transformTobeMapped[i] = 0;
+      transformTobeMapped(i) = 0;
     }
   }
 
@@ -525,12 +527,12 @@ class mapOptimization : public ParamServer {
     static Eigen::Affine3f lastImuTransformation;
     // initialization
     if (cloudKeyPoses3D->points.empty()) {
-      transformTobeMapped[0] = cloudInfo.imuRollInit;
-      transformTobeMapped[1] = cloudInfo.imuPitchInit;
-      transformTobeMapped[2] = cloudInfo.imuYawInit;
+      transformTobeMapped(0) = cloudInfo.imuRollInit;
+      transformTobeMapped(1) = cloudInfo.imuPitchInit;
+      transformTobeMapped(2) = cloudInfo.imuYawInit;
 
       if (!useImuHeadingInitialization)
-        transformTobeMapped[2] = 0;
+        transformTobeMapped(2) = 0;
 
       lastImuTransformation = pcl::getTransformation(0, 0, 0,
                                                      cloudInfo.imuRollInit,
@@ -556,8 +558,8 @@ class mapOptimization : public ParamServer {
         Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
         Eigen::Affine3f transFinal = transTobe * transIncre;
         pcl::getTranslationAndEulerAngles(transFinal,
-                                          transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5],
-                                          transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+                                          transformTobeMapped(3), transformTobeMapped(4), transformTobeMapped(5),
+                                          transformTobeMapped(0), transformTobeMapped(1), transformTobeMapped(2));
 
         lastImuPreTransformation = transBack;
 
@@ -575,9 +577,9 @@ class mapOptimization : public ParamServer {
 
       Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
       Eigen::Affine3f transFinal = transTobe * transIncre;
-      pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped[3],
-                                        transformTobeMapped[4], transformTobeMapped[5],
-                                        transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+      pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped(3),
+                                        transformTobeMapped(4), transformTobeMapped(5),
+                                        transformTobeMapped(0), transformTobeMapped(1), transformTobeMapped(2));
 
       lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit,
                               cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
@@ -694,8 +696,7 @@ class mapOptimization : public ParamServer {
 
       PointType pointOri = laserCloudCornerLastDS->points[i];
       PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
-      kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd,
-                                          pointSearchSqDis);
+      kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
         Eigen::Vector3f c = Eigen::Vector3f::Zero();
@@ -888,13 +889,13 @@ class mapOptimization : public ParamServer {
                                       coeffSel->points[i].z,
                                       coeffSel->points[i].x);
 
-      const Eigen::Matrix3f MX = dRdx(transformTobeMapped[0], transformTobeMapped[2], transformTobeMapped[1]);
+      const Eigen::Matrix3f MX = dRdx(transformTobeMapped(0), transformTobeMapped(2), transformTobeMapped(1));
       const float arx = (MX * point_ori).dot(coeff_vec);
 
-      const Eigen::Matrix3f MY = dRdy(transformTobeMapped[0], transformTobeMapped[2], transformTobeMapped[1]);
+      const Eigen::Matrix3f MY = dRdy(transformTobeMapped(0), transformTobeMapped(2), transformTobeMapped(1));
       const float ary = (MY * point_ori).dot(coeff_vec);
 
-      const Eigen::Matrix3f MZ = dRdz(transformTobeMapped[0], transformTobeMapped[2], transformTobeMapped[1]);
+      const Eigen::Matrix3f MZ = dRdz(transformTobeMapped(0), transformTobeMapped(2), transformTobeMapped(1));
       const float arz = (MZ * point_ori).dot(coeff_vec);
 
       // lidar -> camera
@@ -945,12 +946,12 @@ class mapOptimization : public ParamServer {
       matX = matP * matX2;
     }
 
-    transformTobeMapped[0] += matX.at<float>(0, 0);
-    transformTobeMapped[1] += matX.at<float>(1, 0);
-    transformTobeMapped[2] += matX.at<float>(2, 0);
-    transformTobeMapped[3] += matX.at<float>(3, 0);
-    transformTobeMapped[4] += matX.at<float>(4, 0);
-    transformTobeMapped[5] += matX.at<float>(5, 0);
+    transformTobeMapped(0) += matX.at<float>(0, 0);
+    transformTobeMapped(1) += matX.at<float>(1, 0);
+    transformTobeMapped(2) += matX.at<float>(2, 0);
+    transformTobeMapped(3) += matX.at<float>(3, 0);
+    transformTobeMapped(4) += matX.at<float>(4, 0);
+    transformTobeMapped(5) += matX.at<float>(5, 0);
 
     float deltaR = sqrt(
                      pow(pcl::rad2deg(matX.at<float>(0, 0)), 2) +
@@ -1005,25 +1006,25 @@ class mapOptimization : public ParamServer {
         double rollMid, pitchMid, yawMid;
 
         // slerp roll
-        transformQuaternion.setRPY(transformTobeMapped[0], 0, 0);
+        transformQuaternion.setRPY(transformTobeMapped(0), 0, 0);
         imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
         tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion,
                                                 imuWeight)).getRPY(rollMid, pitchMid, yawMid);
-        transformTobeMapped[0] = rollMid;
+        transformTobeMapped(0) = rollMid;
 
         // slerp pitch
-        transformQuaternion.setRPY(0, transformTobeMapped[1], 0);
+        transformQuaternion.setRPY(0, transformTobeMapped(1), 0);
         imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
         tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
-        transformTobeMapped[1] = pitchMid;
+        transformTobeMapped(1) = pitchMid;
       }
     }
 
-    transformTobeMapped[0] = constraintTransformation(transformTobeMapped[0],
+    transformTobeMapped(0) = constraintTransformation(transformTobeMapped(0),
                              rotation_tolerance);
-    transformTobeMapped[1] = constraintTransformation(transformTobeMapped[1],
+    transformTobeMapped(1) = constraintTransformation(transformTobeMapped(1),
                              rotation_tolerance);
-    transformTobeMapped[5] = constraintTransformation(transformTobeMapped[5],
+    transformTobeMapped(5) = constraintTransformation(transformTobeMapped(5),
                              z_tolerance);
 
     incrementalOdometryAffineBack = trans2Affine3f(transformTobeMapped);
@@ -1043,9 +1044,9 @@ class mapOptimization : public ParamServer {
       return true;
 
     Eigen::Affine3f transStart = pclPointToAffine3f(cloudKeyPoses6D->back());
-    Eigen::Affine3f transFinal = pcl::getTransformation(transformTobeMapped[3],
-                                 transformTobeMapped[4], transformTobeMapped[5],
-                                 transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+    Eigen::Affine3f transFinal = pcl::getTransformation(transformTobeMapped(3),
+                                 transformTobeMapped(4), transformTobeMapped(5),
+                                 transformTobeMapped(0), transformTobeMapped(1), transformTobeMapped(2));
     Eigen::Affine3f transBetween = transStart.inverse() * transFinal;
     float x, y, z, roll, pitch, yaw;
     pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
@@ -1121,7 +1122,7 @@ class mapOptimization : public ParamServer {
         float gps_y = thisGPS.pose.pose.position.y;
         float gps_z = thisGPS.pose.pose.position.z;
         if (!useGpsElevation) {
-          gps_z = transformTobeMapped[5];
+          gps_z = transformTobeMapped(5);
           noise_z = 0.01;
         }
 
@@ -1213,12 +1214,12 @@ class mapOptimization : public ParamServer {
     poseCovariance = isam->marginalCovariance(isamCurrentEstimate.size()-1);
 
     // save updated transform
-    transformTobeMapped[0] = latestEstimate.rotation().roll();
-    transformTobeMapped[1] = latestEstimate.rotation().pitch();
-    transformTobeMapped[2] = latestEstimate.rotation().yaw();
-    transformTobeMapped[3] = latestEstimate.translation().x();
-    transformTobeMapped[4] = latestEstimate.translation().y();
-    transformTobeMapped[5] = latestEstimate.translation().z();
+    transformTobeMapped(0) = latestEstimate.rotation().roll();
+    transformTobeMapped(1) = latestEstimate.rotation().pitch();
+    transformTobeMapped(2) = latestEstimate.rotation().yaw();
+    transformTobeMapped(3) = latestEstimate.translation().x();
+    transformTobeMapped(4) = latestEstimate.translation().y();
+    transformTobeMapped(5) = latestEstimate.translation().z();
 
     // save all the received edge and surf points
     pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new
@@ -1288,24 +1289,24 @@ class mapOptimization : public ParamServer {
     laserOdometryROS.header.stamp = timeLaserInfoStamp;
     laserOdometryROS.header.frame_id = odometryFrame;
     laserOdometryROS.child_frame_id = "odom_mapping";
-    laserOdometryROS.pose.pose.position.x = transformTobeMapped[3];
-    laserOdometryROS.pose.pose.position.y = transformTobeMapped[4];
-    laserOdometryROS.pose.pose.position.z = transformTobeMapped[5];
+    laserOdometryROS.pose.pose.position.x = transformTobeMapped(3);
+    laserOdometryROS.pose.pose.position.y = transformTobeMapped(4);
+    laserOdometryROS.pose.pose.position.z = transformTobeMapped(5);
     // geometry_msgs/Quaternion
     laserOdometryROS.pose.pose.orientation =\
                                             tf::createQuaternionMsgFromRollPitchYaw(
-                                                transformTobeMapped[0],
-                                                transformTobeMapped[1],
-                                                transformTobeMapped[2]);
+                                                transformTobeMapped(0),
+                                                transformTobeMapped(1),
+                                                transformTobeMapped(2));
     pubLaserOdometryGlobal.publish(laserOdometryROS);
 
     // Publish TF
     static tf::TransformBroadcaster br;
     tf::Transform t_odom_to_lidar = tf::Transform(
-                                      tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1],
-                                          transformTobeMapped[2]),
-                                      tf::Vector3(transformTobeMapped[3], transformTobeMapped[4],
-                                          transformTobeMapped[5])
+                                      tf::createQuaternionFromRPY(transformTobeMapped(0), transformTobeMapped(1),
+                                          transformTobeMapped(2)),
+                                      tf::Vector3(transformTobeMapped(3), transformTobeMapped(4),
+                                          transformTobeMapped(5))
                                     );
     tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(
           t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
