@@ -1,4 +1,5 @@
 #include "utility.h"
+#include "jacobian.h"
 #include "homogeneous.h"
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/save_map.h"
@@ -870,10 +871,10 @@ class mapOptimization : public ParamServer {
     // lidar -> camera
     float sx = sin(transformTobeMapped[0]);
     float cx = cos(transformTobeMapped[0]);
-    float sz = sin(transformTobeMapped[1]);
-    float cz = cos(transformTobeMapped[1]);
     float sy = sin(transformTobeMapped[2]);
     float cy = cos(transformTobeMapped[2]);
+    float sz = sin(transformTobeMapped[1]);
+    float cz = cos(transformTobeMapped[1]);
 
     int laserCloudSelNum = laserCloudOri->size();
     if (laserCloudSelNum < 50) {
@@ -905,28 +906,13 @@ class mapOptimization : public ParamServer {
       const Eigen::Vector3f point_ori(pointOri.x, pointOri.y, pointOri.z);
       const Eigen::Vector3f coeff_vec(coeff.x, coeff.y, coeff.z);
 
-      const Eigen::Matrix3f MX = (Eigen::Matrix3f() <<
-           cz*sy*sx, + cz*sy*cx, - sz*sy,
-          -sz   *sx, - sz   *cx, -    cz,
-           cz*cy*sx, + cz*cy*cx, - sz*cy
-      ).finished();
-
+      const Eigen::Matrix3f MX = dRdx(transformTobeMapped[0], transformTobeMapped[2], transformTobeMapped[1]);
       const float arx = (MX * point_ori).dot(coeff_vec);
 
-      const Eigen::Matrix3f MY = (Eigen::Matrix3f() <<
-          +sz*cy*sx - sy*cx, sy*sx + sz*cy*cx, + cz*cy,
-                         0.,               0.,      0.,
-          -cy*cx - sz*sy*sx, cy*sx - sz*sy*cx, - cz*sy
-      ).finished();
-
+      const Eigen::Matrix3f MY = dRdy(transformTobeMapped[0], transformTobeMapped[2], transformTobeMapped[1]);
       const float ary = (MY * point_ori).dot(coeff_vec);
 
-      const Eigen::Matrix3f MZ = (Eigen::Matrix3f() <<
-          sz*sy*cx - cy*sx, -cy*cx-sz*sy*sx, 0.,
-          cz*cx           , -cz*sx         , 0.,
-          sy*sx + sz*cy*cx, +sy*cx-sz*cy*sx, 0.
-      ).finished();
-
+      const Eigen::Matrix3f MZ = dRdz(transformTobeMapped[0], transformTobeMapped[2], transformTobeMapped[1]);
       const float arz = (MZ * point_ori).dot(coeff_vec);
 
       // lidar -> camera
