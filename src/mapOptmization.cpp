@@ -51,6 +51,17 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 
 typedef PointXYZIRPYT  PointTypePose;
 
+Eigen::Vector3f getRPY(const tf::Quaternion& q) {
+  double roll, pitch, yaw;
+  tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+  return Eigen::Vector3f((float)roll, (float)pitch, (float)yaw);
+}
+
+tf::Quaternion interpolate(const tf::Quaternion& q0, const tf::Quaternion& q1,
+                           const tfScalar weight) {
+  return q0.slerp(q1, weight);
+}
+
 float constraintTransformation(const float value, const float limit) {
   if (value < -limit) {
     return -limit;
@@ -1024,15 +1035,12 @@ class mapOptimization : public ParamServer {
         // slerp roll
         transformQuaternion.setRPY(posevec(0), 0, 0);
         imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
-        tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion,
-                                                imuWeight)).getRPY(rollMid, pitchMid, yawMid);
-        posevec(0) = rollMid;
+        posevec(0) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
 
         // slerp pitch
         transformQuaternion.setRPY(0, posevec(1), 0);
         imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
-        tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
-        posevec(1) = pitchMid;
+        posevec(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
       }
     }
 
@@ -1335,7 +1343,6 @@ class mapOptimization : public ParamServer {
           double imuWeight = 0.1;
           tf::Quaternion imuQuaternion;
           tf::Quaternion transformQuaternion;
-          double rollMid, pitchMid, yawMid;
 
           // slerp roll
           transformQuaternion.setRPY(roll, 0, 0);
