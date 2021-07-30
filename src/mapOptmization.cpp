@@ -875,11 +875,7 @@ class mapOptimization : public ParamServer {
     }
 
     cv::Mat matA(laserCloudSelNum, 6, CV_32F, cv::Scalar::all(0));
-    cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
-    cv::Mat matAtA(6, 6, CV_32F, cv::Scalar::all(0));
     cv::Mat matB(laserCloudSelNum, 1, CV_32F, cv::Scalar::all(0));
-    cv::Mat matAtB(6, 1, CV_32F, cv::Scalar::all(0));
-    cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
 
     for (int i = 0; i < laserCloudSelNum; i++) {
       // lidar -> camera
@@ -914,9 +910,12 @@ class mapOptimization : public ParamServer {
       matB.at<float>(i, 0) = -intensity;
     }
 
+    cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
     cv::transpose(matA, matAt);
-    matAtA = matAt * matA;
-    matAtB = matAt * matB;
+    cv::Mat matAtA = matAt * matA;
+    cv::Mat matAtB = matAt * matB;
+
+    cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
     cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
 
     if (iterCount == 0) {
