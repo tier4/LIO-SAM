@@ -51,6 +51,14 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
 
 typedef PointXYZIRPYT  PointTypePose;
 
+Vector6f getPoseVec(const Eigen::Affine3f& transform) {
+  Vector6f posevec;
+  pcl::getTranslationAndEulerAngles(transform,
+                                    posevec(3), posevec(4), posevec(5),
+                                    posevec(0), posevec(1), posevec(2));
+  return posevec;
+}
+
 gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint) {
   return gtsam::Pose3(gtsam::Rot3::RzRyRx(double(thisPoint.roll),
                                           double(thisPoint.pitch),
@@ -559,9 +567,7 @@ class mapOptimization : public ParamServer {
         Eigen::Affine3f transIncre = lastImuPreTransformation.inverse() * transBack;
         Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
         Eigen::Affine3f transFinal = transTobe * transIncre;
-        pcl::getTranslationAndEulerAngles(transFinal,
-                                          transformTobeMapped(3), transformTobeMapped(4), transformTobeMapped(5),
-                                          transformTobeMapped(0), transformTobeMapped(1), transformTobeMapped(2));
+        transformTobeMapped = getPoseVec(transFinal);
 
         lastImuPreTransformation = transBack;
 
@@ -573,15 +579,12 @@ class mapOptimization : public ParamServer {
 
     // use imu incremental estimation for pose guess (only rotation)
     if (cloudInfo.imuAvailable) {
-      Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0,
-                                  roll, pitch, yaw);
+      Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
       Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
 
       Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
       Eigen::Affine3f transFinal = transTobe * transIncre;
-      pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped(3),
-                                        transformTobeMapped(4), transformTobeMapped(5),
-                                        transformTobeMapped(0), transformTobeMapped(1), transformTobeMapped(2));
+      transformTobeMapped = getPoseVec(transFinal);
 
       // save imu before return;
       lastImuTransformation = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
@@ -1327,7 +1330,7 @@ class mapOptimization : public ParamServer {
                                     incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
       float x, y, z, roll, pitch, yaw;
-      pcl::getTranslationAndEulerAngles (increOdomAffine, x, y, z, roll, pitch, yaw);
+      pcl::getTranslationAndEulerAngles(increOdomAffine, x, y, z, roll, pitch, yaw);
       if (cloudInfo.imuAvailable) {
         if (std::abs(cloudInfo.imuPitchInit) < 1.4) {
           double imuWeight = 0.1;
