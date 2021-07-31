@@ -1335,8 +1335,7 @@ class mapOptimization : public ParamServer {
       Eigen::Affine3f affineIncre = incrementalOdometryAffineFront.inverse() *
                                     incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
-      float x, y, z, roll, pitch, yaw;
-      pcl::getTranslationAndEulerAngles(increOdomAffine, x, y, z, roll, pitch, yaw);
+      Vector6f odometry = getPoseVec(increOdomAffine);
       if (cloudInfo.imuAvailable) {
         if (std::abs(cloudInfo.imuPitchInit) < 1.4) {
           double imuWeight = 0.1;
@@ -1344,24 +1343,24 @@ class mapOptimization : public ParamServer {
           tf::Quaternion transformQuaternion;
 
           // slerp roll
-          transformQuaternion.setRPY(roll, 0, 0);
+          transformQuaternion.setRPY(odometry(0), 0, 0);
           imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
-          roll = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
+          odometry(0) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
 
           // slerp pitch
-          transformQuaternion.setRPY(0, pitch, 0);
+          transformQuaternion.setRPY(0, odometry(1), 0);
           imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
-          pitch = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
+          odometry(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
         }
       }
       laserOdomIncremental.header.stamp = timeLaserInfoStamp;
       laserOdomIncremental.header.frame_id = odometryFrame;
       laserOdomIncremental.child_frame_id = "odom_mapping";
-      laserOdomIncremental.pose.pose.position.x = x;
-      laserOdomIncremental.pose.pose.position.y = y;
-      laserOdomIncremental.pose.pose.position.z = z;
+      laserOdomIncremental.pose.pose.position.x = odometry(3);
+      laserOdomIncremental.pose.pose.position.y = odometry(4);
+      laserOdomIncremental.pose.pose.position.z = odometry(5);
       laserOdomIncremental.pose.pose.orientation =
-        tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+        tf::createQuaternionMsgFromRollPitchYaw(odometry(0), odometry(1), odometry(2));
       if (isDegenerate)
         laserOdomIncremental.pose.covariance[0] = 1;
       else
