@@ -1030,7 +1030,6 @@ class mapOptimization : public ParamServer {
         double imuWeight = imuRPYWeight;
         tf::Quaternion imuQuaternion;
         tf::Quaternion transformQuaternion;
-        double rollMid, pitchMid, yawMid;
 
         // slerp roll
         transformQuaternion.setRPY(posevec(0), 0, 0);
@@ -1347,16 +1346,12 @@ class mapOptimization : public ParamServer {
           // slerp roll
           transformQuaternion.setRPY(roll, 0, 0);
           imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
-          tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion,
-                                                  imuWeight)).getRPY(rollMid, pitchMid, yawMid);
-          roll = rollMid;
+          roll = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
 
           // slerp pitch
           transformQuaternion.setRPY(0, pitch, 0);
           imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
-          tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion,
-                                                  imuWeight)).getRPY(rollMid, pitchMid, yawMid);
-          pitch = pitchMid;
+          pitch = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
         }
       }
       laserOdomIncremental.header.stamp = timeLaserInfoStamp;
