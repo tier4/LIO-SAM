@@ -73,6 +73,17 @@ float constraintTransformation(const float value, const float limit) {
   return value;
 }
 
+geometry_msgs::Pose makePose(const Vector6f& posevec) {
+  geometry_msgs::Pose pose;
+  pose.position.x = posevec(3);
+  pose.position.y = posevec(4);
+  pose.position.z = posevec(5);
+  pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(
+      posevec(0), posevec(1), posevec(2)
+  );
+  return pose;
+}
+
 Vector6f getPoseVec(const Eigen::Affine3f& transform) {
   Vector6f posevec;
   pcl::getTranslationAndEulerAngles(transform,
@@ -1356,11 +1367,7 @@ class mapOptimization : public ParamServer {
       laserOdomIncremental.header.stamp = timeLaserInfoStamp;
       laserOdomIncremental.header.frame_id = odometryFrame;
       laserOdomIncremental.child_frame_id = "odom_mapping";
-      laserOdomIncremental.pose.pose.position.x = odometry(3);
-      laserOdomIncremental.pose.pose.position.y = odometry(4);
-      laserOdomIncremental.pose.pose.position.z = odometry(5);
-      laserOdomIncremental.pose.pose.orientation =
-        tf::createQuaternionMsgFromRollPitchYaw(odometry(0), odometry(1), odometry(2));
+      laserOdomIncremental.pose.pose = makePose(odometry);
       if (isDegenerate)
         laserOdomIncremental.pose.covariance[0] = 1;
       else
