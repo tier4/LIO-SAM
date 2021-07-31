@@ -73,6 +73,13 @@ float constraintTransformation(const float value, const float limit) {
   return value;
 }
 
+tf::Transform makeTransform(const Vector6f& posevec) {
+  return tf::Transform(
+    tf::createQuaternionFromRPY(posevec(0), posevec(1), posevec(2)),
+    tf::Vector3(posevec(3), posevec(4), posevec(5))
+  );
+}
+
 geometry_msgs::Pose makePose(const Vector6f& posevec) {
   geometry_msgs::Pose pose;
   pose.position.x = posevec(3);
@@ -1311,25 +1318,13 @@ class mapOptimization : public ParamServer {
     laserOdometryROS.header.stamp = timeLaserInfoStamp;
     laserOdometryROS.header.frame_id = odometryFrame;
     laserOdometryROS.child_frame_id = "odom_mapping";
-    laserOdometryROS.pose.pose.position.x = posevec(3);
-    laserOdometryROS.pose.pose.position.y = posevec(4);
-    laserOdometryROS.pose.pose.position.z = posevec(5);
+    laserOdometryROS.pose.pose = makePose(posevec);
     // geometry_msgs/Quaternion
-    laserOdometryROS.pose.pose.orientation =\
-                                            tf::createQuaternionMsgFromRollPitchYaw(
-                                                posevec(0),
-                                                posevec(1),
-                                                posevec(2));
     pubLaserOdometryGlobal.publish(laserOdometryROS);
 
     // Publish TF
     static tf::TransformBroadcaster br;
-    tf::Transform t_odom_to_lidar = tf::Transform(
-                                      tf::createQuaternionFromRPY(posevec(0), posevec(1),
-                                          posevec(2)),
-                                      tf::Vector3(posevec(3), posevec(4),
-                                          posevec(5))
-                                    );
+    tf::Transform t_odom_to_lidar = makeTransform(posevec);
     tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(
           t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
     br.sendTransform(trans_odom_to_lidar);
