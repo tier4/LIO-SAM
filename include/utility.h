@@ -54,8 +54,6 @@
 #include <tuple>
 #include <mutex>
 
-using namespace std;
-
 typedef pcl::PointXYZI PointType;
 
 enum class SensorType { VELODYNE, OUSTER };
@@ -68,16 +66,16 @@ class ParamServer {
   std::string robot_id;
 
   //Topics
-  string pointCloudTopic;
-  string imuTopic;
-  string odomTopic;
-  string gpsTopic;
+  std::string pointCloudTopic;
+  std::string imuTopic;
+  std::string odomTopic;
+  std::string gpsTopic;
 
   //Frames
-  string lidarFrame;
-  string baselinkFrame;
-  string odometryFrame;
-  string mapFrame;
+  std::string lidarFrame;
+  std::string baselinkFrame;
+  std::string odometryFrame;
+  std::string mapFrame;
 
   // GPS Settings
   bool useImuHeadingInitialization;
@@ -87,7 +85,7 @@ class ParamServer {
 
   // Save pcd
   bool savePCD;
-  string savePCDDirectory;
+  std::string savePCDDirectory;
 
   // Lidar Sensor Configuration
   SensorType sensor;
@@ -104,9 +102,9 @@ class ParamServer {
   float imuGyrBiasN;
   float imuGravity;
   float imuRPYWeight;
-  vector<double> extRotV;
-  vector<double> extRPYV;
-  vector<double> extTransV;
+  std::vector<double> extRotV;
+  std::vector<double> extRPYV;
+  std::vector<double> extTransV;
   Eigen::Matrix3d extRot;
   Eigen::Matrix3d extRPY;
   Eigen::Vector3d extTrans;
@@ -198,10 +196,9 @@ class ParamServer {
     nh.param<float>("lio_sam/imuGyrBiasN", imuGyrBiasN, 0.00003);
     nh.param<float>("lio_sam/imuGravity", imuGravity, 9.80511);
     nh.param<float>("lio_sam/imuRPYWeight", imuRPYWeight, 0.01);
-    nh.param<vector<double>>("lio_sam/extrinsicRot", extRotV, vector<double>());
-    nh.param<vector<double>>("lio_sam/extrinsicRPY", extRPYV, vector<double>());
-    nh.param<vector<double>>("lio_sam/extrinsicTrans", extTransV,
-                             vector<double>());
+    nh.param<std::vector<double>>("lio_sam/extrinsicRot", extRotV, std::vector<double>());
+    nh.param<std::vector<double>>("lio_sam/extrinsicRPY", extRPYV, std::vector<double>());
+    nh.param<std::vector<double>>("lio_sam/extrinsicTrans", extTransV, std::vector<double>());
     extRot = Eigen::Map<const Eigen::Matrix<double, -1, -1,
     Eigen::RowMajor>>(extRotV.data(), 3, 3);
     extRPY = Eigen::Map<const Eigen::Matrix<double, -1, -1,

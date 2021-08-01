@@ -38,7 +38,7 @@ class TransformFusion : public ParamServer {
   tf::StampedTransform lidar2Baselink;
 
   double lidarOdomTime = -1;
-  deque<nav_msgs::Odometry> imuOdomQueue;
+  std::deque<nav_msgs::Odometry> imuOdomQueue;
 
   TransformFusion() {
     if(lidarFrame != baselinkFrame) {

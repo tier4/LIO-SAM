@@ -214,8 +214,8 @@ class mapOptimization : public ParamServer {
   std::deque<nav_msgs::Odometry> gpsQueue;
   lio_sam::cloud_info cloudInfo;
 
-  vector<pcl::PointCloud<PointType>> cornerCloudKeyFrames;
-  vector<pcl::PointCloud<PointType>> surfCloudKeyFrames;
+  std::vector<pcl::PointCloud<PointType>> cornerCloudKeyFrames;
+  std::vector<pcl::PointCloud<PointType>> surfCloudKeyFrames;
 
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointTypePose> cloudKeyPoses6D;
@@ -243,7 +243,7 @@ class mapOptimization : public ParamServer {
   std::vector<PointType> coeffSelSurfVec;
   std::vector<bool> laserCloudOriSurfFlag;
 
-  map<int, pair<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>> laserCloudMapContainer;
+  std::map<int, std::pair<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>> laserCloudMapContainer;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMap;
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMap;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
@@ -411,14 +411,14 @@ class mapOptimization : public ParamServer {
 
   bool saveMapService(lio_sam::save_mapRequest& req,
                       lio_sam::save_mapResponse& res) {
-    string saveMapDirectory;
+    std::string saveMapDirectory;
 
-    cout << "****************************************************" << endl;
-    cout << "Saving map to pcd files ..." << endl;
+    std::cout << "****************************************************" << std::endl;
+    std::cout << "Saving map to pcd files ..." << std::endl;
     if(req.destination.empty()) saveMapDirectory = std::getenv("HOME") +
           savePCDDirectory;
     else saveMapDirectory = std::getenv("HOME") + req.destination;
-    cout << "Save destination: " << saveMapDirectory << endl;
+    std::cout << "Save destination: " << saveMapDirectory << std::endl;
     // create directory and remove old files;
     int unused = system((std::string("exec rm -r ") + saveMapDirectory).c_str());
     unused = system((std::string("mkdir -p ") + saveMapDirectory).c_str());
@@ -439,12 +439,12 @@ class mapOptimization : public ParamServer {
     for (int i = 0; i < (int)cloudKeyPoses3D.size(); i++) {
       *globalCornerCloud += transformPointCloud(cornerCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
       *globalSurfCloud   += transformPointCloud(surfCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
-      cout << "\r" << std::flush << "Processing feature cloud " << i << " of " <<
+      std::cout << "\r" << std::flush << "Processing feature cloud " << i << " of " <<
            cloudKeyPoses6D.size() << " ...";
     }
 
     if(req.resolution != 0) {
-      cout << "\n\nSave resolution: " << req.resolution << endl;
+      std::cout << "\n\nSave resolution: " << req.resolution << std::endl;
 
       // down-sample and save corner cloud
       downSizeFilterCorner.setInputCloud(globalCornerCloud);
@@ -481,8 +481,8 @@ class mapOptimization : public ParamServer {
     downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize,
                                    mappingSurfLeafSize);
 
-    cout << "****************************************************" << endl;
-    cout << "Saving map to pcd files completed\n" << endl;
+    std::cout << "****************************************************" << std::endl;
+    std::cout << "Saving map to pcd files completed\n" << std::endl;
 
     return true;
   }
@@ -501,7 +501,7 @@ class mapOptimization : public ParamServer {
     lio_sam::save_mapResponse res;
 
     if(!saveMapService(req, res)) {
-      cout << "Fail to save map" << endl;
+      std::cout << "Fail to save map" << std::endl;
     }
   }
 
@@ -697,7 +697,7 @@ class mapOptimization : public ParamServer {
               surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
         *laserCloudCornerFromMap += laserCloudCornerTemp;
         *laserCloudSurfFromMap   += laserCloudSurfTemp;
-        laserCloudMapContainer[thisKeyInd] = make_pair(laserCloudCornerTemp,
+        laserCloudMapContainer[thisKeyInd] = std::make_pair(laserCloudCornerTemp,
                                              laserCloudSurfTemp);
       }
 
@@ -1174,7 +1174,7 @@ class mapOptimization : public ParamServer {
           lastGPSPoint = curGPSPoint;
 
         gtsam::Vector Vector3(3);
-        Vector3 << max(noise_x, 1.0f), max(noise_y, 1.0f), max(noise_z, 1.0f);
+        Vector3 << std::max(noise_x, 1.0f), std::max(noise_y, 1.0f), std::max(noise_z, 1.0f);
         noiseModel::Diagonal::shared_ptr gps_noise = noiseModel::Diagonal::Variances(
               Vector3);
         gtsam::GPSFactor gps_factor(cloudKeyPoses3D.size(), gtsam::Point3(gps_x,
@@ -1197,7 +1197,7 @@ class mapOptimization : public ParamServer {
     // gps factor
     addGPSFactor();
 
-    // cout << "****************************************************" << endl;
+    // std::cout << "****************************************************" << std::endl;
     // gtSAMgraph.print("GTSAM Graph:\n");
 
     // update iSAM
@@ -1222,7 +1222,7 @@ class mapOptimization : public ParamServer {
 
     isamCurrentEstimate = isam->calculateEstimate();
     latestEstimate = isamCurrentEstimate.at<Pose3>(isamCurrentEstimate.size()-1);
-    // cout << "****************************************************" << endl;
+    // std::cout << "****************************************************" << std::endl;
     // isamCurrentEstimate.print("Current estimate: ");
 
     thisPose3D.x = latestEstimate.translation().x();
@@ -1241,9 +1241,9 @@ class mapOptimization : public ParamServer {
     thisPose6D.time = timeLaserInfoCur;
     cloudKeyPoses6D.push_back(thisPose6D);
 
-    // cout << "****************************************************" << endl;
-    // cout << "Pose covariance:" << endl;
-    // cout << isam->marginalCovariance(isamCurrentEstimate.size()-1) << endl << endl;
+    // std::cout << "****************************************************" << std::endl;
+    // std::cout << "Pose covariance:" << std::endl;
+    // std::cout << isam->marginalCovariance(isamCurrentEstimate.size()-1) << std::endl << std::endl;
     poseCovariance = isam->marginalCovariance(isamCurrentEstimate.size()-1);
 
     // save updated transform
