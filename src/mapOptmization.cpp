@@ -1173,12 +1173,9 @@ class mapOptimization : public ParamServer {
         else
           lastGPSPoint = curGPSPoint;
 
-        gtsam::Vector Vector3(3);
-        Vector3 << std::max(noise_x, 1.0f), std::max(noise_y, 1.0f), std::max(noise_z, 1.0f);
-        noiseModel::Diagonal::shared_ptr gps_noise = noiseModel::Diagonal::Variances(
-              Vector3);
-        gtsam::GPSFactor gps_factor(cloudKeyPoses3D.size(), gtsam::Point3(gps_x,
-                                    gps_y, gps_z), gps_noise);
+        const gtsam::Vector3 Vector(noise_x, noise_y, noise_z);
+        const auto gps_noise = noiseModel::Diagonal::Variances(Vector.cwiseMax(1.0f));
+        gtsam::GPSFactor gps_factor(cloudKeyPoses3D.size(), gtsam::Point3(gps_x, gps_y, gps_z), gps_noise);
         gtSAMgraph.add(gps_factor);
 
         aLoopIsClosed = true;
