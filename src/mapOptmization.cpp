@@ -28,7 +28,7 @@ using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using symbol_shorthand::G; // GPS pose
 
-using Vector6f = Eigen::Matrix<float, 6, 1>;
+typedef Eigen::Matrix<float, 6, 1> Vector6f;
 
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
@@ -89,6 +89,14 @@ geometry_msgs::Pose makePose(const Vector6f& posevec) {
       posevec(0), posevec(1), posevec(2)
   );
   return pose;
+}
+
+Vector6f getPoseVec(const gtsam::Pose3& pose) {
+  const gtsam::Rot3 r = pose.rotation();
+  const gtsam::Point3 t = pose.translation();
+  Vector6f v;
+  v << r.roll(), r.pitch(), r.yaw(), t.x(), t.y(), t.z();
+  return v;
 }
 
 Vector6f getPoseVec(const Eigen::Affine3f& transform) {
@@ -1243,12 +1251,7 @@ class mapOptimization : public ParamServer {
     poseCovariance = isam->marginalCovariance(isamCurrentEstimate.size()-1);
 
     // save updated transform
-    posevec(0) = latestEstimate.rotation().roll();
-    posevec(1) = latestEstimate.rotation().pitch();
-    posevec(2) = latestEstimate.rotation().yaw();
-    posevec(3) = latestEstimate.translation().x();
-    posevec(4) = latestEstimate.translation().y();
-    posevec(5) = latestEstimate.translation().z();
+    posevec = getPoseVec(latestEstimate);
 
     // save all the received edge and surf points
     pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new
