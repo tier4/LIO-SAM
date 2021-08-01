@@ -557,7 +557,7 @@ class ImageProjection : public ParamServer {
 
   void publishClouds() {
     cloudInfo.header = cloudHeader;
-    cloudInfo.cloud_deskewed  = publishCloud(&pubExtractedCloud, extractedCloud,
+    cloudInfo.cloud_deskewed  = publishCloud(&pubExtractedCloud, *extractedCloud,
                                 cloudHeader.stamp, lidarFrame);
     pubLaserCloudInfo.publish(cloudInfo);
   }

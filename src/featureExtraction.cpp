@@ -228,9 +228,9 @@ class FeatureExtraction : public ParamServer {
     cloudInfo.pointRange.clear();
 
     // save newly extracted features
-    cloudInfo.cloud_corner = publishCloud(&pubCornerPoints,  cornerCloud,
+    cloudInfo.cloud_corner = publishCloud(&pubCornerPoints,  *cornerCloud,
                                            cloudHeader.stamp, lidarFrame);
-    cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surfaceCloud,
+    cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, *surfaceCloud,
                                            cloudHeader.stamp, lidarFrame);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloudInfo);

@@ -295,10 +295,10 @@ class ParamServer {
 
 
 sensor_msgs::PointCloud2 publishCloud(ros::Publisher *thisPub,
-                                      pcl::PointCloud<PointType>::Ptr thisCloud, ros::Time thisStamp,
+                                      pcl::PointCloud<PointType>& thisCloud, ros::Time thisStamp,
                                       std::string thisFrame) {
   sensor_msgs::PointCloud2 tempCloud;
-  pcl::toROSMsg(*thisCloud, tempCloud);
+  pcl::toROSMsg(thisCloud, tempCloud);
   tempCloud.header.stamp = thisStamp;
   tempCloud.header.frame_id = thisFrame;
   if (thisPub->getNumSubscribers() != 0)
