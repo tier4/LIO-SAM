@@ -107,6 +107,11 @@ Vector6f getPoseVec(const Eigen::Affine3f& transform) {
   return posevec;
 }
 
+Eigen::Affine3f getTransformation(const Vector6f& posevec) {
+  return pcl::getTransformation(posevec(3), posevec(4), posevec(5),
+                                posevec(0), posevec(1), posevec(2));
+}
+
 gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint) {
   return gtsam::Pose3(gtsam::Rot3::RzRyRx(double(thisPoint.roll),
                                           double(thisPoint.pitch),
@@ -1081,9 +1086,7 @@ class mapOptimization : public ParamServer {
       return true;
 
     Eigen::Affine3f transStart = pclPointToAffine3f(cloudKeyPoses6D->back());
-    Eigen::Affine3f transFinal = pcl::getTransformation(posevec(3),
-                                 posevec(4), posevec(5),
-                                 posevec(0), posevec(1), posevec(2));
+    Eigen::Affine3f transFinal = getTransformation(posevec);
     Eigen::Affine3f transBetween = transStart.inverse() * transFinal;
     float x, y, z, roll, pitch, yaw;
     pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
