@@ -215,7 +215,7 @@ class mapOptimization : public ParamServer {
   lio_sam::cloud_info cloudInfo;
 
   vector<pcl::PointCloud<PointType>> cornerCloudKeyFrames;
-  vector<pcl::PointCloud<PointType>::Ptr> surfCloudKeyFrames;
+  vector<pcl::PointCloud<PointType>> surfCloudKeyFrames;
 
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointTypePose> cloudKeyPoses6D;
@@ -438,8 +438,7 @@ class mapOptimization : public ParamServer {
         pcl::PointCloud<PointType>());
     for (int i = 0; i < (int)cloudKeyPoses3D.size(); i++) {
       *globalCornerCloud += transformPointCloud(cornerCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
-      *globalSurfCloud   += transformPointCloud(*surfCloudKeyFrames[i],
-                            cloudKeyPoses6D.points[i]);
+      *globalSurfCloud   += transformPointCloud(surfCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
       cout << "\r" << std::flush << "Processing feature cloud " << i << " of " <<
            cloudKeyPoses6D.size() << " ...";
     }
@@ -559,7 +558,7 @@ class mapOptimization : public ParamServer {
       int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
       *globalMapKeyFrames += transformPointCloud(cornerCloudKeyFrames[thisKeyInd],
                              cloudKeyPoses6D.points[thisKeyInd]);
-      *globalMapKeyFrames += transformPointCloud(*surfCloudKeyFrames[thisKeyInd],
+      *globalMapKeyFrames += transformPointCloud(surfCloudKeyFrames[thisKeyInd],
                              cloudKeyPoses6D.points[thisKeyInd]);
     }
     // downsample visualized points
@@ -695,7 +694,7 @@ class mapOptimization : public ParamServer {
         pcl::PointCloud<PointType> laserCloudCornerTemp = transformPointCloud(
               cornerCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
         pcl::PointCloud<PointType> laserCloudSurfTemp = transformPointCloud(
-              *surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
+              surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
         *laserCloudCornerFromMap += laserCloudCornerTemp;
         *laserCloudSurfFromMap   += laserCloudSurfTemp;
         laserCloudMapContainer[thisKeyInd] = make_pair(laserCloudCornerTemp,
@@ -1250,17 +1249,9 @@ class mapOptimization : public ParamServer {
     // save updated transform
     posevec = getPoseVec(latestEstimate);
 
-    // save all the received edge and surf points
-    pcl::PointCloud<PointType>::Ptr thisCornerKeyFrame(new
-        pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr thisSurfKeyFrame(new
-        pcl::PointCloud<PointType>());
-    pcl::copyPointCloud(*laserCloudCornerLastDS,  *thisCornerKeyFrame);
-    pcl::copyPointCloud(*laserCloudSurfLastDS,    *thisSurfKeyFrame);
-
     // save key frame cloud
     cornerCloudKeyFrames.push_back(*laserCloudCornerLastDS);
-    surfCloudKeyFrames.push_back(thisSurfKeyFrame);
+    surfCloudKeyFrames.push_back(*laserCloudSurfLastDS);
 
     // save path for visualization
     updatePath(thisPose6D);
