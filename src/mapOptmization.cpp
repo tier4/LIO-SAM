@@ -148,7 +148,7 @@ PointTypePose trans2PointTypePose(const Vector6f& transformIn) {
 }
 
 pcl::PointCloud<PointType> transformPointCloud(
-  const pcl::PointCloud<PointType>::Ptr cloudIn, const PointTypePose* transformIn,
+  const pcl::PointCloud<PointType>::Ptr cloudIn, const PointTypePose& transformIn,
   const int numberOfCores = 2) {
   pcl::PointCloud<PointType> cloudOut;
 
@@ -156,8 +156,8 @@ pcl::PointCloud<PointType> transformPointCloud(
   cloudOut.resize(cloudSize);
 
   const Eigen::Affine3f transCur = pcl::getTransformation(
-      transformIn->x, transformIn->y, transformIn->z,
-      transformIn->roll, transformIn->pitch, transformIn->yaw
+      transformIn.x, transformIn.y, transformIn.z,
+      transformIn.roll, transformIn.pitch, transformIn.yaw
   );
 
   #pragma omp parallel for num_threads(numberOfCores)
@@ -442,9 +442,9 @@ class mapOptimization : public ParamServer {
         pcl::PointCloud<PointType>());
     for (int i = 0; i < (int)cloudKeyPoses3D->size(); i++) {
       *globalCornerCloud += transformPointCloud(cornerCloudKeyFrames[i],
-                            &cloudKeyPoses6D->points[i]);
+                            cloudKeyPoses6D->points[i]);
       *globalSurfCloud   += transformPointCloud(surfCloudKeyFrames[i],
-                            &cloudKeyPoses6D->points[i]);
+                            cloudKeyPoses6D->points[i]);
       cout << "\r" << std::flush << "Processing feature cloud " << i << " of " <<
            cloudKeyPoses6D->size() << " ...";
     }
@@ -564,9 +564,9 @@ class mapOptimization : public ParamServer {
         continue;
       int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
       *globalMapKeyFrames += transformPointCloud(cornerCloudKeyFrames[thisKeyInd],
-                             &cloudKeyPoses6D->points[thisKeyInd]);
+                             cloudKeyPoses6D->points[thisKeyInd]);
       *globalMapKeyFrames += transformPointCloud(surfCloudKeyFrames[thisKeyInd],
-                             &cloudKeyPoses6D->points[thisKeyInd]);
+                             cloudKeyPoses6D->points[thisKeyInd]);
     }
     // downsample visualized points
     // for global map visualization
@@ -699,9 +699,9 @@ class mapOptimization : public ParamServer {
       } else {
         // transformed cloud not available
         pcl::PointCloud<PointType> laserCloudCornerTemp = transformPointCloud(
-              cornerCloudKeyFrames[thisKeyInd],  &cloudKeyPoses6D->points[thisKeyInd]);
+              cornerCloudKeyFrames[thisKeyInd], cloudKeyPoses6D->points[thisKeyInd]);
         pcl::PointCloud<PointType> laserCloudSurfTemp = transformPointCloud(
-              surfCloudKeyFrames[thisKeyInd],    &cloudKeyPoses6D->points[thisKeyInd]);
+              surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D->points[thisKeyInd]);
         *laserCloudCornerFromMap += laserCloudCornerTemp;
         *laserCloudSurfFromMap   += laserCloudSurfTemp;
         laserCloudMapContainer[thisKeyInd] = make_pair(laserCloudCornerTemp,
@@ -1389,8 +1389,8 @@ class mapOptimization : public ParamServer {
     if (pubRecentKeyFrame.getNumSubscribers() != 0) {
       pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
       PointTypePose thisPose6D = trans2PointTypePose(posevec);
-      *cloudOut += transformPointCloud(laserCloudCornerLastDS,  &thisPose6D);
-      *cloudOut += transformPointCloud(laserCloudSurfLastDS,    &thisPose6D);
+      *cloudOut += transformPointCloud(laserCloudCornerLastDS, thisPose6D);
+      *cloudOut += transformPointCloud(laserCloudSurfLastDS, thisPose6D);
       publishCloud(&pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
     }
     // publish registered high-res raw cloud
@@ -1398,7 +1398,7 @@ class mapOptimization : public ParamServer {
       pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
       pcl::fromROSMsg(cloudInfo.cloud_deskewed, *cloudOut);
       PointTypePose thisPose6D = trans2PointTypePose(posevec);
-      *cloudOut = transformPointCloud(cloudOut,  &thisPose6D);
+      *cloudOut = transformPointCloud(cloudOut, thisPose6D);
       publishCloud(&pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp,
                    odometryFrame);
     }
