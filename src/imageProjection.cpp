@@ -232,7 +232,7 @@ class ImageProjection : public ParamServer {
     if (deskewFlag == 0) {
       deskewFlag = -1;
       for (auto &field : currentCloudMsg.fields) {
-        if (field.name == "time" || field.name == "t") {
+        if (field.name == "time" || field.name == "t" || field.name == "time_stamp") {
           deskewFlag = 1;
           break;
         }
