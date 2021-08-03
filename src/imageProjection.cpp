@@ -249,9 +249,20 @@ class ImageProjection : public ParamServer {
     std::lock_guard<std::mutex> lock2(odoLock);
 
     // make sure IMU data available for the scan
-    if (imuQueue.empty() || imuQueue.front().header.stamp.toSec() > timeScanCur
-        || imuQueue.back().header.stamp.toSec() < timeScanEnd) {
-      ROS_DEBUG("Waiting for IMU data ...");
+    if (imuQueue.empty()) {
+      ROS_DEBUG("IMU queue empty ...");
+      return false;
+    }
+
+    if (imuQueue.front().header.stamp.toSec() > timeScanCur) {
+      ROS_DEBUG("IMU time = %f", imuQueue.front().header.stamp.toSec());
+      ROS_DEBUG("LiDAR time = %f", timeScanCur);
+      ROS_DEBUG("Timestamp of IMU data too late");
+      return false;
+    }
+
+    if (imuQueue.back().header.stamp.toSec() < timeScanEnd) {
+      ROS_DEBUG("Timestamp of IMU data too early");
       return false;
     }
 
