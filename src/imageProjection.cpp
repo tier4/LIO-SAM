@@ -38,6 +38,30 @@ std::mutex imuLock;
 
 class IMUBuffer {
  public:
+  bool isAvailable(const double timeScanCur, const double timeScanEnd) {
+    std::lock_guard<std::mutex> lock1(imuLock);
+
+    // make sure IMU data available for the scan
+    if (imuQueue.empty()) {
+      ROS_DEBUG("IMU queue empty ...");
+      return false;
+    }
+
+    if (imuQueue.front().header.stamp.toSec() > timeScanCur) {
+      ROS_DEBUG("IMU time = %f", imuQueue.front().header.stamp.toSec());
+      ROS_DEBUG("LiDAR time = %f", timeScanCur);
+      ROS_DEBUG("Timestamp of IMU data too late");
+      return false;
+    }
+
+    if (imuQueue.back().header.stamp.toSec() < timeScanEnd) {
+      ROS_DEBUG("Timestamp of IMU data too early");
+      return false;
+    }
+
+    return true;
+  }
+
   void imuHandler(const sensor_msgs::Imu::ConstPtr& imuMsg) {
     sensor_msgs::Imu thisImu = imu_converter_.imuConverter(*imuMsg);
 
@@ -275,24 +299,9 @@ class ImageProjection : public ParamServer {
   }
 
   bool deskewInfo() {
-    std::lock_guard<std::mutex> lock1(imuLock);
     std::lock_guard<std::mutex> lock2(odoLock);
 
-    // make sure IMU data available for the scan
-    if (imu_buffer.imuQueue.empty()) {
-      ROS_DEBUG("IMU queue empty ...");
-      return false;
-    }
-
-    if (imu_buffer.imuQueue.front().header.stamp.toSec() > timeScanCur) {
-      ROS_DEBUG("IMU time = %f", imu_buffer.imuQueue.front().header.stamp.toSec());
-      ROS_DEBUG("LiDAR time = %f", timeScanCur);
-      ROS_DEBUG("Timestamp of IMU data too late");
-      return false;
-    }
-
-    if (imu_buffer.imuQueue.back().header.stamp.toSec() < timeScanEnd) {
-      ROS_DEBUG("Timestamp of IMU data too early");
+    if (!imu_buffer.isAvailable(timeScanCur, timeScanEnd)) {
       return false;
     }
 
