@@ -204,6 +204,8 @@ class IMUPreintegration : public ParamServer {
   gtsam::Pose3 lidar2Imu = gtsam::Pose3(gtsam::Rot3(1, 0, 0, 0),
                                         gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
 
+  IMUConverter imu_converter_;
+
   IMUPreintegration() {
     subImu = nh.subscribe<sensor_msgs::Imu>  (
                imuTopic, 2000, &IMUPreintegration::imuHandler,
@@ -471,9 +473,11 @@ class IMUPreintegration : public ParamServer {
       return true;
     }
 
-    Eigen::Vector3f ba(biasCur.accelerometer().x(), biasCur.accelerometer().y(),
+    Eigen::Vector3f ba(biasCur.accelerometer().x(),
+                       biasCur.accelerometer().y(),
                        biasCur.accelerometer().z());
-    Eigen::Vector3f bg(biasCur.gyroscope().x(), biasCur.gyroscope().y(),
+    Eigen::Vector3f bg(biasCur.gyroscope().x(),
+                       biasCur.gyroscope().y(),
                        biasCur.gyroscope().z());
     if (ba.norm() > 1.0 || bg.norm() > 1.0) {
       ROS_WARN("Large bias, reset IMU-preintegration!");
@@ -486,7 +490,7 @@ class IMUPreintegration : public ParamServer {
   void imuHandler(const sensor_msgs::Imu::ConstPtr& imu_raw) {
     std::lock_guard<std::mutex> lock(mtx);
 
-    sensor_msgs::Imu thisImu = imuConverter(*imu_raw);
+    sensor_msgs::Imu thisImu = imu_converter_.imuConverter(*imu_raw);
 
     imuQueOpt.push_back(thisImu);
     imuQueImu.push_back(thisImu);

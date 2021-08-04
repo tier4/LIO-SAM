@@ -102,13 +102,8 @@ class ParamServer {
   float imuGyrBiasN;
   float imuGravity;
   float imuRPYWeight;
-  std::vector<double> extRotV;
-  std::vector<double> extRPYV;
   std::vector<double> extTransV;
-  Eigen::Matrix3d extRot;
-  Eigen::Matrix3d extRPY;
   Eigen::Vector3d extTrans;
-  Eigen::Quaterniond extQRPY;
 
   // LOAM
   float edgeThreshold;
@@ -196,16 +191,8 @@ class ParamServer {
     nh.param<float>("lio_sam/imuGyrBiasN", imuGyrBiasN, 0.00003);
     nh.param<float>("lio_sam/imuGravity", imuGravity, 9.80511);
     nh.param<float>("lio_sam/imuRPYWeight", imuRPYWeight, 0.01);
-    nh.param<std::vector<double>>("lio_sam/extrinsicRot", extRotV, std::vector<double>());
-    nh.param<std::vector<double>>("lio_sam/extrinsicRPY", extRPYV, std::vector<double>());
     nh.param<std::vector<double>>("lio_sam/extrinsicTrans", extTransV, std::vector<double>());
-    extRot = Eigen::Map<const Eigen::Matrix<double, -1, -1,
-    Eigen::RowMajor>>(extRotV.data(), 3, 3);
-    extRPY = Eigen::Map<const Eigen::Matrix<double, -1, -1,
-    Eigen::RowMajor>>(extRPYV.data(), 3, 3);
-    extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1,
-    Eigen::RowMajor>>(extTransV.data(), 3, 1);
-    extQRPY = Eigen::Quaterniond(extRPY);
+    extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extTransV.data(), 3, 1);
 
     nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
     nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);
@@ -253,6 +240,19 @@ class ParamServer {
 
     usleep(100);
   }
+};
+
+class IMUConverter {
+ public:
+  IMUConverter() {
+    std::vector<double> extRotV;
+    std::vector<double> extRPYV;
+    nh.param<std::vector<double>>("lio_sam/extrinsicRot", extRotV, std::vector<double>());
+    nh.param<std::vector<double>>("lio_sam/extrinsicRPY", extRPYV, std::vector<double>());
+    extRot = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRotV.data(), 3, 3);
+    Eigen::Matrix3d extRPY = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRPYV.data(), 3, 3);
+    extQRPY = Eigen::Quaterniond(extRPY);
+  }
 
   sensor_msgs::Imu imuConverter(const sensor_msgs::Imu& imu_in) {
     sensor_msgs::Imu imu_out = imu_in;
@@ -265,7 +265,8 @@ class ParamServer {
     imu_out.linear_acceleration.y = acc.y();
     imu_out.linear_acceleration.z = acc.z();
     // rotate gyroscope
-    Eigen::Vector3d gyr(imu_in.angular_velocity.x, imu_in.angular_velocity.y,
+    Eigen::Vector3d gyr(imu_in.angular_velocity.x,
+                        imu_in.angular_velocity.y,
                         imu_in.angular_velocity.z);
     gyr = extRot * gyr;
     imu_out.angular_velocity.x = gyr.x();
@@ -288,8 +289,11 @@ class ParamServer {
 
     return imu_out;
   }
+ private:
+  ros::NodeHandle nh;
+  Eigen::Matrix3d extRot;
+  Eigen::Quaterniond extQRPY;
 };
-
 
 sensor_msgs::PointCloud2 publishCloud(ros::Publisher *thisPub,
                                       pcl::PointCloud<PointType>& thisCloud, ros::Time thisStamp,

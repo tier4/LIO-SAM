@@ -34,10 +34,43 @@ using PointXYZIRT = VelodynePointXYZIRT;
 
 const int queueLength = 2000;
 
+std::mutex imuLock;
+
+class IMUBuffer {
+ public:
+  void imuHandler(const sensor_msgs::Imu::ConstPtr& imuMsg) {
+    sensor_msgs::Imu thisImu = imu_converter_.imuConverter(*imuMsg);
+
+    std::lock_guard<std::mutex> lock1(imuLock);
+    imuQueue.push_back(thisImu);
+    ROS_INFO("IMU acc: ");
+    ROS_INFO("x: % .3f, y: % .3f, z: % .3f",
+        thisImu.linear_acceleration.x,
+        thisImu.linear_acceleration.y,
+        thisImu.linear_acceleration.z
+    );
+    ROS_INFO("IMU gyro: ");
+    ROS_INFO("x: % .3f, y: % .3f, z: % .3f",
+        thisImu.angular_velocity.x,
+        thisImu.angular_velocity.y,
+        thisImu.angular_velocity.z
+    );
+    double roll, pitch, yaw;
+    tf::Quaternion orientation;
+    tf::quaternionMsgToTF(thisImu.orientation, orientation);
+    tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+    ROS_INFO("IMU roll pitch yaw: ");
+    ROS_INFO("r: % .3f, p: % .3f, y: % .3f", roll, pitch, yaw);
+    ROS_INFO("\n");
+  }
+  std::deque<sensor_msgs::Imu> imuQueue;
+ private:
+  IMUConverter imu_converter_;
+};
+
 class ImageProjection : public ParamServer {
  private:
 
-  std::mutex imuLock;
   std::mutex odoLock;
 
   ros::Subscriber subLaserCloud;
@@ -47,7 +80,6 @@ class ImageProjection : public ParamServer {
   ros::Publisher pubLaserCloudInfo;
 
   ros::Subscriber subImu;
-  std::deque<sensor_msgs::Imu> imuQueue;
 
   ros::Subscriber subOdom;
   std::deque<nav_msgs::Odometry> odomQueue;
@@ -81,16 +113,20 @@ class ImageProjection : public ParamServer {
   double timeScanCur;
   double timeScanEnd;
   std_msgs::Header cloudHeader;
-
+  IMUBuffer imu_buffer;
 
  public:
   ImageProjection():
     deskewFlag(0) {
-    subImu        = nh.subscribe<sensor_msgs::Imu>(imuTopic, 2000,
-                    &ImageProjection::imuHandler, this, ros::TransportHints().tcpNoDelay());
-    subOdom       = nh.subscribe<nav_msgs::Odometry>(odomTopic+"_incremental",
-                    2000, &ImageProjection::odometryHandler, this,
-                    ros::TransportHints().tcpNoDelay());
+    subImu = nh.subscribe(
+        imuTopic, 2000,
+        &IMUBuffer::imuHandler, &imu_buffer,
+        ros::TransportHints().tcpNoDelay());
+    subOdom = nh.subscribe<nav_msgs::Odometry>(
+        odomTopic+"_incremental", 2000,
+        &ImageProjection::odometryHandler, this,
+        ros::TransportHints().tcpNoDelay()
+    );
     subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 5,
                     &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
 
@@ -141,13 +177,6 @@ class ImageProjection : public ParamServer {
   }
 
   ~ImageProjection() {}
-
-  void imuHandler(const sensor_msgs::Imu::ConstPtr& imuMsg) {
-    sensor_msgs::Imu thisImu = imuConverter(*imuMsg);
-
-    std::lock_guard<std::mutex> lock1(imuLock);
-    imuQueue.push_back(thisImu);
-  }
 
   void odometryHandler(const nav_msgs::Odometry::ConstPtr& odometryMsg) {
     std::lock_guard<std::mutex> lock2(odoLock);
@@ -237,8 +266,9 @@ class ImageProjection : public ParamServer {
           break;
         }
       }
-      if (deskewFlag == -1)
+      if (deskewFlag == -1) {
         ROS_WARN("Point cloud timestamp not available, deskew function disabled, system will drift significantly!");
+      }
     }
 
     return true;
@@ -249,19 +279,19 @@ class ImageProjection : public ParamServer {
     std::lock_guard<std::mutex> lock2(odoLock);
 
     // make sure IMU data available for the scan
-    if (imuQueue.empty()) {
+    if (imu_buffer.imuQueue.empty()) {
       ROS_DEBUG("IMU queue empty ...");
       return false;
     }
 
-    if (imuQueue.front().header.stamp.toSec() > timeScanCur) {
-      ROS_DEBUG("IMU time = %f", imuQueue.front().header.stamp.toSec());
+    if (imu_buffer.imuQueue.front().header.stamp.toSec() > timeScanCur) {
+      ROS_DEBUG("IMU time = %f", imu_buffer.imuQueue.front().header.stamp.toSec());
       ROS_DEBUG("LiDAR time = %f", timeScanCur);
       ROS_DEBUG("Timestamp of IMU data too late");
       return false;
     }
 
-    if (imuQueue.back().header.stamp.toSec() < timeScanEnd) {
+    if (imu_buffer.imuQueue.back().header.stamp.toSec() < timeScanEnd) {
       ROS_DEBUG("Timestamp of IMU data too early");
       return false;
     }
@@ -276,20 +306,20 @@ class ImageProjection : public ParamServer {
   void imuDeskewInfo() {
     cloudInfo.imuAvailable = false;
 
-    while (!imuQueue.empty()) {
-      if (imuQueue.front().header.stamp.toSec() < timeScanCur - 0.01)
-        imuQueue.pop_front();
+    while (!imu_buffer.imuQueue.empty()) {
+      if (imu_buffer.imuQueue.front().header.stamp.toSec() < timeScanCur - 0.01)
+        imu_buffer.imuQueue.pop_front();
       else
         break;
     }
 
-    if (imuQueue.empty())
+    if (imu_buffer.imuQueue.empty())
       return;
 
     imuPointerCur = 0;
 
-    for (int i = 0; i < (int)imuQueue.size(); ++i) {
-      sensor_msgs::Imu thisImuMsg = imuQueue[i];
+    for (int i = 0; i < (int)imu_buffer.imuQueue.size(); ++i) {
+      sensor_msgs::Imu thisImuMsg = imu_buffer.imuQueue[i];
       double currentImuTime = thisImuMsg.header.stamp.toSec();
 
       // get roll, pitch, and yaw estimation for this scan
