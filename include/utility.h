@@ -55,7 +55,7 @@
 #include <mutex>
 
 typedef pcl::PointXYZI PointType;
-
+typedef Eigen::Matrix<double, -1, -1, Eigen::RowMajor> RowMajorMatrixXd;
 enum class SensorType { VELODYNE, OUSTER };
 
 class ParamServer {
@@ -192,7 +192,7 @@ class ParamServer {
     nh.param<float>("lio_sam/imuGravity", imuGravity, 9.80511);
     nh.param<float>("lio_sam/imuRPYWeight", imuRPYWeight, 0.01);
     nh.param<std::vector<double>>("lio_sam/extrinsicTrans", extTransV, std::vector<double>());
-    extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extTransV.data(), 3, 1);
+    extTrans = Eigen::Map<const RowMajorMatrixXd>(extTransV.data(), 3, 1);
 
     nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
     nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);
@@ -249,8 +249,8 @@ class IMUConverter {
     std::vector<double> extRPYV;
     nh.param<std::vector<double>>("lio_sam/extrinsicRot", extRotV, std::vector<double>());
     nh.param<std::vector<double>>("lio_sam/extrinsicRPY", extRPYV, std::vector<double>());
-    extRot = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRotV.data(), 3, 3);
-    Eigen::Matrix3d extRPY = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extRPYV.data(), 3, 3);
+    extRot = Eigen::Map<const RowMajorMatrixXd>(extRotV.data(), 3, 3);
+    Eigen::Matrix3d extRPY = Eigen::Map<const RowMajorMatrixXd>(extRPYV.data(), 3, 3);
     extQRPY = Eigen::Quaterniond(extRPY);
   }
 
