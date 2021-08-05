@@ -380,11 +380,12 @@ class IMUPreintegration : public ParamServer {
       double imuTime = ROS_TIME(thisImu);
       if (imuTime < currentCorrectionTime - delta_t) {
         double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
+
+        const geometry_msgs::Vector3 a = thisImu->linear_acceleration;
+        const geometry_msgs::Vector3 w = thisImu->angular_velocity;
         imuIntegratorOpt_->integrateMeasurement(
-          gtsam::Vector3(thisImu->linear_acceleration.x, thisImu->linear_acceleration.y,
-                         thisImu->linear_acceleration.z),
-          gtsam::Vector3(thisImu->angular_velocity.x,    thisImu->angular_velocity.y,
-                         thisImu->angular_velocity.z), dt);
+          gtsam::Vector3(a.x, a.y, a.z),
+          gtsam::Vector3(w.x, w.y, w.z), dt);
 
         lastImuT_opt = imuTime;
         imuQueOpt.pop_front();
