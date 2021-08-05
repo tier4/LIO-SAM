@@ -20,6 +20,15 @@ using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 
+gtsam::Pose3 makeGtsamPose(const geometry_msgs::Pose& pose) {
+  const geometry_msgs::Point p = pose.position;
+  const geometry_msgs::Quaternion q = pose.orientation;
+  return gtsam::Pose3(
+      gtsam::Rot3::Quaternion(q.w, q.x, q.y, q.z),
+      gtsam::Point3(p.x, p.y, p.z)
+  );
+}
+
 class TransformFusion : public ParamServer {
  public:
   std::mutex mtx;
@@ -281,17 +290,8 @@ class IMUPreintegration : public ParamServer {
     if (imuQueOpt.empty())
       return;
 
-    float p_x = odomMsg->pose.pose.position.x;
-    float p_y = odomMsg->pose.pose.position.y;
-    float p_z = odomMsg->pose.pose.position.z;
-    float r_x = odomMsg->pose.pose.orientation.x;
-    float r_y = odomMsg->pose.pose.orientation.y;
-    float r_z = odomMsg->pose.pose.orientation.z;
-    float r_w = odomMsg->pose.pose.orientation.w;
+    gtsam::Pose3 lidarPose = makeGtsamPose(odomMsg->pose.pose);
     bool degenerate = (int)odomMsg->pose.covariance[0] == 1 ? true : false;
-    gtsam::Pose3 lidarPose = gtsam::Pose3(gtsam::Rot3::Quaternion(r_w, r_x, r_y,
-                                          r_z), gtsam::Point3(p_x, p_y, p_z));
-
 
     // 0. initialize system
     if (systemInitialized == false) {
@@ -452,8 +452,8 @@ class IMUPreintegration : public ParamServer {
       for (int i = 0; i < (int)imuQueImu.size(); ++i) {
         sensor_msgs::Imu *thisImu = &imuQueImu[i];
         double imuTime = ROS_TIME(thisImu);
-        double dt = (lastImuQT < 0) ? (1.0 / 500.0) :(imuTime - lastImuQT);
 
+        const double dt = (lastImuQT < 0) ? (1.0 / 500.0) : (imuTime - lastImuQT);
         const geometry_msgs::Vector3 a = thisImu->linear_acceleration;
         const geometry_msgs::Vector3 w = thisImu->angular_velocity;
         imuIntegratorImu_->integrateMeasurement(
