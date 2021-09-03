@@ -102,6 +102,7 @@ class ParamServer {
   float imuGyrBiasN;
   float imuGravity;
   float imuRPYWeight;
+  std::vector<double> extTransV;
   Eigen::Vector3d extTrans;
 
   // LOAM
@@ -145,7 +146,8 @@ class ParamServer {
   ParamServer() {
     nh.param<std::string>("/robot_id", robot_id, "roboat");
 
-    nh.param<std::string>("lio_sam/pointCloudTopic", pointCloudTopic, "points_raw");
+    nh.param<std::string>("lio_sam/pointCloudTopic", pointCloudTopic,
+                          "points_raw");
     nh.param<std::string>("lio_sam/imuTopic", imuTopic, "imu_correct");
     nh.param<std::string>("lio_sam/odomTopic", odomTopic, "odometry/imu");
     nh.param<std::string>("lio_sam/gpsTopic", gpsTopic, "odometry/gps");
@@ -189,7 +191,6 @@ class ParamServer {
     nh.param<float>("lio_sam/imuGyrBiasN", imuGyrBiasN, 0.00003);
     nh.param<float>("lio_sam/imuGravity", imuGravity, 9.80511);
     nh.param<float>("lio_sam/imuRPYWeight", imuRPYWeight, 0.01);
-    std::vector<double> extTransV;
     nh.param<std::vector<double>>("lio_sam/extrinsicTrans", extTransV, std::vector<double>());
     extTrans = Eigen::Map<const RowMajorMatrixXd>(extTransV.data(), 3, 1);
 
