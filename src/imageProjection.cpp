@@ -43,25 +43,10 @@ class IMUBuffer {
 
     std::lock_guard<std::mutex> lock1(imuLock);
     imuQueue.push_back(thisImu);
-    ROS_INFO("IMU acc: ");
-    ROS_INFO("x: % .3f, y: % .3f, z: % .3f",
-        thisImu.linear_acceleration.x,
-        thisImu.linear_acceleration.y,
-        thisImu.linear_acceleration.z
-    );
-    ROS_INFO("IMU gyro: ");
-    ROS_INFO("x: % .3f, y: % .3f, z: % .3f",
-        thisImu.angular_velocity.x,
-        thisImu.angular_velocity.y,
-        thisImu.angular_velocity.z
-    );
     double roll, pitch, yaw;
     tf::Quaternion orientation;
     tf::quaternionMsgToTF(thisImu.orientation, orientation);
     tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
-    ROS_INFO("IMU roll pitch yaw: ");
-    ROS_INFO("r: % .3f, p: % .3f, y: % .3f", roll, pitch, yaw);
-    ROS_INFO("\n");
   }
   std::deque<sensor_msgs::Imu> imuQueue;
  private:
