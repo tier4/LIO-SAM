@@ -67,13 +67,11 @@ class FeatureExtraction : public ParamServer {
 
     const int cloudSize = extractedCloud->points.size();
 
+    const std::vector<float> & range = cloudInfo.pointRange;
     for (int i = 5; i < cloudSize - 5; i++) {
-      float d = cloudInfo.pointRange[i-5] + cloudInfo.pointRange[i-4]
-              + cloudInfo.pointRange[i-3] + cloudInfo.pointRange[i-2]
-              + cloudInfo.pointRange[i-1] - cloudInfo.pointRange[i] * 10
-              + cloudInfo.pointRange[i+1] + cloudInfo.pointRange[i+2]
-              + cloudInfo.pointRange[i+3] + cloudInfo.pointRange[i+4]
-              + cloudInfo.pointRange[i+5];
+      const float d = range[i-5] + range[i-4] + range[i-3] + range[i-2] + range[i-1]
+                    - range[i] * 10
+                    + range[i+1] + range[i+2] + range[i+3] + range[i+4] + range[i+5];
 
       cloudCurvature[i] = d * d;
       cloudSmoothness[i] = i;
@@ -87,15 +85,15 @@ class FeatureExtraction : public ParamServer {
       cloudNeighborPicked[i] = 0;
     }
 
+    const std::vector<int> & column_index = cloudInfo.pointColInd;
     // mark occluded points and parallel beam points
     for (int i = 5; i < cloudSize - 6; ++i) {
       // occluded points
       float depth1 = cloudInfo.pointRange[i];
       float depth2 = cloudInfo.pointRange[i+1];
-      int columnDiff = std::abs(int(cloudInfo.pointColInd[i+1] -
-                                    cloudInfo.pointColInd[i]));
+      const int d = std::abs(int(column_index[i+1] - column_index[i]));
 
-      if (columnDiff < 10) {
+      if (d < 10) {
         // 10 pixel diff in range image
         if (depth1 - depth2 > 0.3) {
           cloudNeighborPicked[i - 5] = 1;
@@ -163,16 +161,14 @@ class FeatureExtraction : public ParamServer {
 
             cloudNeighborPicked[ind] = 1;
             for (int l = 1; l <= 5; l++) {
-              int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
-                                            cloudInfo.pointColInd[ind + l - 1]));
-              if (columnDiff > 10)
+              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
+              if (d > 10)
                 break;
               cloudNeighborPicked[ind + l] = 1;
             }
             for (int l = -1; l >= -5; l--) {
-              int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
-                                            cloudInfo.pointColInd[ind + l + 1]));
-              if (columnDiff > 10)
+              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
+              if (d > 10)
                 break;
               cloudNeighborPicked[ind + l] = 1;
             }
@@ -188,18 +184,16 @@ class FeatureExtraction : public ParamServer {
 
             for (int l = 1; l <= 5; l++) {
 
-              int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
-                                            cloudInfo.pointColInd[ind + l - 1]));
-              if (columnDiff > 10)
+              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
+              if (d > 10)
                 break;
 
               cloudNeighborPicked[ind + l] = 1;
             }
             for (int l = -1; l >= -5; l--) {
 
-              int columnDiff = std::abs(int(cloudInfo.pointColInd[ind + l] -
-                                            cloudInfo.pointColInd[ind + l + 1]));
-              if (columnDiff > 10)
+              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
+              if (d > 10)
                 break;
 
               cloudNeighborPicked[ind + l] = 1;
