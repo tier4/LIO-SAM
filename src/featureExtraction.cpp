@@ -92,8 +92,8 @@ public:
     // mark occluded points and parallel beam points
     for (int i = 5; i < cloudSize - 6; ++i) {
       // occluded points
-      float depth1 = range[i];
-      float depth2 = range[i + 1];
+      const float depth1 = range[i];
+      const float depth2 = range[i + 1];
       const int d = std::abs(int(column_index[i + 1] - column_index[i]));
 
       if (d < 10) {
@@ -115,8 +115,8 @@ public:
         }
       }
       // parallel beam
-      float diff1 = std::abs(float(range[i - 1] - range[i]));
-      float diff2 = std::abs(float(range[i + 1] - range[i]));
+      const float diff1 = std::abs(float(range[i - 1] - range[i]));
+      const float diff2 = std::abs(float(range[i + 1] - range[i]));
 
       if (diff1 > 0.02 * range[i] && diff2 > 0.02 * range[i])
       {
@@ -127,15 +127,15 @@ public:
     pcl::PointCloud<PointType> cornerCloud;
     pcl::PointCloud<PointType> surfaceCloud;
 
+    const std::vector<int> & start_index = cloudInfo.startRingIndex;
+    const std::vector<int> & end_index = cloudInfo.endRingIndex;
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new pcl::PointCloud<PointType>());
 
       for (int j = 0; j < 6; j++) {
 
-        int sp = (cloudInfo.startRingIndex[i] * (6 - j) +
-          cloudInfo.endRingIndex[i] * j) / 6;
-        int ep = (cloudInfo.startRingIndex[i] * (5 - j) +
-          cloudInfo.endRingIndex[i] * (j + 1)) / 6 - 1;
+        const int sp = (start_index[i] * (6 - j) + end_index[i] * j) / 6;
+        const int ep = (start_index[i] * (5 - j) + end_index[i] * (j + 1)) / 6 - 1;
 
         if (sp >= ep) {
           continue;
