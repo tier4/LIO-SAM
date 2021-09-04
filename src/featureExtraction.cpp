@@ -56,11 +56,6 @@ public:
     std::vector<int> cloudLabel(N_SCAN * Horizon_SCAN);
 
     pcl::PointCloud<PointType> extractedCloud;
-    pcl::PointCloud<PointType>::Ptr cornerCloud;
-    pcl::PointCloud<PointType>::Ptr surfaceCloud;
-
-    cornerCloud.reset(new pcl::PointCloud<PointType>());
-    surfaceCloud.reset(new pcl::PointCloud<PointType>());
 
     pcl::VoxelGrid<PointType> downSizeFilter;
 
@@ -134,8 +129,8 @@ public:
       }
     }
 
-    cornerCloud->clear();
-    surfaceCloud->clear();
+    pcl::PointCloud<PointType> cornerCloud;
+    pcl::PointCloud<PointType> surfaceCloud;
 
     pcl::PointCloud<PointType>::Ptr surfaceCloudScanDS(
       new pcl::PointCloud<PointType>()
@@ -169,7 +164,7 @@ public:
             largestPickedNum++;
             if (largestPickedNum <= 20) {
               cloudLabel[ind] = 1;
-              cornerCloud->push_back(extractedCloud.points[ind]);
+              cornerCloud.push_back(extractedCloud.points[ind]);
             } else {
               break;
             }
@@ -231,7 +226,7 @@ public:
       downSizeFilter.setInputCloud(surfaceCloudScan);
       downSizeFilter.filter(*surfaceCloudScanDS);
 
-      *surfaceCloud += *surfaceCloudScanDS;
+      surfaceCloud += *surfaceCloudScanDS;
     }
 
     // free cloud info memory
@@ -242,10 +237,10 @@ public:
 
     // save newly extracted features
     cloudInfo.cloud_corner = publishCloud(
-      &pubCornerPoints, *cornerCloud,
+      &pubCornerPoints, cornerCloud,
       cloudHeader.stamp, lidarFrame);
     cloudInfo.cloud_surface = publishCloud(
-      &pubSurfacePoints, *surfaceCloud,
+      &pubSurfacePoints, surfaceCloud,
       cloudHeader.stamp, lidarFrame);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloudInfo);
