@@ -132,10 +132,6 @@ public:
     pcl::PointCloud<PointType> cornerCloud;
     pcl::PointCloud<PointType> surfaceCloud;
 
-    pcl::PointCloud<PointType>::Ptr surfaceCloudScanDS(
-      new pcl::PointCloud<PointType>()
-    );
-
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<PointType>::Ptr surfaceCloudScan(
         new pcl::PointCloud<PointType>()
@@ -222,11 +218,12 @@ public:
         }
       }
 
-      surfaceCloudScanDS->clear();
-      downSizeFilter.setInputCloud(surfaceCloudScan);
-      downSizeFilter.filter(*surfaceCloudScanDS);
+      pcl::PointCloud<PointType> surfaceCloudScanDS;
 
-      surfaceCloud += *surfaceCloudScanDS;
+      downSizeFilter.setInputCloud(surfaceCloudScan);
+      downSizeFilter.filter(surfaceCloudScanDS);
+
+      surfaceCloud += surfaceCloudScanDS;
     }
 
     // free cloud info memory
