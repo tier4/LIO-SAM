@@ -55,11 +55,10 @@ public:
     std::vector<bool> cloudNeighborPicked(N_SCAN * Horizon_SCAN);
     std::vector<int> cloudLabel(N_SCAN * Horizon_SCAN);
 
-    pcl::PointCloud<PointType>::Ptr extractedCloud;
+    pcl::PointCloud<PointType> extractedCloud;
     pcl::PointCloud<PointType>::Ptr cornerCloud;
     pcl::PointCloud<PointType>::Ptr surfaceCloud;
 
-    extractedCloud.reset(new pcl::PointCloud<PointType>());
     cornerCloud.reset(new pcl::PointCloud<PointType>());
     surfaceCloud.reset(new pcl::PointCloud<PointType>());
 
@@ -72,9 +71,9 @@ public:
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
     std_msgs::Header cloudHeader = msgIn->header; // new cloud header
     // new cloud for extraction
-    pcl::fromROSMsg(msgIn->cloud_deskewed, *extractedCloud);
+    pcl::fromROSMsg(msgIn->cloud_deskewed, extractedCloud);
 
-    const int cloudSize = extractedCloud->points.size();
+    const int cloudSize = extractedCloud.points.size();
 
     const std::vector<float> & range = cloudInfo.pointRange;
     for (int i = 5; i < cloudSize - 5; i++) {
@@ -170,7 +169,7 @@ public:
             largestPickedNum++;
             if (largestPickedNum <= 20) {
               cloudLabel[ind] = 1;
-              cornerCloud->push_back(extractedCloud->points[ind]);
+              cornerCloud->push_back(extractedCloud.points[ind]);
             } else {
               break;
             }
@@ -223,7 +222,7 @@ public:
 
         for (int k = sp; k <= ep; k++) {
           if (cloudLabel[k] <= 0) {
-            surfaceCloudScan->push_back(extractedCloud->points[k]);
+            surfaceCloudScan->push_back(extractedCloud.points[k]);
           }
         }
       }
