@@ -92,8 +92,8 @@ public:
     // mark occluded points and parallel beam points
     for (int i = 5; i < cloudSize - 6; ++i) {
       // occluded points
-      float depth1 = cloudInfo.pointRange[i];
-      float depth2 = cloudInfo.pointRange[i + 1];
+      float depth1 = range[i];
+      float depth2 = range[i + 1];
       const int d = std::abs(int(column_index[i + 1] - column_index[i]));
 
       if (d < 10) {
@@ -115,15 +115,10 @@ public:
         }
       }
       // parallel beam
-      float diff1 = std::abs(
-        float(cloudInfo.pointRange[i - 1] -
-        cloudInfo.pointRange[i]));
-      float diff2 = std::abs(
-        float(cloudInfo.pointRange[i + 1] -
-        cloudInfo.pointRange[i]));
+      float diff1 = std::abs(float(range[i - 1] - range[i]));
+      float diff2 = std::abs(float(range[i + 1] - range[i]));
 
-      if (diff1 > 0.02 * cloudInfo.pointRange[i] &&
-        diff2 > 0.02 * cloudInfo.pointRange[i])
+      if (diff1 > 0.02 * range[i] && diff2 > 0.02 * range[i])
       {
         cloudNeighborPicked[i] = true;
       }
