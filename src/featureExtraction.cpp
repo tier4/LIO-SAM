@@ -148,30 +148,32 @@ public:
         int largestPickedNum = 0;
         for (int k = ep; k >= sp; k--) {
           int ind = cloudSmoothness[k];
-          if (!cloudNeighborPicked[ind] && cloudCurvature[ind] > edgeThreshold) {
-            largestPickedNum++;
-            if (largestPickedNum <= 20) {
-              cloudLabel[ind] = 1;
-              cornerCloud.push_back(extractedCloud.points[ind]);
-            } else {
+          if (cloudNeighborPicked[ind] || cloudCurvature[ind] <= edgeThreshold) {
+            continue;
+          }
+
+          largestPickedNum++;
+          if (largestPickedNum <= 20) {
+            cloudLabel[ind] = 1;
+            cornerCloud.push_back(extractedCloud.points[ind]);
+          } else {
+            break;
+          }
+
+          cloudNeighborPicked[ind] = true;
+          for (int l = 1; l <= 5; l++) {
+            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
+            if (d > 10) {
               break;
             }
-
-            cloudNeighborPicked[ind] = true;
-            for (int l = 1; l <= 5; l++) {
-              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
-              if (d > 10) {
-                break;
-              }
-              cloudNeighborPicked[ind + l] = true;
+            cloudNeighborPicked[ind + l] = true;
+          }
+          for (int l = -1; l >= -5; l--) {
+            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
+            if (d > 10) {
+              break;
             }
-            for (int l = -1; l >= -5; l--) {
-              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
-              if (d > 10) {
-                break;
-              }
-              cloudNeighborPicked[ind + l] = true;
-            }
+            cloudNeighborPicked[ind + l] = true;
           }
         }
 
