@@ -179,29 +179,30 @@ public:
 
         for (int k = sp; k <= ep; k++) {
           int ind = cloudSmoothness[k];
-          if (!cloudNeighborPicked[ind] && cloudCurvature[ind] < surfThreshold) {
+          if (cloudNeighborPicked[ind] || cloudCurvature[ind] >= surfThreshold) {
+            continue;
+          }
 
-            cloudLabel[ind] = -1;
-            cloudNeighborPicked[ind] = true;
+          cloudLabel[ind] = -1;
+          cloudNeighborPicked[ind] = true;
 
-            for (int l = 1; l <= 5; l++) {
+          for (int l = 1; l <= 5; l++) {
 
-              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
-              if (d > 10) {
-                break;
-              }
-
-              cloudNeighborPicked[ind + l] = true;
+            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
+            if (d > 10) {
+              break;
             }
-            for (int l = -1; l >= -5; l--) {
 
-              const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
-              if (d > 10) {
-                break;
-              }
+            cloudNeighborPicked[ind + l] = true;
+          }
+          for (int l = -1; l >= -5; l--) {
 
-              cloudNeighborPicked[ind + l] = true;
+            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
+            if (d > 10) {
+              break;
             }
+
+            cloudNeighborPicked[ind + l] = true;
           }
         }
 
