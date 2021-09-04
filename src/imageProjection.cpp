@@ -561,21 +561,19 @@ public:
   void projectPointCloud(
     const std::vector<PointXYZIRT, Eigen::aligned_allocator<PointXYZIRT>> & points)
   {
-    int cloudSize = points.size();
-    // range image projection
-    for (int i = 0; i < cloudSize; ++i) {
+    for (const PointXYZIRT & point : points) {
       PointType thisPoint;
-      thisPoint.x = points[i].x;
-      thisPoint.y = points[i].y;
-      thisPoint.z = points[i].z;
-      thisPoint.intensity = points[i].intensity;
+      thisPoint.x = point.x;
+      thisPoint.y = point.y;
+      thisPoint.z = point.z;
+      thisPoint.intensity = point.intensity;
 
       float range = pointDistance(thisPoint);
       if (range < lidarMinRange || range > lidarMaxRange) {
         continue;
       }
 
-      int rowIdn = points[i].ring;
+      int rowIdn = point.ring;
       if (rowIdn < 0 || rowIdn >= N_SCAN) {
         continue;
       }
@@ -603,7 +601,7 @@ public:
       rangeMat.at<float>(rowIdn, columnIdn) = range;
 
       int index = columnIdn + rowIdn * Horizon_SCAN;
-      fullCloud->points[index] = deskewPoint(thisPoint, points[i].time);
+      fullCloud->points[index] = deskewPoint(thisPoint, point.time);
     }
   }
 
