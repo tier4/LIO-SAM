@@ -81,10 +81,10 @@ private:
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
   sensor_msgs::PointCloud2 currentCloudMsg;
 
-  double * imuTime = new double[queueLength];
-  double * imuRotX = new double[queueLength];
-  double * imuRotY = new double[queueLength];
-  double * imuRotZ = new double[queueLength];
+  std::array<double, queueLength> imuTime;
+  std::array<double, queueLength> imuRotX;
+  std::array<double, queueLength> imuRotY;
+  std::array<double, queueLength> imuRotZ;
 
   int imuPointerCur;
   bool firstPointFlag;
