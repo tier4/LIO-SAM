@@ -190,7 +190,7 @@ public:
       return;
     }
 
-    projectPointCloud();
+    projectPointCloud(laserCloudIn->points);
 
     cloudExtraction();
 
@@ -558,23 +558,24 @@ public:
     return newPoint;
   }
 
-  void projectPointCloud()
+  void projectPointCloud(
+    const std::vector<PointXYZIRT, Eigen::aligned_allocator<PointXYZIRT>> & points)
   {
-    int cloudSize = laserCloudIn->points.size();
+    int cloudSize = points.size();
     // range image projection
     for (int i = 0; i < cloudSize; ++i) {
       PointType thisPoint;
-      thisPoint.x = laserCloudIn->points[i].x;
-      thisPoint.y = laserCloudIn->points[i].y;
-      thisPoint.z = laserCloudIn->points[i].z;
-      thisPoint.intensity = laserCloudIn->points[i].intensity;
+      thisPoint.x = points[i].x;
+      thisPoint.y = points[i].y;
+      thisPoint.z = points[i].z;
+      thisPoint.intensity = points[i].intensity;
 
       float range = pointDistance(thisPoint);
       if (range < lidarMinRange || range > lidarMaxRange) {
         continue;
       }
 
-      int rowIdn = laserCloudIn->points[i].ring;
+      int rowIdn = points[i].ring;
       if (rowIdn < 0 || rowIdn >= N_SCAN) {
         continue;
       }
@@ -599,12 +600,10 @@ public:
         continue;
       }
 
-      thisPoint = deskewPoint(thisPoint, laserCloudIn->points[i].time);
-
       rangeMat.at<float>(rowIdn, columnIdn) = range;
 
       int index = columnIdn + rowIdn * Horizon_SCAN;
-      fullCloud->points[index] = thisPoint;
+      fullCloud->points[index] = deskewPoint(thisPoint, points[i].time);
     }
   }
 
