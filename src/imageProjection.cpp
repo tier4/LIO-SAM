@@ -69,7 +69,6 @@ private:
   std::mutex odoLock;
 
   ros::Subscriber subLaserCloud;
-  ros::Publisher pubLaserCloud;
 
   ros::Publisher pubExtractedCloud;
   ros::Publisher pubLaserCloudInfo;
