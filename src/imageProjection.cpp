@@ -91,7 +91,6 @@ private:
   Eigen::Affine3f transStartInverse;
 
   pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
-  pcl::PointCloud<OusterPointXYZIRT>::Ptr tmpOusterCloudIn;
   pcl::PointCloud<PointType>::Ptr fullCloud;
   pcl::PointCloud<PointType>::Ptr extractedCloud;
 
@@ -140,7 +139,6 @@ public:
   void allocateMemory()
   {
     laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
-    tmpOusterCloudIn.reset(new pcl::PointCloud<OusterPointXYZIRT>());
     fullCloud.reset(new pcl::PointCloud<PointType>());
     extractedCloud.reset(new pcl::PointCloud<PointType>());
 
@@ -203,11 +201,14 @@ public:
 
   bool cachePointCloud(const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg)
   {
+
     // cache point cloud
     cloudQueue.push_back(*laserCloudMsg);
     if (cloudQueue.size() <= 2) {
       return false;
     }
+
+    pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
 
     // convert cloud
     currentCloudMsg = std::move(cloudQueue.front());
@@ -216,11 +217,11 @@ public:
       pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
     } else if (sensor == SensorType::OUSTER) {
       // Convert to Velodyne format
-      pcl::moveFromROSMsg(currentCloudMsg, *tmpOusterCloudIn);
-      laserCloudIn->points.resize(tmpOusterCloudIn->size());
-      laserCloudIn->is_dense = tmpOusterCloudIn->is_dense;
-      for (size_t i = 0; i < tmpOusterCloudIn->size(); i++) {
-        auto & src = tmpOusterCloudIn->points[i];
+      pcl::moveFromROSMsg(currentCloudMsg, tmpOusterCloudIn);
+      laserCloudIn->points.resize(tmpOusterCloudIn.size());
+      laserCloudIn->is_dense = tmpOusterCloudIn.is_dense;
+      for (size_t i = 0; i < tmpOusterCloudIn.size(); i++) {
+        auto & src = tmpOusterCloudIn.points[i];
         auto & dst = laserCloudIn->points[i];
         dst.x = src.x;
         dst.y = src.y;
