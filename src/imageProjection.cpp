@@ -534,17 +534,6 @@ public:
     float posYCur = 0;
     float posZCur = 0;
 
-    // If the sensor moves relatively slow, like walking speed,
-    // positional deskew seems to have little benefits. Thus code below is commented.
-
-    // if (cloudInfo.odomAvailable == false || odomDeskewFlag == false)
-    //     return;
-
-    // float ratio = relTime / (timeScanEnd - timeScanCur);
-
-    // posXCur = ratio * odomIncreX;
-    // posYCur = ratio * odomIncreY;
-    // posZCur = ratio * odomIncreZ;
     return {posXCur, posYCur, posZCur};
   }
 
