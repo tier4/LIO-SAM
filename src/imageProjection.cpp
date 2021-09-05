@@ -493,10 +493,9 @@ public:
       rotCur = imuRot[imuPointerFront];
     } else {
       int imuPointerBack = imuPointerFront - 1;
-      double ratioFront = (pointTime - imuTime[imuPointerBack]) /
-        (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-      double ratioBack = (imuTime[imuPointerFront] - pointTime) /
-        (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
+      double diff = imuTime[imuPointerFront] - imuTime[imuPointerBack];
+      double ratioFront = (pointTime - imuTime[imuPointerBack]) / diff;
+      double ratioBack = (imuTime[imuPointerFront] - pointTime) / diff;
       rotCur = imuRot[imuPointerFront] * ratioFront + imuRot[imuPointerBack] * ratioBack;
     }
     return rotCur;
