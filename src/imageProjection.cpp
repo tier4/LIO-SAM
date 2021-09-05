@@ -131,7 +131,21 @@ public:
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
 
     allocateMemory();
-    resetParameters();
+    laserCloudIn->clear();
+    extractedCloud->clear();
+    // reset range matrix for range image projection
+    rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
+
+    imuPointerCur = 0;
+    firstPointFlag = true;
+    odomDeskewFlag = false;
+
+    for (int i = 0; i < queueLength; ++i) {
+      imuTime[i] = 0;
+      imuRotX[i] = 0;
+      imuRotY[i] = 0;
+      imuRotZ[i] = 0;
+    }
 
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
@@ -150,11 +164,6 @@ public:
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
-    resetParameters();
-  }
-
-  void resetParameters()
-  {
     laserCloudIn->clear();
     extractedCloud->clear();
     // reset range matrix for range image projection
@@ -192,11 +201,47 @@ public:
 
     projectPointCloud(laserCloudIn->points);
 
-    cloudExtraction();
+    int count = 0;
+    // extract segmented cloud for lidar odometry
+    for (int i = 0; i < N_SCAN; ++i) {
+      cloudInfo.startRingIndex[i] = count - 1 + 5;
 
-    publishClouds();
+      for (int j = 0; j < Horizon_SCAN; ++j) {
+        if (rangeMat.at<float>(i, j) != FLT_MAX) {
+          // mark the points' column index for marking occlusion later
+          cloudInfo.pointColInd[count] = j;
+          // save range info
+          cloudInfo.pointRange[count] = rangeMat.at<float>(i, j);
+          // save extracted cloud
+          extractedCloud->push_back(fullCloud->points[j + i * Horizon_SCAN]);
+          // size of extracted cloud
+          ++count;
+        }
+      }
+      cloudInfo.endRingIndex[i] = count - 1 - 5;
+    }
 
-    resetParameters();
+    cloudInfo.header = cloudHeader;
+    cloudInfo.cloud_deskewed = publishCloud(
+      &pubExtractedCloud, *extractedCloud,
+      cloudHeader.stamp, lidarFrame);
+    pubLaserCloudInfo.publish(cloudInfo);
+
+    laserCloudIn->clear();
+    extractedCloud->clear();
+    // reset range matrix for range image projection
+    rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
+
+    imuPointerCur = 0;
+    firstPointFlag = true;
+    odomDeskewFlag = false;
+
+    for (int i = 0; i < queueLength; ++i) {
+      imuTime[i] = 0;
+      imuRotX[i] = 0;
+      imuRotY[i] = 0;
+      imuRotZ[i] = 0;
+    }
   }
 
   bool cachePointCloud(const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg)
@@ -603,38 +648,6 @@ public:
       int index = columnIdn + rowIdn * Horizon_SCAN;
       fullCloud->points[index] = deskewPoint(thisPoint, point.time);
     }
-  }
-
-  void cloudExtraction()
-  {
-    int count = 0;
-    // extract segmented cloud for lidar odometry
-    for (int i = 0; i < N_SCAN; ++i) {
-      cloudInfo.startRingIndex[i] = count - 1 + 5;
-
-      for (int j = 0; j < Horizon_SCAN; ++j) {
-        if (rangeMat.at<float>(i, j) != FLT_MAX) {
-          // mark the points' column index for marking occlusion later
-          cloudInfo.pointColInd[count] = j;
-          // save range info
-          cloudInfo.pointRange[count] = rangeMat.at<float>(i, j);
-          // save extracted cloud
-          extractedCloud->push_back(fullCloud->points[j + i * Horizon_SCAN]);
-          // size of extracted cloud
-          ++count;
-        }
-      }
-      cloudInfo.endRingIndex[i] = count - 1 - 5;
-    }
-  }
-
-  void publishClouds()
-  {
-    cloudInfo.header = cloudHeader;
-    cloudInfo.cloud_deskewed = publishCloud(
-      &pubExtractedCloud, *extractedCloud,
-      cloudHeader.stamp, lidarFrame);
-    pubLaserCloudInfo.publish(cloudInfo);
   }
 };
 
