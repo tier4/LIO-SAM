@@ -479,8 +479,6 @@ public:
 
   Eigen::Vector3d findRotation(const double pointTime, const int imuPointerCur)
   {
-    Eigen::Vector3d rotCur = Eigen::Vector3d::Zero();
-
     int imuPointerFront = 0;
     while (imuPointerFront < imuPointerCur) {
       if (pointTime < imuTime[imuPointerFront]) {
@@ -490,15 +488,14 @@ public:
     }
 
     if (pointTime > imuTime[imuPointerFront] || imuPointerFront == 0) {
-      rotCur = imuRot[imuPointerFront];
-    } else {
-      int imuPointerBack = imuPointerFront - 1;
-      double diff = imuTime[imuPointerFront] - imuTime[imuPointerBack];
-      double ratioFront = (pointTime - imuTime[imuPointerBack]) / diff;
-      double ratioBack = (imuTime[imuPointerFront] - pointTime) / diff;
-      rotCur = imuRot[imuPointerFront] * ratioFront + imuRot[imuPointerBack] * ratioBack;
+      return imuRot[imuPointerFront];
     }
-    return rotCur;
+
+    const int imuPointerBack = imuPointerFront - 1;
+    const double diff = imuTime[imuPointerFront] - imuTime[imuPointerBack];
+    const double ratioFront = (pointTime - imuTime[imuPointerBack]) / diff;
+    const double ratioBack = (imuTime[imuPointerFront] - pointTime) / diff;
+    return imuRot[imuPointerFront] * ratioFront + imuRot[imuPointerBack] * ratioBack;
   }
 
   std::tuple<float, float, float> findPosition(double relTime)
