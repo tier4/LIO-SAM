@@ -324,9 +324,10 @@ double ROS_TIME(T msg)
 }
 
 
-std::tuple < double, double, double > imuAngular2rosAngular(
-  const geometry_msgs::Vector3 & angular_velocity) {
-  return {angular_velocity.x, angular_velocity.y, angular_velocity.z};
+Eigen::Vector3d imuAngular2rosAngular(
+  const geometry_msgs::Vector3 & angular_velocity)
+{
+  return Eigen::Vector3d(angular_velocity.x, angular_velocity.y, angular_velocity.z);
 }
 
 

@@ -82,9 +82,7 @@ private:
   sensor_msgs::PointCloud2 currentCloudMsg;
 
   std::array<double, queueLength> imuTime;
-  std::array<double, queueLength> imuRotX;
-  std::array<double, queueLength> imuRotY;
-  std::array<double, queueLength> imuRotZ;
+  std::array<Eigen::Vector3d, queueLength> imuRot;
 
   int imuPointerCur;
   bool firstPointFlag;
@@ -150,9 +148,7 @@ public:
 
     for (int i = 0; i < queueLength; ++i) {
       imuTime[i] = 0;
-      imuRotX[i] = 0;
-      imuRotY[i] = 0;
-      imuRotZ[i] = 0;
+      imuRot[i] = Eigen::Vector3d::Zero();
     }
 
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
@@ -215,9 +211,7 @@ public:
 
     for (int i = 0; i < queueLength; ++i) {
       imuTime[i] = 0;
-      imuRotX[i] = 0;
-      imuRotY[i] = 0;
-      imuRotZ[i] = 0;
+      imuRot[i] = Eigen::Vector3d::Zero();
     }
   }
 
@@ -367,23 +361,18 @@ public:
       }
 
       if (imuPointerCur == 0) {
-        imuRotX[0] = 0;
-        imuRotY[0] = 0;
-        imuRotZ[0] = 0;
+        imuRot[0] = Eigen::Vector3d::Zero();
         imuTime[0] = currentImuTime;
         ++imuPointerCur;
         continue;
       }
 
       // get angular velocity
-      const auto [angular_x, angular_y, angular_z] = imuAngular2rosAngular(
-        thisImuMsg.angular_velocity);
+      const Eigen::Vector3d angular = imuAngular2rosAngular(thisImuMsg.angular_velocity);
 
       // integrate rotation
       double timeDiff = currentImuTime - imuTime[imuPointerCur - 1];
-      imuRotX[imuPointerCur] = imuRotX[imuPointerCur - 1] + angular_x * timeDiff;
-      imuRotY[imuPointerCur] = imuRotY[imuPointerCur - 1] + angular_y * timeDiff;
-      imuRotZ[imuPointerCur] = imuRotZ[imuPointerCur - 1] + angular_z * timeDiff;
+      imuRot[imuPointerCur] = imuRot[imuPointerCur - 1] + angular * timeDiff;
       imuTime[imuPointerCur] = currentImuTime;
       ++imuPointerCur;
     }
@@ -488,11 +477,9 @@ public:
     odomDeskewFlag = true;
   }
 
-  std::tuple<float, float, float> findRotation(const double pointTime, const int imuPointerCur)
+  Eigen::Vector3d findRotation(const double pointTime, const int imuPointerCur)
   {
-    float rotXCur = 0;
-    float rotYCur = 0;
-    float rotZCur = 0;
+    Eigen::Vector3d rotCur = Eigen::Vector3d::Zero();
 
     int imuPointerFront = 0;
     while (imuPointerFront < imuPointerCur) {
@@ -503,20 +490,16 @@ public:
     }
 
     if (pointTime > imuTime[imuPointerFront] || imuPointerFront == 0) {
-      rotXCur = imuRotX[imuPointerFront];
-      rotYCur = imuRotY[imuPointerFront];
-      rotZCur = imuRotZ[imuPointerFront];
+      rotCur = imuRot[imuPointerFront];
     } else {
       int imuPointerBack = imuPointerFront - 1;
       double ratioFront = (pointTime - imuTime[imuPointerBack]) /
         (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
       double ratioBack = (imuTime[imuPointerFront] - pointTime) /
         (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-      rotXCur = imuRotX[imuPointerFront] * ratioFront + imuRotX[imuPointerBack] * ratioBack;
-      rotYCur = imuRotY[imuPointerFront] * ratioFront + imuRotY[imuPointerBack] * ratioBack;
-      rotZCur = imuRotZ[imuPointerFront] * ratioFront + imuRotZ[imuPointerBack] * ratioBack;
+      rotCur = imuRot[imuPointerFront] * ratioFront + imuRot[imuPointerBack] * ratioBack;
     }
-    return {rotXCur, rotYCur, rotZCur};
+    return rotCur;
   }
 
   std::tuple<float, float, float> findPosition(double relTime)
@@ -536,11 +519,11 @@ public:
 
     double pointTime = timeScanCur + relTime;
 
-    const auto [rotXCur, rotYCur, rotZCur] = findRotation(pointTime, imuPointerCur);
+    const Eigen::Vector3d rotCur = findRotation(pointTime, imuPointerCur);
     const auto [posXCur, posYCur, posZCur] = findPosition(relTime);
 
     const Eigen::Affine3f transform = pcl::getTransformation(
-      posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur
+      posXCur, posYCur, posZCur, rotCur(0), rotCur(1), rotCur(1)
     );
 
     if (firstPointFlag) {
