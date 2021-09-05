@@ -130,28 +130,6 @@ public:
     pubLaserCloudInfo =
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
 
-    allocateMemory();
-    laserCloudIn->clear();
-    extractedCloud->clear();
-    // reset range matrix for range image projection
-    rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
-
-    imuPointerCur = 0;
-    firstPointFlag = true;
-    odomDeskewFlag = false;
-
-    for (int i = 0; i < queueLength; ++i) {
-      imuTime[i] = 0;
-      imuRotX[i] = 0;
-      imuRotY[i] = 0;
-      imuRotZ[i] = 0;
-    }
-
-    pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
-  }
-
-  void allocateMemory()
-  {
     laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
     fullCloud.reset(new pcl::PointCloud<PointType>());
     extractedCloud.reset(new pcl::PointCloud<PointType>());
@@ -179,6 +157,8 @@ public:
       imuRotY[i] = 0;
       imuRotZ[i] = 0;
     }
+
+    pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
 
   ~ImageProjection() {}
