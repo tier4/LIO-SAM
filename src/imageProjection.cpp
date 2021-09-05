@@ -172,11 +172,11 @@ public:
       return;
     }
 
-    if (!deskewInfo()) {
+    if (!deskewInfo(imuPointerCur)) {
       return;
     }
 
-    projectPointCloud(laserCloudIn->points);
+    projectPointCloud(laserCloudIn->points, imuPointerCur);
 
     int count = 0;
     // extract segmented cloud for lidar odometry
@@ -302,7 +302,7 @@ public:
     return true;
   }
 
-  bool deskewInfo()
+  bool deskewInfo(int & imuPointerCur)
   {
     std::lock_guard<std::mutex> lock1(imuLock);
     std::lock_guard<std::mutex> lock2(odoLock);
@@ -325,14 +325,14 @@ public:
       return false;
     }
 
-    imuDeskewInfo();
+    imuDeskewInfo(imuPointerCur);
 
     odomDeskewInfo();
 
     return true;
   }
 
-  void imuDeskewInfo()
+  void imuDeskewInfo(int & imuPointerCur)
   {
     cloudInfo.imuAvailable = false;
 
@@ -488,7 +488,7 @@ public:
     odomDeskewFlag = true;
   }
 
-  std::tuple<float, float, float> findRotation(const double pointTime)
+  std::tuple<float, float, float> findRotation(const double pointTime, const int imuPointerCur)
   {
     float rotXCur = 0;
     float rotYCur = 0;
@@ -528,7 +528,7 @@ public:
     return {posXCur, posYCur, posZCur};
   }
 
-  PointType deskewPoint(const PointType & point, double relTime)
+  PointType deskewPoint(const PointType & point, double relTime, const int imuPointerCur)
   {
     if (deskewFlag == -1 || cloudInfo.imuAvailable == false) {
       return point;
@@ -536,7 +536,7 @@ public:
 
     double pointTime = timeScanCur + relTime;
 
-    const auto [rotXCur, rotYCur, rotZCur] = findRotation(pointTime);
+    const auto [rotXCur, rotYCur, rotZCur] = findRotation(pointTime, imuPointerCur);
     const auto [posXCur, posYCur, posZCur] = findPosition(relTime);
 
     const Eigen::Affine3f transform = pcl::getTransformation(
@@ -564,7 +564,8 @@ public:
   }
 
   void projectPointCloud(
-    const std::vector<PointXYZIRT, Eigen::aligned_allocator<PointXYZIRT>> & points)
+    const std::vector<PointXYZIRT, Eigen::aligned_allocator<PointXYZIRT>> & points,
+    const int imuPointerCur)
   {
     for (const PointXYZIRT & point : points) {
       PointType thisPoint;
@@ -606,7 +607,7 @@ public:
       rangeMat.at<float>(rowIdn, columnIdn) = range;
 
       int index = columnIdn + rowIdn * Horizon_SCAN;
-      fullCloud->points[index] = deskewPoint(thisPoint, point.time);
+      fullCloud->points[index] = deskewPoint(thisPoint, point.time, imuPointerCur);
     }
   }
 };
