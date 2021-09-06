@@ -51,7 +51,7 @@ public:
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
-    std::vector<float> cloudCurvature(N_SCAN * Horizon_SCAN);
+    std::vector<float> curvature(N_SCAN * Horizon_SCAN);
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<int> label(N_SCAN * Horizon_SCAN);
 
@@ -76,7 +76,7 @@ public:
         range[i] * 10 +
         range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
 
-      cloudCurvature[i] = d * d;
+      curvature[i] = d * d;
       smoothness[i] = i;
     }
 
@@ -140,12 +140,12 @@ public:
           continue;
         }
 
-        std::sort(smoothness.begin() + sp, smoothness.begin() + ep, by_value(cloudCurvature));
+        std::sort(smoothness.begin() + sp, smoothness.begin() + ep, by_value(curvature));
 
         int largestPickedNum = 0;
         for (int k = ep; k >= sp; k--) {
           int ind = smoothness[k];
-          if (neighbor_picked[ind] || cloudCurvature[ind] <= edgeThreshold) {
+          if (neighbor_picked[ind] || curvature[ind] <= edgeThreshold) {
             continue;
           }
 
@@ -176,7 +176,7 @@ public:
 
         for (int k = sp; k <= ep; k++) {
           int ind = smoothness[k];
-          if (neighbor_picked[ind] || cloudCurvature[ind] >= surfThreshold) {
+          if (neighbor_picked[ind] || curvature[ind] >= surfThreshold) {
             continue;
           }
 
