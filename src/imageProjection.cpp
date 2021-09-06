@@ -48,50 +48,50 @@ class IMUBuffer
 public:
   void imuHandler(const sensor_msgs::Imu::ConstPtr & imuMsg)
   {
-    sensor_msgs::Imu thisImu = imu_converter_.imuConverter(*imuMsg);
+    sensor_msgs::Imu msg = imu_converter_.imuConverter(*imuMsg);
 
     std::lock_guard<std::mutex> lock1(imuLock);
-    imuQueue.push_back(thisImu);
+    deque_.push_back(msg);
   }
 
   size_t size()
   {
-    return imuQueue.size();
+    return deque_.size();
   }
 
   geometry_msgs::Quaternion orientation(const int index)
   {
-    return imuQueue[index].orientation;
+    return deque_[index].orientation;
   }
 
   geometry_msgs::Vector3 angular_velocity(const int index)
   {
-    return imuQueue[index].angular_velocity;
+    return deque_[index].angular_velocity;
   }
 
   double getFrontTimeInSec()
   {
-    return getTimeInSec(imuQueue.front());
+    return getTimeInSec(deque_.front());
   }
 
   double getBackTimeInSec()
   {
-    return getTimeInSec(imuQueue.back());
+    return getTimeInSec(deque_.back());
   }
 
   double getTimeInSec(const int index)
   {
-    return getTimeInSec(imuQueue[index]);
+    return getTimeInSec(deque_[index]);
   }
 
   bool empty()
   {
-    return imuQueue.empty();
+    return deque_.empty();
   }
 
   void pop_front()
   {
-    imuQueue.pop_front();
+    deque_.pop_front();
   }
 
 private:
@@ -100,7 +100,7 @@ private:
     return msg.header.stamp.toSec();
   }
 
-  std::deque<sensor_msgs::Imu> imuQueue;
+  std::deque<sensor_msgs::Imu> deque_;
 
   IMUConverter imu_converter_;
 };
