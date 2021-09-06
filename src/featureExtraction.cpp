@@ -123,8 +123,8 @@ public:
       }
     }
 
-    pcl::PointCloud<PointType> cornerCloud;
-    pcl::PointCloud<PointType> surfaceCloud;
+    pcl::PointCloud<PointType> corner;
+    pcl::PointCloud<PointType> surface;
 
     const std::vector<int> & start_index = cloudInfo.startRingIndex;
     const std::vector<int> & end_index = cloudInfo.endRingIndex;
@@ -152,7 +152,7 @@ public:
           largestPickedNum++;
           if (largestPickedNum <= 20) {
             cloudLabel[ind] = 1;
-            cornerCloud.push_back(extractedCloud.points[ind]);
+            corner.push_back(extractedCloud.points[ind]);
           } else {
             break;
           }
@@ -215,7 +215,7 @@ public:
       pcl::PointCloud<PointType> downsampled;
       downSizeFilter.filter(downsampled);
 
-      surfaceCloud += downsampled;
+      surface += downsampled;
     }
 
     // free cloud info memory
@@ -226,10 +226,10 @@ public:
 
     // save newly extracted features
     cloudInfo.cloud_corner = publishCloud(
-      &pubCornerPoints, cornerCloud,
+      &pubCornerPoints, corner,
       cloudHeader.stamp, lidarFrame);
     cloudInfo.cloud_surface = publishCloud(
-      &pubSurfacePoints, surfaceCloud,
+      &pubSurfacePoints, surface,
       cloudHeader.stamp, lidarFrame);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloudInfo);
