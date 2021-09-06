@@ -86,7 +86,7 @@ private:
 
   int imuPointerCur;
   bool firstPointFlag;
-  Eigen::Affine3f transStartInverse;
+  Eigen::Affine3d transStartInverse;
 
   pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
   pcl::PointCloud<PointType>::Ptr fullCloud;
@@ -507,9 +507,7 @@ public:
     const Eigen::Vector3d rotCur = findRotation(pointTime, imuPointerCur);
     const Eigen::Vector3d posCur = findPosition(relTime);
 
-    const Eigen::Affine3f transform = pcl::getTransformation(
-      posCur(0), posCur(1), posCur(2), rotCur(0), rotCur(1), rotCur(2)
-    );
+    const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
 
     if (firstPointFlag) {
       transStartInverse = transform.inverse();
@@ -517,11 +515,11 @@ public:
     }
 
     // transform points to start
-    Eigen::Affine3f transBt = transStartInverse * transform;
+    const Eigen::Affine3d transBt = transStartInverse * transform;
 
-    Eigen::Vector3f p(point.x, point.y, point.z);
+    const Eigen::Vector3d p(point.x, point.y, point.z);
 
-    const Eigen::Vector3f q = transBt * p;
+    const Eigen::Vector3d q = transBt * p;
     PointType newPoint;
     newPoint.x = q(0);
     newPoint.y = q(1);
