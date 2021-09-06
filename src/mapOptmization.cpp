@@ -483,10 +483,8 @@ public:
       pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr globalSurfCloud(new
       pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr globalSurfCloudDS(new
-      pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr globalMapCloud(new
-      pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType> globalSurfCloudDS;
+    pcl::PointCloud<PointType> globalMapCloud;
     for (int i = 0; i < (int)cloudKeyPoses3D.size(); i++) {
       *globalCornerCloud += transformPointCloud(cornerCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
       *globalSurfCloud += transformPointCloud(surfCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
@@ -509,10 +507,10 @@ public:
       // down-sample and save surf cloud
       downSizeFilterSurf.setInputCloud(globalSurfCloud);
       downSizeFilterSurf.setLeafSize(req.resolution, req.resolution, req.resolution);
-      downSizeFilterSurf.filter(*globalSurfCloudDS);
+      downSizeFilterSurf.filter(globalSurfCloudDS);
       pcl::io::savePCDFileBinary(
         saveMapDirectory + "/SurfMap.pcd",
-        *globalSurfCloudDS);
+        globalSurfCloudDS);
     } else {
       // save corner cloud
       pcl::io::savePCDFileBinary(
@@ -525,12 +523,12 @@ public:
     }
 
     // save global point cloud map
-    *globalMapCloud += *globalCornerCloud;
-    *globalMapCloud += *globalSurfCloud;
+    globalMapCloud += *globalCornerCloud;
+    globalMapCloud += *globalSurfCloud;
 
     int ret = pcl::io::savePCDFileBinary(
       saveMapDirectory + "/GlobalMap.pcd",
-      *globalMapCloud);
+      globalMapCloud);
     res.success = ret == 0;
 
     downSizeFilterCorner.setLeafSize(
