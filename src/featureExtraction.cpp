@@ -62,7 +62,7 @@ public:
       odometrySurfLeafSize);
 
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
-    std_msgs::Header cloudHeader = msgIn->header; // new cloud header
+    const ros::Time stamp = msgIn->header.stamp;
 
     const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
@@ -221,12 +221,8 @@ public:
     cloudInfo.pointRange.clear();
 
     // save newly extracted features
-    cloudInfo.cloud_corner = publishCloud(
-      &pubCornerPoints, corner,
-      cloudHeader.stamp, lidarFrame);
-    cloudInfo.cloud_surface = publishCloud(
-      &pubSurfacePoints, surface,
-      cloudHeader.stamp, lidarFrame);
+    cloudInfo.cloud_corner = publishCloud(&pubCornerPoints, corner, stamp, lidarFrame);
+    cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surface, stamp, lidarFrame);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloudInfo);
   }
