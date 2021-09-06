@@ -378,6 +378,14 @@ geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v)
   return p;
 }
 
+template < typename PointType >
+pcl::PointCloud < PointType > getPointCloud(const sensor_msgs::PointCloud2 & roscloud)
+{
+  pcl::PointCloud < PointType > pclcloud;
+  pcl::fromROSMsg(roscloud, pclcloud);
+  return pclcloud;
+}
+
 float pointDistance(PointType p)
 {
   return sqrt(p.x * p.x + p.y * p.y + p.z * p.z);

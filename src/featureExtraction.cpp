@@ -55,8 +55,6 @@ public:
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<int> label(N_SCAN * Horizon_SCAN);
 
-    pcl::PointCloud<PointType> extractedCloud;
-
     pcl::VoxelGrid<PointType> downSizeFilter;
 
     downSizeFilter.setLeafSize(
@@ -65,8 +63,9 @@ public:
 
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
     std_msgs::Header cloudHeader = msgIn->header; // new cloud header
-    // new cloud for extraction
-    pcl::fromROSMsg(msgIn->cloud_deskewed, extractedCloud);
+
+    const pcl::PointCloud<PointType> extractedCloud =
+      getPointCloud<PointType>(msgIn->cloud_deskewed);
 
     const int cloudSize = extractedCloud.points.size();
 
