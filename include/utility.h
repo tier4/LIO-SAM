@@ -379,6 +379,12 @@ geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v)
 }
 
 template < typename PointType >
+struct Points
+{
+  typedef std::vector < PointType, Eigen::aligned_allocator < PointType >> type;
+};
+
+template < typename PointType >
 pcl::PointCloud < PointType > getPointCloud(const sensor_msgs::PointCloud2 & roscloud)
 {
   pcl::PointCloud < PointType > pclcloud;

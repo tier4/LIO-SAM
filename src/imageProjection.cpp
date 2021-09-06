@@ -530,7 +530,7 @@ public:
   }
 
   void projectPointCloud(
-    const std::vector<PointXYZIRT, Eigen::aligned_allocator<PointXYZIRT>> & points,
+    const Points<PointXYZIRT>::type & points,
     const int imuPointerCur)
   {
     for (const PointXYZIRT & point : points) {

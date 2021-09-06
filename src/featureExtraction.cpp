@@ -64,8 +64,7 @@ public:
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
     std_msgs::Header cloudHeader = msgIn->header; // new cloud header
 
-    const std::vector<PointType, Eigen::aligned_allocator<PointType>> points =
-      getPointCloud<PointType>(msgIn->cloud_deskewed).points;
+    const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
     const int cloudSize = points.size();
 
