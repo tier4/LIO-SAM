@@ -541,12 +541,12 @@ public:
       thisPoint.intensity = point.intensity;
 
       float range = pointDistance(thisPoint);
-      if (range < lidarMinRange || range > lidarMaxRange) {
+      if (range < lidarMinRange || lidarMaxRange < range) {
         continue;
       }
 
       int rowIdn = point.ring;
-      if (rowIdn < 0 || rowIdn >= N_SCAN) {
+      if (rowIdn < 0 || N_SCAN <= rowIdn) {
         continue;
       }
 
