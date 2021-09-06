@@ -328,6 +328,13 @@ Eigen::Vector3d pointToEigen(const geometry_msgs::Point & p)
   return Eigen::Vector3d(p.x, p.y, p.z);
 }
 
+Eigen::Affine3d makeAffine(const Eigen::Vector3d & point, const Eigen::Vector3d & rpy)
+{
+  Eigen::Affine3d transform;
+  pcl::getTransformation(point(0), point(1), point(2), rpy(0), rpy(1), rpy(2), transform);
+  return transform;
+}
+
 Eigen::Vector3d imuAngular2rosAngular(
   const geometry_msgs::Vector3 & angular_velocity)
 {

@@ -457,19 +457,15 @@ public:
       return;
     }
 
-    Eigen::Affine3f transBegin = pcl::getTransformation(
-      start_point(0), start_point(1), start_point(2),
-      start_rpy(0), start_rpy(1), start_rpy(2));
+    const Eigen::Affine3d transBegin = makeAffine(start_point, start_rpy);
 
     const Eigen::Vector3d end_rpy = quaternionToRPY(endOdomMsg.pose.pose.orientation);
     const Eigen::Vector3d end_point = pointToEigen(endOdomMsg.pose.pose.position);
-    Eigen::Affine3f transEnd = pcl::getTransformation(
-      end_point(0), end_point(1), end_point(2),
-      end_rpy(0), end_rpy(1), end_rpy(2));
+    const Eigen::Affine3d transEnd = makeAffine(end_point, end_rpy);
 
-    Eigen::Affine3f transBt = transBegin.inverse() * transEnd;
+    const Eigen::Affine3d transBt = transBegin.inverse() * transEnd;
 
-    odomInc = transBt.translation().cast<double>();
+    odomInc = transBt.translation();
     odomDeskewFlag = true;
   }
 
