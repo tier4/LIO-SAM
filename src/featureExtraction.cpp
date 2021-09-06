@@ -53,7 +53,7 @@ public:
   {
     std::vector<float> cloudCurvature(N_SCAN * Horizon_SCAN);
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
-    std::vector<int> cloudLabel(N_SCAN * Horizon_SCAN);
+    std::vector<int> label(N_SCAN * Horizon_SCAN);
 
     pcl::PointCloud<PointType> extractedCloud;
 
@@ -81,7 +81,7 @@ public:
     }
 
     for (int i = 5; i < cloudSize - 5; i++) {
-      cloudLabel[i] = 0;
+      label[i] = 0;
     }
 
     for (int i = 5; i < cloudSize - 5; i++) {
@@ -151,7 +151,7 @@ public:
 
           largestPickedNum++;
           if (largestPickedNum <= 20) {
-            cloudLabel[ind] = 1;
+            label[ind] = 1;
             corner.push_back(extractedCloud.points[ind]);
           } else {
             break;
@@ -180,7 +180,7 @@ public:
             continue;
           }
 
-          cloudLabel[ind] = -1;
+          label[ind] = -1;
           neighbor_picked[ind] = true;
 
           for (int l = 1; l <= 5; l++) {
@@ -204,7 +204,7 @@ public:
         }
 
         for (int k = sp; k <= ep; k++) {
-          if (cloudLabel[k] <= 0) {
+          if (label[k] <= 0) {
             surfaceCloudScan->push_back(extractedCloud.points[k]);
           }
         }
