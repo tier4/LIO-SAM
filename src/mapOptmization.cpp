@@ -471,8 +471,8 @@ public:
     } else {saveMapDirectory = std::getenv("HOME") + req.destination;}
     std::cout << "Save destination: " << saveMapDirectory << std::endl;
     // create directory and remove old files;
-    int unused = system((std::string("exec rm -r ") + saveMapDirectory).c_str());
-    unused = system((std::string("mkdir -p ") + saveMapDirectory).c_str());
+    system((std::string("exec rm -r ") + saveMapDirectory).c_str());
+    system((std::string("mkdir -p ") + saveMapDirectory).c_str());
     // save key frame transformations
     pcl::io::savePCDFileBinary(saveMapDirectory + "/trajectory.pcd", cloudKeyPoses3D);
     pcl::io::savePCDFileBinary(saveMapDirectory + "/transformations.pcd", cloudKeyPoses6D);
