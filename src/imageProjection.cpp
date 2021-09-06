@@ -426,10 +426,11 @@ public:
     double roll, pitch, yaw;
     tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
 
+    const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
     // Initial guess used in mapOptimization
-    cloudInfo.initialGuessX = startOdomMsg.pose.pose.position.x;
-    cloudInfo.initialGuessY = startOdomMsg.pose.pose.position.y;
-    cloudInfo.initialGuessZ = startOdomMsg.pose.pose.position.z;
+    cloudInfo.initialGuessX = start_point(0);
+    cloudInfo.initialGuessY = start_point(1);
+    cloudInfo.initialGuessZ = start_point(2);
     cloudInfo.initialGuessRoll = roll;
     cloudInfo.initialGuessPitch = pitch;
     cloudInfo.initialGuessYaw = yaw;

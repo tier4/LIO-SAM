@@ -323,6 +323,10 @@ double ROS_TIME(T msg)
   return msg->header.stamp.toSec();
 }
 
+Eigen::Vector3d pointToEigen(const geometry_msgs::Point & p)
+{
+  return Eigen::Vector3d(p.x, p.y, p.z);
+}
 
 Eigen::Vector3d imuAngular2rosAngular(
   const geometry_msgs::Vector3 & angular_velocity)
