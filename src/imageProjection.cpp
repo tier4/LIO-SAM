@@ -96,9 +96,7 @@ private:
   cv::Mat rangeMat;
 
   bool odomDeskewFlag;
-  float odomIncreX;
-  float odomIncreY;
-  float odomIncreZ;
+  Eigen::Vector3d odomInc;
 
   lio_sam::cloud_info cloudInfo;
   double timeScanCur;
@@ -477,12 +475,7 @@ public:
 
     Eigen::Affine3f transBt = transBegin.inverse() * transEnd;
 
-    float rollIncre, pitchIncre, yawIncre;
-    pcl::getTranslationAndEulerAngles(
-      transBt,
-      odomIncreX, odomIncreY, odomIncreZ,
-      rollIncre, pitchIncre, yawIncre);
-
+    odomInc = transBt.translation().cast<double>();
     odomDeskewFlag = true;
   }
 
@@ -514,11 +507,7 @@ public:
     }
 
     const float ratio = relTime / (timeScanEnd - timeScanCur);
-
-    const float posXCur = ratio * odomIncreX;
-    const float posYCur = ratio * odomIncreY;
-    const float posZCur = ratio * odomIncreZ;
-    return Eigen::Vector3d(posXCur, posYCur, posZCur);
+    return ratio * odomInc;
   }
 
   PointType deskewPoint(const PointType & point, double relTime, const int imuPointerCur)
