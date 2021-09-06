@@ -509,10 +509,15 @@ public:
 
   std::tuple<float, float, float> findPosition(double relTime)
   {
-    float posXCur = 0;
-    float posYCur = 0;
-    float posZCur = 0;
+    if (cloudInfo.odomAvailable == false || odomDeskewFlag == false) {
+      return {0.0, 0.0, 0.0};
+    }
 
+    float ratio = relTime / (timeScanEnd - timeScanCur);
+
+    float posXCur = ratio * odomIncreX;
+    float posYCur = ratio * odomIncreY;
+    float posZCur = ratio * odomIncreZ;
     return {posXCur, posYCur, posZCur};
   }
 
