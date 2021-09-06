@@ -507,18 +507,18 @@ public:
     return imuRot[imuPointerFront] * ratioFront + imuRot[imuPointerBack] * ratioBack;
   }
 
-  std::tuple<float, float, float> findPosition(double relTime)
+  Eigen::Vector3d findPosition(const double relTime)
   {
     if (cloudInfo.odomAvailable == false || odomDeskewFlag == false) {
-      return {0.0, 0.0, 0.0};
+      return Eigen::Vector3d::Zero();
     }
 
-    float ratio = relTime / (timeScanEnd - timeScanCur);
+    const float ratio = relTime / (timeScanEnd - timeScanCur);
 
-    float posXCur = ratio * odomIncreX;
-    float posYCur = ratio * odomIncreY;
-    float posZCur = ratio * odomIncreZ;
-    return {posXCur, posYCur, posZCur};
+    const float posXCur = ratio * odomIncreX;
+    const float posYCur = ratio * odomIncreY;
+    const float posZCur = ratio * odomIncreZ;
+    return Eigen::Vector3d(posXCur, posYCur, posZCur);
   }
 
   PointType deskewPoint(const PointType & point, double relTime, const int imuPointerCur)
@@ -530,10 +530,10 @@ public:
     double pointTime = timeScanCur + relTime;
 
     const Eigen::Vector3d rotCur = findRotation(pointTime, imuPointerCur);
-    const auto [posXCur, posYCur, posZCur] = findPosition(relTime);
+    const Eigen::Vector3d posCur = findPosition(relTime);
 
     const Eigen::Affine3f transform = pcl::getTransformation(
-      posXCur, posYCur, posZCur, rotCur(0), rotCur(1), rotCur(1)
+      posCur(0), posCur(1), posCur(2), rotCur(0), rotCur(1), rotCur(1)
     );
 
     if (firstPointFlag) {
