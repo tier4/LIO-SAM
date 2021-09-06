@@ -16,12 +16,8 @@ float32 imuPitchInit
 float32 imuYawInit
 
 # Initial guess from imu pre-integration
-float32 initialGuessX
-float32 initialGuessY
-float32 initialGuessZ
-float32 initialGuessRoll
-float32 initialGuessPitch
-float32 initialGuessYaw
+geometry_msgs/Vector3 initialXYZ
+geometry_msgs/Vector3 initialRPY
 
 # Point cloud messages
 sensor_msgs/PointCloud2 cloud_deskewed  # original cloud deskewed

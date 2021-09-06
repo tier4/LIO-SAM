@@ -355,6 +355,15 @@ Eigen::Vector3d quaternionToRPY(const geometry_msgs::Quaternion & orientation)
   return quaternionToRPY(quat);
 }
 
+geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v)
+{
+  geometry_msgs::Vector3 p;
+  p.x = v[0];
+  p.y = v[1];
+  p.z = v[2];
+  return p;
+}
+
 float pointDistance(PointType p)
 {
   return sqrt(p.x * p.x + p.y * p.y + p.z * p.z);

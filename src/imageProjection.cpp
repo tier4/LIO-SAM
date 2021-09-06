@@ -423,12 +423,8 @@ public:
     const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
     const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
     // Initial guess used in mapOptimization
-    cloudInfo.initialGuessX = start_point(0);
-    cloudInfo.initialGuessY = start_point(1);
-    cloudInfo.initialGuessZ = start_point(2);
-    cloudInfo.initialGuessRoll = start_rpy(0);
-    cloudInfo.initialGuessPitch = start_rpy(1);
-    cloudInfo.initialGuessYaw = start_rpy(2);
+    cloudInfo.initialXYZ = eigenToVector3(start_point);
+    cloudInfo.initialRPY = eigenToVector3(start_rpy);
 
     cloudInfo.odomAvailable = true;
 
