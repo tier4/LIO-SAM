@@ -96,6 +96,9 @@ private:
   cv::Mat rangeMat;
 
   bool odomDeskewFlag;
+  float odomIncreX;
+  float odomIncreY;
+  float odomIncreZ;
 
   lio_sam::cloud_info cloudInfo;
   double timeScanCur;
@@ -473,6 +476,12 @@ public:
       roll, pitch, yaw);
 
     Eigen::Affine3f transBt = transBegin.inverse() * transEnd;
+
+    float rollIncre, pitchIncre, yawIncre;
+    pcl::getTranslationAndEulerAngles(
+      transBt,
+      odomIncreX, odomIncreY, odomIncreZ,
+      rollIncre, pitchIncre, yawIncre);
 
     odomDeskewFlag = true;
   }
