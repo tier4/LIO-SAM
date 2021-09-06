@@ -30,7 +30,7 @@ public:
   ros::Publisher pubLaserCloudInfo;
   ros::Publisher pubCornerPoints;
   ros::Publisher pubSurfacePoints;
-  std::vector<int> cloudSmoothness;
+  std::vector<int> smoothness;
   FeatureExtraction()
   {
     subLaserCloudInfo =
@@ -46,7 +46,7 @@ public:
     pubSurfacePoints =
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
 
-    cloudSmoothness.resize(N_SCAN * Horizon_SCAN);
+    smoothness.resize(N_SCAN * Horizon_SCAN);
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
@@ -77,7 +77,7 @@ public:
         range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
 
       cloudCurvature[i] = d * d;
-      cloudSmoothness[i] = i;
+      smoothness[i] = i;
     }
 
     for (int i = 5; i < cloudSize - 5; i++) {
@@ -140,13 +140,11 @@ public:
           continue;
         }
 
-        std::sort(
-          cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep,
-          by_value(cloudCurvature));
+        std::sort(smoothness.begin() + sp, smoothness.begin() + ep, by_value(cloudCurvature));
 
         int largestPickedNum = 0;
         for (int k = ep; k >= sp; k--) {
-          int ind = cloudSmoothness[k];
+          int ind = smoothness[k];
           if (neighbor_picked[ind] || cloudCurvature[ind] <= edgeThreshold) {
             continue;
           }
@@ -177,7 +175,7 @@ public:
         }
 
         for (int k = sp; k <= ep; k++) {
-          int ind = cloudSmoothness[k];
+          int ind = smoothness[k];
           if (neighbor_picked[ind] || cloudCurvature[ind] >= surfThreshold) {
             continue;
           }
