@@ -420,20 +420,15 @@ public:
       }
     }
 
-    tf::Quaternion orientation;
-    tf::quaternionMsgToTF(startOdomMsg.pose.pose.orientation, orientation);
-
-    double roll, pitch, yaw;
-    tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
-
+    const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
     const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
     // Initial guess used in mapOptimization
     cloudInfo.initialGuessX = start_point(0);
     cloudInfo.initialGuessY = start_point(1);
     cloudInfo.initialGuessZ = start_point(2);
-    cloudInfo.initialGuessRoll = roll;
-    cloudInfo.initialGuessPitch = pitch;
-    cloudInfo.initialGuessYaw = yaw;
+    cloudInfo.initialGuessRoll = start_rpy(0);
+    cloudInfo.initialGuessPitch = start_rpy(1);
+    cloudInfo.initialGuessYaw = start_rpy(2);
 
     cloudInfo.odomAvailable = true;
 
@@ -463,16 +458,14 @@ public:
     }
 
     Eigen::Affine3f transBegin = pcl::getTransformation(
-      startOdomMsg.pose.pose.position.x, startOdomMsg.pose.pose.position.y,
-      startOdomMsg.pose.pose.position.z, roll, pitch, yaw);
+      start_point(0), start_point(1), start_point(2),
+      start_rpy(0), start_rpy(1), start_rpy(2));
 
-    tf::quaternionMsgToTF(endOdomMsg.pose.pose.orientation, orientation);
-    tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+    const Eigen::Vector3d end_rpy = quaternionToRPY(endOdomMsg.pose.pose.orientation);
+    const Eigen::Vector3d end_point = pointToEigen(endOdomMsg.pose.pose.position);
     Eigen::Affine3f transEnd = pcl::getTransformation(
-      endOdomMsg.pose.pose.position.x,
-      endOdomMsg.pose.pose.position.y,
-      endOdomMsg.pose.pose.position.z,
-      roll, pitch, yaw);
+      end_point(0), end_point(1), end_point(2),
+      end_rpy(0), end_rpy(1), end_rpy(2));
 
     Eigen::Affine3f transBt = transBegin.inverse() * transEnd;
 
