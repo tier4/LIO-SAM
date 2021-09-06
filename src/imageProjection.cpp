@@ -351,10 +351,10 @@ public:
 
       // get roll, pitch, and yaw estimation for this scan
       if (currentImuTime <= timeScanCur) {
-        std::tie(
-          cloudInfo.imuRollInit,
-          cloudInfo.imuPitchInit,
-          cloudInfo.imuYawInit) = imuRPY2rosRPY(thisImuMsg.orientation);
+        const Eigen::Vector3d rpy = quaternionToRPY(thisImuMsg.orientation);
+        cloudInfo.imuRollInit = rpy(0);
+        cloudInfo.imuPitchInit = rpy(1);
+        cloudInfo.imuYawInit = rpy(2);
       }
 
       if (currentImuTime > timeScanEnd + 0.01) {
