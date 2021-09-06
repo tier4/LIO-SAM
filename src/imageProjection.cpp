@@ -52,10 +52,6 @@ public:
 
     std::lock_guard<std::mutex> lock1(imuLock);
     imuQueue.push_back(thisImu);
-    double roll, pitch, yaw;
-    tf::Quaternion orientation;
-    tf::quaternionMsgToTF(thisImu.orientation, orientation);
-    tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
   }
   std::deque<sensor_msgs::Imu> imuQueue;
 
