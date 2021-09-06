@@ -11,9 +11,7 @@ int64 imuAvailable
 int64 odomAvailable
 
 # Attitude for LOAM initialization
-float32 imuRollInit
-float32 imuPitchInit
-float32 imuYawInit
+geometry_msgs/Vector3 initialIMU
 
 # Initial guess from imu pre-integration
 geometry_msgs/Vector3 initialXYZ

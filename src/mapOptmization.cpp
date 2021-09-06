@@ -650,9 +650,9 @@ public:
 
     static Eigen::Affine3f lastImuTransformation;
 
-    const float roll = cloudInfo.imuRollInit;
-    const float pitch = cloudInfo.imuPitchInit;
-    const float yaw = cloudInfo.imuYawInit;
+    const float roll = cloudInfo.initialIMU.x;
+    const float pitch = cloudInfo.initialIMU.y;
+    const float yaw = cloudInfo.initialIMU.z;
 
     // initialization
     if (cloudKeyPoses3D.points.empty()) {
@@ -1151,19 +1151,19 @@ public:
   void transformUpdate()
   {
     if (cloudInfo.imuAvailable) {
-      if (std::abs(cloudInfo.imuPitchInit) < 1.4) {
+      if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
         double imuWeight = imuRPYWeight;
         tf::Quaternion imuQuaternion;
         tf::Quaternion transformQuaternion;
 
         // slerp roll
         transformQuaternion.setRPY(posevec(0), 0, 0);
-        imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
+        imuQuaternion.setRPY(cloudInfo.initialIMU.x, 0, 0);
         posevec(0) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
 
         // slerp pitch
         transformQuaternion.setRPY(0, posevec(1), 0);
-        imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
+        imuQuaternion.setRPY(0, cloudInfo.initialIMU.y, 0);
         posevec(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
       }
     }
@@ -1453,19 +1453,19 @@ public:
       increOdomAffine = increOdomAffine * affineIncre;
       Vector6f odometry = getPoseVec(increOdomAffine);
       if (cloudInfo.imuAvailable) {
-        if (std::abs(cloudInfo.imuPitchInit) < 1.4) {
+        if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
           double imuWeight = 0.1;
           tf::Quaternion imuQuaternion;
           tf::Quaternion transformQuaternion;
 
           // slerp roll
           transformQuaternion.setRPY(odometry(0), 0, 0);
-          imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
+          imuQuaternion.setRPY(cloudInfo.initialIMU.x, 0, 0);
           odometry(0) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
 
           // slerp pitch
           transformQuaternion.setRPY(0, odometry(1), 0);
-          imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
+          imuQuaternion.setRPY(0, cloudInfo.initialIMU.y, 0);
           odometry(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
         }
       }

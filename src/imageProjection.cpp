@@ -352,9 +352,9 @@ public:
       // get roll, pitch, and yaw estimation for this scan
       if (currentImuTime <= timeScanCur) {
         const Eigen::Vector3d rpy = quaternionToRPY(thisImuMsg.orientation);
-        cloudInfo.imuRollInit = rpy(0);
-        cloudInfo.imuPitchInit = rpy(1);
-        cloudInfo.imuYawInit = rpy(2);
+        cloudInfo.initialIMU.x = rpy(0);
+        cloudInfo.initialIMU.y = rpy(1);
+        cloudInfo.initialIMU.z = rpy(2);
       }
 
       if (currentImuTime > timeScanEnd + 0.01) {
