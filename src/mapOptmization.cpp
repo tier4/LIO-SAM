@@ -28,7 +28,7 @@ using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using symbol_shorthand::G; // GPS pose
 
-typedef Eigen::Matrix<float, 6, 1> Vector6f;
+typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
@@ -78,7 +78,7 @@ float constraintTransformation(const float value, const float limit)
   return value;
 }
 
-tf::Transform makeTransform(const Vector6f & posevec)
+tf::Transform makeTransform(const Vector6d & posevec)
 {
   return tf::Transform(
     tf::createQuaternionFromRPY(posevec(0), posevec(1), posevec(2)),
@@ -86,7 +86,7 @@ tf::Transform makeTransform(const Vector6f & posevec)
   );
 }
 
-geometry_msgs::Pose makePose(const Vector6f & posevec)
+geometry_msgs::Pose makePose(const Vector6d & posevec)
 {
   geometry_msgs::Pose pose;
   pose.position.x = posevec(3);
@@ -98,18 +98,18 @@ geometry_msgs::Pose makePose(const Vector6f & posevec)
   return pose;
 }
 
-Vector6f getPoseVec(const gtsam::Pose3 & pose)
+Vector6d getPoseVec(const gtsam::Pose3 & pose)
 {
   const gtsam::Rot3 r = pose.rotation();
   const gtsam::Point3 t = pose.translation();
-  Vector6f v;
+  Vector6d v;
   v << r.roll(), r.pitch(), r.yaw(), t.x(), t.y(), t.z();
   return v;
 }
 
-Vector6f getPoseVec(const Eigen::Affine3f & transform)
+Vector6d getPoseVec(const Eigen::Affine3d & transform)
 {
-  Vector6f posevec;
+  Vector6d posevec;
   pcl::getTranslationAndEulerAngles(
     transform,
     posevec(3), posevec(4), posevec(5),
@@ -117,11 +117,13 @@ Vector6f getPoseVec(const Eigen::Affine3f & transform)
   return posevec;
 }
 
-Eigen::Affine3f getTransformation(const Vector6f & posevec)
+Eigen::Affine3d getTransformation(const Vector6d & posevec)
 {
-  return pcl::getTransformation(
+  Eigen::Affine3d transform;
+  pcl::getTransformation(
     posevec(3), posevec(4), posevec(5),
     posevec(0), posevec(1), posevec(2));
+  return transform;
 }
 
 gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint)
@@ -137,28 +139,34 @@ gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint)
       double(thisPoint.z)));
 }
 
-gtsam::Pose3 trans2gtsamPose(const Vector6f & transformIn)
+gtsam::Pose3 trans2gtsamPose(const Vector6d & transformIn)
 {
   return gtsam::Pose3(
     gtsam::Rot3::RzRyRx(transformIn(0), transformIn(1), transformIn(2)),
     gtsam::Point3(transformIn(3), transformIn(4), transformIn(5)));
 }
 
-Eigen::Affine3f pclPointToAffine3f(PointTypePose thisPoint)
+Eigen::Affine3d pclPointToAffine3d(PointTypePose thisPoint)
 {
-  return pcl::getTransformation(
+  Eigen::Affine3d transform;
+  pcl::getTransformation(
     thisPoint.x, thisPoint.y, thisPoint.z,
-    thisPoint.roll, thisPoint.pitch, thisPoint.yaw);
+    thisPoint.roll, thisPoint.pitch, thisPoint.yaw,
+    transform);
+  return transform;
 }
 
-Eigen::Affine3f trans2Affine3f(const Vector6f & transformIn)
+Eigen::Affine3d trans2Affine3d(const Vector6d & transformIn)
 {
-  return pcl::getTransformation(
+  Eigen::Affine3d transform;
+  pcl::getTransformation(
     transformIn(3), transformIn(4), transformIn(5),
-    transformIn(0), transformIn(1), transformIn(2));
+    transformIn(0), transformIn(1), transformIn(2),
+    transform);
+  return transform;
 }
 
-PointTypePose trans2PointTypePose(const Vector6f & transformIn)
+PointTypePose trans2PointTypePose(const Vector6d & transformIn)
 {
   PointTypePose thisPose6D;
   thisPose6D.x = transformIn(3);
@@ -179,16 +187,13 @@ pcl::PointCloud<PointType> transformPointCloud(
   int cloudSize = cloudIn.size();
   cloudOut.resize(cloudSize);
 
-  const Eigen::Affine3f transCur = pcl::getTransformation(
-    transformIn.x, transformIn.y, transformIn.z,
-    transformIn.roll, transformIn.pitch, transformIn.yaw
-  );
+  const Eigen::Affine3d transCur = pclPointToAffine3d(transformIn);
 
   #pragma omp parallel for num_threads(numberOfCores)
   for (int i = 0; i < cloudSize; ++i) {
     const auto & pointFrom = cloudIn.points[i];
-    const Eigen::Vector3f p(pointFrom.x, pointFrom.y, pointFrom.z);
-    const Eigen::Vector3f q = transCur * p;
+    const Eigen::Vector3d p(pointFrom.x, pointFrom.y, pointFrom.z);
+    const Eigen::Vector3d q = transCur * p;
     cloudOut.points[i].x = q(0);
     cloudOut.points[i].y = q(1);
     cloudOut.points[i].z = q(2);
@@ -198,11 +203,11 @@ pcl::PointCloud<PointType> transformPointCloud(
 }
 
 PointType pointAssociateToMap(
-  const Eigen::Affine3f & transPointAssociateToMap,
+  const Eigen::Affine3d & transPointAssociateToMap,
   const PointType & pi)
 {
-  const Eigen::Vector3f p(pi.x, pi.y, pi.z);
-  const Eigen::Vector3f q = transPointAssociateToMap * p;
+  const Eigen::Vector3d p(pi.x, pi.y, pi.z);
+  const Eigen::Vector3d q = transPointAssociateToMap * p;
   PointType po;
   po.x = q(0);
   po.y = q(1);
@@ -291,7 +296,7 @@ public:
   ros::Time timeLaserInfoStamp;
   double timeLaserInfoCur;
 
-  Vector6f posevec;
+  Vector6d posevec;
 
   std::mutex mtx;
 
@@ -306,9 +311,9 @@ public:
 
   nav_msgs::Path globalPath;
 
-  Eigen::Affine3f transPointAssociateToMap;
-  Eigen::Affine3f incrementalOdometryAffineFront;
-  Eigen::Affine3f incrementalOdometryAffineBack;
+  Eigen::Affine3d transPointAssociateToMap;
+  Eigen::Affine3d incrementalOdometryAffineFront;
+  Eigen::Affine3d incrementalOdometryAffineBack;
 
   mapOptimization()
   {
@@ -646,13 +651,14 @@ public:
   void updateInitialGuess()
   {
     // save current transformation before any processing
-    incrementalOdometryAffineFront = trans2Affine3f(posevec);
+    incrementalOdometryAffineFront = trans2Affine3d(posevec);
 
-    static Eigen::Affine3f lastImuTransformation;
+    static Eigen::Affine3d lastImuTransformation;
 
     const float roll = cloudInfo.initialIMU.x;
     const float pitch = cloudInfo.initialIMU.y;
     const float yaw = cloudInfo.initialIMU.z;
+    const Eigen::Vector3d rpy = vector3ToEigen(cloudInfo.initialIMU);
 
     // initialization
     if (cloudKeyPoses3D.points.empty()) {
@@ -664,50 +670,44 @@ public:
         posevec(2) = 0;
       }
 
-      lastImuTransformation = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
+      lastImuTransformation = makeAffine(Eigen::Vector3d::Zero(), rpy);
       // save imu before return;
       return;
     }
 
     // use imu pre-integration estimation for pose guess
     static bool lastImuPreTransAvailable = false;
-    static Eigen::Affine3f lastImuPreTransformation;
+    static Eigen::Affine3d lastImuPreTransformation;
     if (cloudInfo.odomAvailable) {
-      Eigen::Affine3f transBack = pcl::getTransformation(
-        cloudInfo.initialXYZ.x,
-        cloudInfo.initialXYZ.y,
-        cloudInfo.initialXYZ.z,
-        cloudInfo.initialRPY.x,
-        cloudInfo.initialRPY.y,
-        cloudInfo.initialRPY.z);
+      Eigen::Affine3d transBack = makeAffine(cloudInfo.initialXYZ, cloudInfo.initialRPY);
       if (!lastImuPreTransAvailable) {
         lastImuPreTransformation = transBack;
         lastImuPreTransAvailable = true;
       } else {
-        Eigen::Affine3f transIncre = lastImuPreTransformation.inverse() * transBack;
-        Eigen::Affine3f transTobe = trans2Affine3f(posevec);
-        Eigen::Affine3f transFinal = transTobe * transIncre;
+        Eigen::Affine3d transIncre = lastImuPreTransformation.inverse() * transBack;
+        Eigen::Affine3d transTobe = trans2Affine3d(posevec);
+        Eigen::Affine3d transFinal = transTobe * transIncre;
         posevec = getPoseVec(transFinal);
 
         lastImuPreTransformation = transBack;
 
         // save imu before return;
-        lastImuTransformation = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
+        lastImuTransformation = makeAffine(Eigen::Vector3d::Zero(), rpy);
         return;
       }
     }
 
     // use imu incremental estimation for pose guess (only rotation)
     if (cloudInfo.imuAvailable) {
-      Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
-      Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
+      Eigen::Affine3d transBack = makeAffine(Eigen::Vector3d::Zero(), rpy);
+      Eigen::Affine3d transIncre = lastImuTransformation.inverse() * transBack;
 
-      Eigen::Affine3f transTobe = trans2Affine3f(posevec);
-      Eigen::Affine3f transFinal = transTobe * transIncre;
+      Eigen::Affine3d transTobe = trans2Affine3d(posevec);
+      Eigen::Affine3d transFinal = transTobe * transIncre;
       posevec = getPoseVec(transFinal);
 
       // save imu before return;
-      lastImuTransformation = pcl::getTransformation(0, 0, 0, roll, pitch, yaw);
+      lastImuTransformation = makeAffine(Eigen::Vector3d::Zero(), rpy);
       return;
     }
   }
@@ -826,7 +826,7 @@ public:
 
   void cornerOptimization()
   {
-    transPointAssociateToMap = trans2Affine3f(posevec);
+    transPointAssociateToMap = trans2Affine3d(posevec);
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
@@ -914,7 +914,7 @@ public:
 
   void surfOptimization()
   {
-    transPointAssociateToMap = trans2Affine3f(posevec);
+    transPointAssociateToMap = trans2Affine3d(posevec);
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
@@ -1172,7 +1172,7 @@ public:
     posevec(1) = constraintTransformation(posevec(1), rotation_tolerance);
     posevec(5) = constraintTransformation(posevec(5), z_tolerance);
 
-    incrementalOdometryAffineBack = trans2Affine3f(posevec);
+    incrementalOdometryAffineBack = trans2Affine3d(posevec);
   }
 
   bool saveFrame()
@@ -1181,10 +1181,10 @@ public:
       return true;
     }
 
-    Eigen::Affine3f transStart = pclPointToAffine3f(cloudKeyPoses6D.back());
-    Eigen::Affine3f transFinal = getTransformation(posevec);
-    Eigen::Affine3f transBetween = transStart.inverse() * transFinal;
-    float x, y, z, roll, pitch, yaw;
+    Eigen::Affine3d transStart = pclPointToAffine3d(cloudKeyPoses6D.back());
+    Eigen::Affine3d transFinal = getTransformation(posevec);
+    Eigen::Affine3d transBetween = transStart.inverse() * transFinal;
+    double x, y, z, roll, pitch, yaw;
     pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
 
     if (abs(roll) < surroundingkeyframeAddingAngleThreshold &&
@@ -1442,16 +1442,16 @@ public:
     // Publish odometry for ROS (incremental)
     static bool lastIncreOdomPubFlag = false;
     static nav_msgs::Odometry laserOdomIncremental; // incremental odometry msg
-    static Eigen::Affine3f increOdomAffine; // incremental odometry in affine
+    static Eigen::Affine3d increOdomAffine; // incremental odometry in affine
     if (!lastIncreOdomPubFlag) {
       lastIncreOdomPubFlag = true;
       laserOdomIncremental = laserOdometryROS;
-      increOdomAffine = trans2Affine3f(posevec);
+      increOdomAffine = trans2Affine3d(posevec);
     } else {
-      Eigen::Affine3f affineIncre = incrementalOdometryAffineFront.inverse() *
+      Eigen::Affine3d affineIncre = incrementalOdometryAffineFront.inverse() *
         incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
-      Vector6f odometry = getPoseVec(increOdomAffine);
+      Vector6d odometry = getPoseVec(increOdomAffine);
       if (cloudInfo.imuAvailable) {
         if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
           double imuWeight = 0.1;

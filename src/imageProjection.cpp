@@ -498,7 +498,7 @@ public:
 
   PointType deskewPoint(const PointType & point, double relTime, const int imuPointerCur)
   {
-    if (deskewFlag == -1 || cloudInfo.imuAvailable == false) {
+    if (deskewFlag == -1 || !cloudInfo.imuAvailable) {
       return point;
     }
 
