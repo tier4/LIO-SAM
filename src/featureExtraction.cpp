@@ -64,10 +64,10 @@ public:
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
     std_msgs::Header cloudHeader = msgIn->header; // new cloud header
 
-    const pcl::PointCloud<PointType> extractedCloud =
-      getPointCloud<PointType>(msgIn->cloud_deskewed);
+    const std::vector<PointType, Eigen::aligned_allocator<PointType>> points =
+      getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
-    const int cloudSize = extractedCloud.points.size();
+    const int cloudSize = points.size();
 
     const std::vector<float> & range = cloudInfo.pointRange;
     for (int i = 5; i < cloudSize - 5; i++) {
@@ -151,7 +151,7 @@ public:
           largestPickedNum++;
           if (largestPickedNum <= 20) {
             label[ind] = 1;
-            corner.push_back(extractedCloud.points[ind]);
+            corner.push_back(points[ind]);
           } else {
             break;
           }
@@ -204,7 +204,7 @@ public:
 
         for (int k = sp; k <= ep; k++) {
           if (label[k] <= 0) {
-            surfaceCloudScan->push_back(extractedCloud.points[k]);
+            surfaceCloudScan->push_back(points[k]);
           }
         }
       }
