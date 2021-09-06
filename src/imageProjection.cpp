@@ -53,9 +53,55 @@ public:
     std::lock_guard<std::mutex> lock1(imuLock);
     imuQueue.push_back(thisImu);
   }
-  std::deque<sensor_msgs::Imu> imuQueue;
+
+  size_t size()
+  {
+    return imuQueue.size();
+  }
+
+  geometry_msgs::Quaternion orientation(const int index)
+  {
+    return imuQueue[index].orientation;
+  }
+
+  geometry_msgs::Vector3 angular_velocity(const int index)
+  {
+    return imuQueue[index].angular_velocity;
+  }
+
+  double getFrontTimeInSec()
+  {
+    return getTimeInSec(imuQueue.front());
+  }
+
+  double getBackTimeInSec()
+  {
+    return getTimeInSec(imuQueue.back());
+  }
+
+  double getTimeInSec(const int index)
+  {
+    return getTimeInSec(imuQueue[index]);
+  }
+
+  bool empty()
+  {
+    return imuQueue.empty();
+  }
+
+  void pop_front()
+  {
+    imuQueue.pop_front();
+  }
 
 private:
+  double getTimeInSec(const sensor_msgs::Imu & msg)
+  {
+    return msg.header.stamp.toSec();
+  }
+
+  std::deque<sensor_msgs::Imu> imuQueue;
+
   IMUConverter imu_converter_;
 };
 
@@ -299,19 +345,19 @@ public:
     std::lock_guard<std::mutex> lock2(odoLock);
 
     // make sure IMU data available for the scan
-    if (imu_buffer.imuQueue.empty()) {
+    if (imu_buffer.empty()) {
       ROS_DEBUG("IMU queue empty ...");
       return false;
     }
 
-    if (imu_buffer.imuQueue.front().header.stamp.toSec() > timeScanCur) {
-      ROS_DEBUG("IMU time = %f", imu_buffer.imuQueue.front().header.stamp.toSec());
+    if (imu_buffer.getFrontTimeInSec() > timeScanCur) {
+      ROS_DEBUG("IMU time = %f", imu_buffer.getFrontTimeInSec());
       ROS_DEBUG("LiDAR time = %f", timeScanCur);
       ROS_DEBUG("Timestamp of IMU data too late");
       return false;
     }
 
-    if (imu_buffer.imuQueue.back().header.stamp.toSec() < timeScanEnd) {
+    if (imu_buffer.getBackTimeInSec() < timeScanEnd) {
       ROS_DEBUG("Timestamp of IMU data too early");
       return false;
     }
@@ -327,27 +373,26 @@ public:
   {
     cloudInfo.imuAvailable = false;
 
-    while (!imu_buffer.imuQueue.empty()) {
-      if (imu_buffer.imuQueue.front().header.stamp.toSec() < timeScanCur - 0.01) {
-        imu_buffer.imuQueue.pop_front();
+    while (!imu_buffer.empty()) {
+      if (imu_buffer.getFrontTimeInSec() < timeScanCur - 0.01) {
+        imu_buffer.pop_front();
       } else {
         break;
       }
     }
 
-    if (imu_buffer.imuQueue.empty()) {
+    if (imu_buffer.empty()) {
       return;
     }
 
     imuPointerCur = 0;
 
-    for (int i = 0; i < (int)imu_buffer.imuQueue.size(); ++i) {
-      sensor_msgs::Imu thisImuMsg = imu_buffer.imuQueue[i];
-      double currentImuTime = thisImuMsg.header.stamp.toSec();
+    for (int i = 0; i < (int)imu_buffer.size(); ++i) {
+      double currentImuTime = imu_buffer.getTimeInSec(i);
 
       // get roll, pitch, and yaw estimation for this scan
       if (currentImuTime <= timeScanCur) {
-        const Eigen::Vector3d rpy = quaternionToRPY(thisImuMsg.orientation);
+        const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer.orientation(i));
         cloudInfo.initialIMU.x = rpy(0);
         cloudInfo.initialIMU.y = rpy(1);
         cloudInfo.initialIMU.z = rpy(2);
@@ -365,7 +410,7 @@ public:
       }
 
       // get angular velocity
-      const Eigen::Vector3d angular = imuAngular2rosAngular(thisImuMsg.angular_velocity);
+      const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer.angular_velocity(i));
 
       // integrate rotation
       double timeDiff = currentImuTime - imuTime[imuPointerCur - 1];
