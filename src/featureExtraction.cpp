@@ -52,7 +52,7 @@ public:
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
     std::vector<float> cloudCurvature(N_SCAN * Horizon_SCAN);
-    std::vector<bool> cloudNeighborPicked(N_SCAN * Horizon_SCAN);
+    std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<int> cloudLabel(N_SCAN * Horizon_SCAN);
 
     pcl::PointCloud<PointType> extractedCloud;
@@ -85,7 +85,7 @@ public:
     }
 
     for (int i = 5; i < cloudSize - 5; i++) {
-      cloudNeighborPicked[i] = false;
+      neighbor_picked[i] = false;
     }
 
     const std::vector<int> & column_index = cloudInfo.pointColInd;
@@ -99,19 +99,19 @@ public:
       if (d < 10) {
         // 10 pixel diff in range image
         if (depth1 - depth2 > 0.3) {
-          cloudNeighborPicked[i - 5] = true;
-          cloudNeighborPicked[i - 4] = true;
-          cloudNeighborPicked[i - 3] = true;
-          cloudNeighborPicked[i - 2] = true;
-          cloudNeighborPicked[i - 1] = true;
-          cloudNeighborPicked[i - 0] = true;
+          neighbor_picked[i - 5] = true;
+          neighbor_picked[i - 4] = true;
+          neighbor_picked[i - 3] = true;
+          neighbor_picked[i - 2] = true;
+          neighbor_picked[i - 1] = true;
+          neighbor_picked[i - 0] = true;
         } else if (depth2 - depth1 > 0.3) {
-          cloudNeighborPicked[i + 1] = true;
-          cloudNeighborPicked[i + 2] = true;
-          cloudNeighborPicked[i + 3] = true;
-          cloudNeighborPicked[i + 4] = true;
-          cloudNeighborPicked[i + 5] = true;
-          cloudNeighborPicked[i + 6] = true;
+          neighbor_picked[i + 1] = true;
+          neighbor_picked[i + 2] = true;
+          neighbor_picked[i + 3] = true;
+          neighbor_picked[i + 4] = true;
+          neighbor_picked[i + 5] = true;
+          neighbor_picked[i + 6] = true;
         }
       }
       // parallel beam
@@ -119,7 +119,7 @@ public:
       const float diff2 = std::abs(float(range[i + 1] - range[i]));
 
       if (diff1 > 0.02 * range[i] && diff2 > 0.02 * range[i]) {
-        cloudNeighborPicked[i] = true;
+        neighbor_picked[i] = true;
       }
     }
 
@@ -147,7 +147,7 @@ public:
         int largestPickedNum = 0;
         for (int k = ep; k >= sp; k--) {
           int ind = cloudSmoothness[k];
-          if (cloudNeighborPicked[ind] || cloudCurvature[ind] <= edgeThreshold) {
+          if (neighbor_picked[ind] || cloudCurvature[ind] <= edgeThreshold) {
             continue;
           }
 
@@ -159,31 +159,31 @@ public:
             break;
           }
 
-          cloudNeighborPicked[ind] = true;
+          neighbor_picked[ind] = true;
           for (int l = 1; l <= 5; l++) {
             const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
             if (d > 10) {
               break;
             }
-            cloudNeighborPicked[ind + l] = true;
+            neighbor_picked[ind + l] = true;
           }
           for (int l = -1; l >= -5; l--) {
             const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
             if (d > 10) {
               break;
             }
-            cloudNeighborPicked[ind + l] = true;
+            neighbor_picked[ind + l] = true;
           }
         }
 
         for (int k = sp; k <= ep; k++) {
           int ind = cloudSmoothness[k];
-          if (cloudNeighborPicked[ind] || cloudCurvature[ind] >= surfThreshold) {
+          if (neighbor_picked[ind] || cloudCurvature[ind] >= surfThreshold) {
             continue;
           }
 
           cloudLabel[ind] = -1;
-          cloudNeighborPicked[ind] = true;
+          neighbor_picked[ind] = true;
 
           for (int l = 1; l <= 5; l++) {
 
@@ -192,7 +192,7 @@ public:
               break;
             }
 
-            cloudNeighborPicked[ind + l] = true;
+            neighbor_picked[ind + l] = true;
           }
           for (int l = -1; l >= -5; l--) {
 
@@ -201,7 +201,7 @@ public:
               break;
             }
 
-            cloudNeighborPicked[ind + l] = true;
+            neighbor_picked[ind + l] = true;
           }
         }
 
