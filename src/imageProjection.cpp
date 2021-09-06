@@ -530,21 +530,15 @@ public:
 
   std::tuple<float, float, float> findPosition(double relTime)
   {
-    float posXCur = 0;
-    float posYCur = 0;
-    float posZCur = 0;
+    if (cloudInfo.odomAvailable == false || odomDeskewFlag == false) {
+      return {0.0, 0.0, 0.0};
+    }
 
-    // If the sensor moves relatively slow, like walking speed,
-    // positional deskew seems to have little benefits. Thus code below is commented.
+    float ratio = relTime / (timeScanEnd - timeScanCur);
 
-    // if (cloudInfo.odomAvailable == false || odomDeskewFlag == false)
-    //     return;
-
-    // float ratio = relTime / (timeScanEnd - timeScanCur);
-
-    // posXCur = ratio * odomIncreX;
-    // posYCur = ratio * odomIncreY;
-    // posZCur = ratio * odomIncreZ;
+    float posXCur = ratio * odomIncreX;
+    float posYCur = ratio * odomIncreY;
+    float posZCur = ratio * odomIncreZ;
     return {posXCur, posYCur, posZCur};
   }
 
