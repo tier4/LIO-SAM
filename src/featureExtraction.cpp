@@ -66,10 +66,8 @@ public:
 
     const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
-    const int cloudSize = points.size();
-
     const std::vector<float> & range = cloudInfo.pointRange;
-    for (int i = 5; i < cloudSize - 5; i++) {
+    for (int i = 5; i < points.size() - 5; i++) {
       const float d = range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
         range[i] * 10 +
         range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
@@ -78,17 +76,17 @@ public:
       smoothness[i] = i;
     }
 
-    for (int i = 5; i < cloudSize - 5; i++) {
+    for (int i = 5; i < points.size() - 5; i++) {
       label[i] = 0;
     }
 
-    for (int i = 5; i < cloudSize - 5; i++) {
+    for (int i = 5; i < points.size() - 5; i++) {
       neighbor_picked[i] = false;
     }
 
     const std::vector<int> & column_index = cloudInfo.pointColInd;
     // mark occluded points and parallel beam points
-    for (int i = 5; i < cloudSize - 6; ++i) {
+    for (int i = 5; i < points.size() - 6; ++i) {
       // occluded points
       const float depth1 = range[i];
       const float depth2 = range[i + 1];
