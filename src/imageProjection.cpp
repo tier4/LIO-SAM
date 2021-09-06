@@ -509,7 +509,7 @@ public:
 
   Eigen::Vector3d findPosition(const double relTime)
   {
-    if (cloudInfo.odomAvailable == false || odomDeskewFlag == false) {
+    if (!cloudInfo.odomAvailable || !odomDeskewFlag) {
       return Eigen::Vector3d::Zero();
     }
 
