@@ -522,7 +522,7 @@ public:
     const Eigen::Vector3d posCur = findPosition(relTime);
 
     const Eigen::Affine3f transform = pcl::getTransformation(
-      posCur(0), posCur(1), posCur(2), rotCur(0), rotCur(1), rotCur(1)
+      posCur(0), posCur(1), posCur(2), rotCur(0), rotCur(1), rotCur(2)
     );
 
     if (firstPointFlag) {
