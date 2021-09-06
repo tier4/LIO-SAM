@@ -344,21 +344,10 @@ Eigen::Vector3d quaternionToRPY(const geometry_msgs::Quaternion & orientation)
   return quaternionToRPY(quat);
 }
 
-std::tuple < double, double, double > imuRPY2rosRPY(
-  const geometry_msgs::Quaternion & imu_orientation) {
-  double rosRoll, rosPitch, rosYaw;
-  tf::Quaternion orientation;
-  tf::quaternionMsgToTF(imu_orientation, orientation);
-  tf::Matrix3x3(orientation).getRPY(rosRoll, rosPitch, rosYaw);
-  return {rosRoll, rosPitch, rosYaw};
-}
-
-
 float pointDistance(PointType p)
 {
   return sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
 }
-
 
 float pointDistance(PointType p1, PointType p2)
 {
