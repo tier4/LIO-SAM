@@ -330,6 +330,12 @@ Eigen::Vector3d imuAngular2rosAngular(
   return Eigen::Vector3d(angular_velocity.x, angular_velocity.y, angular_velocity.z);
 }
 
+Eigen::Vector3d tfQuaternionToRPY(const tf::Quaternion & orientation)
+{
+  Eigen::Vector3d rpy;
+  tf::Matrix3x3(orientation).getRPY(rpy(0), rpy(1), rpy(2));
+  return rpy;
+}
 
 std::tuple < double, double, double > imuRPY2rosRPY(
   const geometry_msgs::Quaternion & imu_orientation) {
