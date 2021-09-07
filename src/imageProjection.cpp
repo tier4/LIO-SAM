@@ -64,7 +64,6 @@ private:
   std::deque<nav_msgs::Odometry> odomQueue;
 
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
-  sensor_msgs::PointCloud2 currentCloudMsg;
 
   std::array<double, queueLength> imuTime;
   std::array<Eigen::Vector3d, queueLength> imuRot;
@@ -223,7 +222,7 @@ public:
     pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
 
     // convert cloud
-    currentCloudMsg = std::move(cloudQueue.front());
+    sensor_msgs::PointCloud2 currentCloudMsg = std::move(cloudQueue.front());
     cloudQueue.pop_front();
     if (sensor == SensorType::VELODYNE) {
       pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
