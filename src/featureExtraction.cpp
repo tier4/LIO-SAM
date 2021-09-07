@@ -145,10 +145,11 @@ public:
             continue;
           }
 
-          largestPickedNum++;
-          if (largestPickedNum > 20) {
+          if (largestPickedNum >= 20) {
             break;
           }
+
+          largestPickedNum++;
 
           label[ind] = 1;
           corner.push_back(points[ind]);
