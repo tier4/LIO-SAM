@@ -46,11 +46,8 @@ std::mutex imuLock;
 class IMUBuffer
 {
 public:
-  void imuHandler(const sensor_msgs::Imu::ConstPtr & imuMsg)
+  void push_back(const sensor_msgs::Imu & msg)
   {
-    sensor_msgs::Imu msg = imu_converter_.imuConverter(*imuMsg);
-
-    std::lock_guard<std::mutex> lock1(imuLock);
     deque_.push_back(msg);
   }
 
@@ -101,8 +98,6 @@ private:
   }
 
   std::deque<sensor_msgs::Imu> deque_;
-
-  IMUConverter imu_converter_;
 };
 
 class ImageProjection : public ParamServer
@@ -145,6 +140,7 @@ private:
   double timeScanEnd;
   std_msgs::Header cloudHeader;
   IMUBuffer imu_buffer;
+  IMUConverter imu_converter_;
 
 public:
   ImageProjection()
@@ -152,7 +148,7 @@ public:
   {
     subImu = nh.subscribe(
       imuTopic, 2000,
-      &IMUBuffer::imuHandler, &imu_buffer,
+      &ImageProjection::imuHandler, this,
       ros::TransportHints().tcpNoDelay());
     subOdom = nh.subscribe<nav_msgs::Odometry>(
       odomTopic + "_incremental", 2000,
@@ -198,6 +194,14 @@ public:
   }
 
   ~ImageProjection() {}
+
+  void imuHandler(const sensor_msgs::Imu::ConstPtr & imuMsg)
+  {
+    const sensor_msgs::Imu msg = imu_converter_.imuConverter(*imuMsg);
+
+    std::lock_guard<std::mutex> lock1(imuLock);
+    imu_buffer.push_back(msg);
+  }
 
   void odometryHandler(const nav_msgs::Odometry::ConstPtr & odometryMsg)
   {
