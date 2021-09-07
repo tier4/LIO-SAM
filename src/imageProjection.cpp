@@ -277,8 +277,8 @@ public:
     static int ringFlag = 0;
     if (ringFlag == 0) {
       ringFlag = -1;
-      for (int i = 0; i < (int)currentCloudMsg.fields.size(); ++i) {
-        if (currentCloudMsg.fields[i].name == "ring") {
+      for (const auto & field : currentCloudMsg.fields) {
+        if (field.name == "ring") {
           ringFlag = 1;
           break;
         }
