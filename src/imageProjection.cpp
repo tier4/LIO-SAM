@@ -482,12 +482,12 @@ public:
 
   Eigen::Vector3d findRotation(const double point_time, const int imuPointerCur) const
   {
-    int index = 0;
-    while (index < imuPointerCur) {
-      if (point_time < imuTime[index]) {
+    int index = imuPointerCur;
+    for (int i = 0; i < imuPointerCur; i++) {
+      if (imuTime[i] > point_time) {
+        index = i;
         break;
       }
-      ++index;
     }
 
     if (point_time > imuTime[index] || index == 0) {
