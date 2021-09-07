@@ -43,62 +43,10 @@ const int queueLength = 2000;
 
 std::mutex imuLock;
 
-class IMUBuffer
+double timeInSec(const std_msgs::Header & header)
 {
-public:
-  void push_back(const sensor_msgs::Imu & msg)
-  {
-    deque_.push_back(msg);
-  }
-
-  size_t size()
-  {
-    return deque_.size();
-  }
-
-  geometry_msgs::Quaternion orientation(const int index)
-  {
-    return deque_[index].orientation;
-  }
-
-  geometry_msgs::Vector3 angular_velocity(const int index)
-  {
-    return deque_[index].angular_velocity;
-  }
-
-  double getFrontTimeInSec()
-  {
-    return getTimeInSec(deque_.front());
-  }
-
-  double getBackTimeInSec()
-  {
-    return getTimeInSec(deque_.back());
-  }
-
-  double getTimeInSec(const int index)
-  {
-    return getTimeInSec(deque_[index]);
-  }
-
-  bool empty()
-  {
-    return deque_.empty();
-  }
-
-  void pop_front()
-  {
-    deque_.pop_front();
-  }
-
-private:
-  double getTimeInSec(const sensor_msgs::Imu & msg)
-  {
-    return msg.header.stamp.toSec();
-  }
-
-  std::deque<sensor_msgs::Imu> deque_;
-};
+  return header.stamp.toSec();
+}
 
 class ImageProjection : public ParamServer
 {
@@ -139,7 +87,8 @@ private:
   double timeScanCur;
   double timeScanEnd;
   std_msgs::Header cloudHeader;
-  IMUBuffer imu_buffer;
+
+  std::deque<sensor_msgs::Imu> imu_buffer;
   IMUConverter imu_converter_;
 
 public:
@@ -354,14 +303,14 @@ public:
       return false;
     }
 
-    if (imu_buffer.getFrontTimeInSec() > timeScanCur) {
-      ROS_DEBUG("IMU time = %f", imu_buffer.getFrontTimeInSec());
+    if (timeInSec(imu_buffer.front().header) > timeScanCur) {
+      ROS_DEBUG("IMU time = %f", timeInSec(imu_buffer.front().header));
       ROS_DEBUG("LiDAR time = %f", timeScanCur);
       ROS_DEBUG("Timestamp of IMU data too late");
       return false;
     }
 
-    if (imu_buffer.getBackTimeInSec() < timeScanEnd) {
+    if (timeInSec(imu_buffer.back().header) < timeScanEnd) {
       ROS_DEBUG("Timestamp of IMU data too early");
       return false;
     }
@@ -378,7 +327,7 @@ public:
     cloudInfo.imuAvailable = false;
 
     while (!imu_buffer.empty()) {
-      if (imu_buffer.getFrontTimeInSec() < timeScanCur - 0.01) {
+      if (timeInSec(imu_buffer.front().header) < timeScanCur - 0.01) {
         imu_buffer.pop_front();
       } else {
         break;
@@ -392,11 +341,11 @@ public:
     imuPointerCur = 0;
 
     for (int i = 0; i < (int)imu_buffer.size(); ++i) {
-      double currentImuTime = imu_buffer.getTimeInSec(i);
+      double currentImuTime = timeInSec(imu_buffer[i].header);
 
       // get roll, pitch, and yaw estimation for this scan
       if (currentImuTime <= timeScanCur) {
-        const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer.orientation(i));
+        const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer[i].orientation);
         cloudInfo.initialIMU.x = rpy(0);
         cloudInfo.initialIMU.y = rpy(1);
         cloudInfo.initialIMU.z = rpy(2);
@@ -414,7 +363,7 @@ public:
       }
 
       // get angular velocity
-      const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer.angular_velocity(i));
+      const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer[i].angular_velocity);
 
       // integrate rotation
       double timeDiff = currentImuTime - imuTime[imuPointerCur - 1];
