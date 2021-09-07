@@ -48,6 +48,39 @@ double timeInSec(const std_msgs::Header & header)
   return header.stamp.toSec();
 }
 
+pcl::PointCloud<PointXYZIRT> convert(
+  sensor_msgs::PointCloud2 & currentCloudMsg,
+  const SensorType & sensor)
+{
+  pcl::PointCloud<PointXYZIRT> laserCloudIn;
+  if (sensor == SensorType::VELODYNE) {
+    pcl::moveFromROSMsg(currentCloudMsg, laserCloudIn);
+    return laserCloudIn;
+  }
+
+  if (sensor == SensorType::OUSTER) {
+    // Convert to Velodyne format
+    pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
+
+    pcl::moveFromROSMsg(currentCloudMsg, tmpOusterCloudIn);
+    laserCloudIn.points.resize(tmpOusterCloudIn.size());
+    laserCloudIn.is_dense = tmpOusterCloudIn.is_dense;
+    for (size_t i = 0; i < tmpOusterCloudIn.size(); i++) {
+      auto & src = tmpOusterCloudIn.points[i];
+      auto & dst = laserCloudIn.points[i];
+      dst.x = src.x;
+      dst.y = src.y;
+      dst.z = src.z;
+      dst.intensity = src.intensity;
+      dst.ring = src.ring;
+      dst.time = src.t * 1e-9f;
+    }
+    return laserCloudIn;
+  }
+
+  throw std::runtime_error("Unknown sensor type");
+}
+
 class ImageProjection : public ParamServer
 {
 private:
@@ -222,26 +255,9 @@ public:
     // convert cloud
     sensor_msgs::PointCloud2 currentCloudMsg = std::move(cloudQueue.front());
     cloudQueue.pop_front();
-    if (sensor == SensorType::VELODYNE) {
-      pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
-    } else if (sensor == SensorType::OUSTER) {
-      // Convert to Velodyne format
-      pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
-
-      pcl::moveFromROSMsg(currentCloudMsg, tmpOusterCloudIn);
-      laserCloudIn->points.resize(tmpOusterCloudIn.size());
-      laserCloudIn->is_dense = tmpOusterCloudIn.is_dense;
-      for (size_t i = 0; i < tmpOusterCloudIn.size(); i++) {
-        auto & src = tmpOusterCloudIn.points[i];
-        auto & dst = laserCloudIn->points[i];
-        dst.x = src.x;
-        dst.y = src.y;
-        dst.z = src.z;
-        dst.intensity = src.intensity;
-        dst.ring = src.ring;
-        dst.time = src.t * 1e-9f;
-      }
-    } else {
+    try {
+      *laserCloudIn = convert(currentCloudMsg, sensor);
+    } catch (const std::runtime_error & e) {
       ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
       ros::shutdown();
     }
