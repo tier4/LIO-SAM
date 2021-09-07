@@ -43,6 +43,16 @@ const int queueLength = 2000;
 
 std::mutex imuLock;
 
+PointType makePoint(const Eigen::Vector3d & point, const float intensity)
+{
+  const Eigen::Vector3f q = point.cast<float>();
+  PointType p;
+  p.x = q(0);
+  p.y = q(1);
+  p.z = q(2);
+  p.intensity = intensity;
+  return p;
+}
 
 unsigned int indexNextTimeOf(const std::deque<nav_msgs::Odometry> & queue, const double time)
 {
@@ -527,13 +537,7 @@ public:
     const Eigen::Vector3d p(point.x, point.y, point.z);
 
     const Eigen::Vector3d q = transBt * p;
-    PointType newPoint;
-    newPoint.x = q(0);
-    newPoint.y = q(1);
-    newPoint.z = q(2);
-    newPoint.intensity = point.intensity;
-
-    return newPoint;
+    return makePoint(q, point.intensity);
   }
 
   void projectPointCloud(
