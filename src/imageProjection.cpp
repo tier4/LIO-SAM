@@ -561,12 +561,12 @@ public:
         continue;
       }
 
-      int rowIdn = point.ring;
-      if (rowIdn < 0 || N_SCAN <= rowIdn) {
+      const int row_index = point.ring;
+      if (row_index < 0 || N_SCAN <= row_index) {
         continue;
       }
 
-      if (rowIdn % downsampleRate != 0) {
+      if (row_index % downsampleRate != 0) {
         continue;
       }
 
@@ -582,13 +582,13 @@ public:
         continue;
       }
 
-      if (rangeMat.at<float>(rowIdn, columnIdn) != FLT_MAX) {
+      if (rangeMat.at<float>(row_index, columnIdn) != FLT_MAX) {
         continue;
       }
 
-      rangeMat.at<float>(rowIdn, columnIdn) = range;
+      rangeMat.at<float>(row_index, columnIdn) = range;
 
-      int index = columnIdn + rowIdn * Horizon_SCAN;
+      int index = columnIdn + row_index * Horizon_SCAN;
       fullCloud->points[index] = deskewPoint(thisPoint, point.time, imuPointerCur);
     }
   }
