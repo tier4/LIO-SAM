@@ -44,7 +44,7 @@ const int queueLength = 2000;
 std::mutex imuLock;
 
 
-unsigned int startIndex(const std::deque<nav_msgs::Odometry> & queue, const double time)
+unsigned int indexNextTimeOf(const std::deque<nav_msgs::Odometry> & queue, const double time)
 {
   for (unsigned int i = 0; i < queue.size(); ++i) {
     if (ROS_TIME(&queue[i]) < time) {
@@ -433,7 +433,7 @@ public:
     }
 
     // get start odometry at the beinning of the scan
-    const unsigned int start_index = startIndex(odomQueue, timeScanCur);
+    const unsigned int start_index = indexNextTimeOf(odomQueue, timeScanCur);
     nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
 
     const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
@@ -451,17 +451,8 @@ public:
       return;
     }
 
-    nav_msgs::Odometry endOdomMsg;
-
-    for (int i = 0; i < (int)odomQueue.size(); ++i) {
-      endOdomMsg = odomQueue[i];
-
-      if (ROS_TIME(&endOdomMsg) < timeScanEnd) {
-        continue;
-      } else {
-        break;
-      }
-    }
+    const unsigned int end_index = indexNextTimeOf(odomQueue, timeScanEnd);
+    nav_msgs::Odometry endOdomMsg = odomQueue[end_index];
 
     if (int(round(startOdomMsg.pose.covariance[0])) != int(round(
         endOdomMsg.pose.covariance[0])))
