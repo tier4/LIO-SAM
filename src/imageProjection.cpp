@@ -434,7 +434,7 @@ public:
 
     // get start odometry at the beinning of the scan
     const unsigned int start_index = indexNextTimeOf(odomQueue, timeScanCur);
-    nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
+    const nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
 
     const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
     const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
@@ -452,11 +452,9 @@ public:
     }
 
     const unsigned int end_index = indexNextTimeOf(odomQueue, timeScanEnd);
-    nav_msgs::Odometry endOdomMsg = odomQueue[end_index];
+    const nav_msgs::Odometry endOdomMsg = odomQueue[end_index];
 
-    if (int(round(startOdomMsg.pose.covariance[0])) != int(round(
-        endOdomMsg.pose.covariance[0])))
-    {
+    if (int(round(startOdomMsg.pose.covariance[0])) != int(round(endOdomMsg.pose.covariance[0]))) {
       return;
     }
 
