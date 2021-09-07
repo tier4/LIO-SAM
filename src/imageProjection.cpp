@@ -48,6 +48,16 @@ double timeInSec(const std_msgs::Header & header)
   return header.stamp.toSec();
 }
 
+bool ringIsAvailable(const sensor_msgs::PointCloud2 & pointcloud)
+{
+  for (const auto & field : pointcloud.fields) {
+    if (field.name == "ring") {
+      return true;
+    }
+  }
+  return false;
+}
+
 pcl::PointCloud<PointXYZIRT> convert(
   sensor_msgs::PointCloud2 & currentCloudMsg,
   const SensorType & sensor)
@@ -274,19 +284,9 @@ public:
     }
 
     // check ring channel
-    static int ringFlag = 0;
-    if (ringFlag == 0) {
-      ringFlag = -1;
-      for (const auto & field : currentCloudMsg.fields) {
-        if (field.name == "ring") {
-          ringFlag = 1;
-          break;
-        }
-      }
-      if (ringFlag == -1) {
-        ROS_ERROR("Point cloud ring channel not available, please configure your point cloud data!");
-        ros::shutdown();
-      }
+    if (!ringIsAvailable(currentCloudMsg)) {
+      ROS_ERROR("Point cloud ring channel not available, please configure your point cloud data!");
+      ros::shutdown();
     }
 
     // check point time
