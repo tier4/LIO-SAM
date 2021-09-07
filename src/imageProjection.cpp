@@ -232,7 +232,7 @@ public:
       return;
     }
 
-    projectPointCloud(laserCloudIn->points, imuPointerCur);
+    projectPointCloud(laserCloudIn->points, imuPointerCur, odomDeskewFlag);
 
     int count = 0;
     // extract segmented cloud for lidar odometry
@@ -491,7 +491,7 @@ public:
     return imuRot[imuPointerFront] * ratioFront + imuRot[imuPointerBack] * ratioBack;
   }
 
-  Eigen::Vector3d findPosition(const double relTime)
+  Eigen::Vector3d findPosition(const double relTime, const bool odomDeskewFlag)
   {
     if (!cloudInfo.odomAvailable || !odomDeskewFlag) {
       return Eigen::Vector3d::Zero();
@@ -501,7 +501,9 @@ public:
     return ratio * odomInc;
   }
 
-  PointType deskewPoint(const PointType & point, double relTime, const int imuPointerCur)
+  PointType deskewPoint(
+    const PointType & point, const double relTime,
+    const int imuPointerCur, const bool odomDeskewFlag)
   {
     if (!deskewFlag || !cloudInfo.imuAvailable) {
       return point;
@@ -510,7 +512,7 @@ public:
     double pointTime = timeScanCur + relTime;
 
     const Eigen::Vector3d rotCur = findRotation(pointTime, imuPointerCur);
-    const Eigen::Vector3d posCur = findPosition(relTime);
+    const Eigen::Vector3d posCur = findPosition(relTime, odomDeskewFlag);
 
     const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
 
@@ -536,7 +538,8 @@ public:
 
   void projectPointCloud(
     const Points<PointXYZIRT>::type & points,
-    const int imuPointerCur)
+    const int imuPointerCur,
+    const bool odomDeskewFlag)
   {
     for (const PointXYZIRT & point : points) {
       PointType thisPoint;
@@ -578,7 +581,7 @@ public:
       rangeMat.at<float>(row_index, columnIdn) = range;
 
       int index = columnIdn + row_index * Horizon_SCAN;
-      fullCloud->points[index] = deskewPoint(thisPoint, point.time, imuPointerCur);
+      fullCloud->points[index] = deskewPoint(thisPoint, point.time, imuPointerCur, odomDeskewFlag);
     }
   }
 };
