@@ -249,7 +249,7 @@ public:
 
     // get timestamp
     cloudHeader = currentCloudMsg.header;
-    timeScanCur = cloudHeader.stamp.toSec();
+    timeScanCur = timeInSec(cloudHeader);
     timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
 
     // check dense flag
@@ -386,7 +386,7 @@ public:
     cloudInfo.odomAvailable = false;
 
     while (!odomQueue.empty()) {
-      if (odomQueue.front().header.stamp.toSec() < timeScanCur - 0.01) {
+      if (timeInSec(odomQueue.front().header) < timeScanCur - 0.01) {
         odomQueue.pop_front();
       } else {
         break;
@@ -397,7 +397,7 @@ public:
       return;
     }
 
-    if (odomQueue.front().header.stamp.toSec() > timeScanCur) {
+    if (timeInSec(odomQueue.front().header) > timeScanCur) {
       return;
     }
 
@@ -425,7 +425,7 @@ public:
     // get end odometry at the end of the scan
     odomDeskewFlag = false;
 
-    if (odomQueue.back().header.stamp.toSec() < timeScanEnd) {
+    if (timeInSec(odomQueue.back().header) < timeScanEnd) {
       return;
     }
 
