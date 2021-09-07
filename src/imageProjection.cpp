@@ -219,8 +219,6 @@ public:
       return false;
     }
 
-    pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
-
     // convert cloud
     sensor_msgs::PointCloud2 currentCloudMsg = std::move(cloudQueue.front());
     cloudQueue.pop_front();
@@ -228,6 +226,8 @@ public:
       pcl::moveFromROSMsg(currentCloudMsg, *laserCloudIn);
     } else if (sensor == SensorType::OUSTER) {
       // Convert to Velodyne format
+      pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
+
       pcl::moveFromROSMsg(currentCloudMsg, tmpOusterCloudIn);
       laserCloudIn->points.resize(tmpOusterCloudIn.size());
       laserCloudIn->is_dense = tmpOusterCloudIn.is_dense;
