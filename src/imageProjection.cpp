@@ -480,24 +480,25 @@ public:
     odomDeskewFlag = true;
   }
 
-  Eigen::Vector3d findRotation(const double pointTime, const int imuPointerCur) const
+  Eigen::Vector3d findRotation(const double point_time, const int imuPointerCur) const
   {
     int index = 0;
     while (index < imuPointerCur) {
-      if (pointTime < imuTime[index]) {
+      if (point_time < imuTime[index]) {
         break;
       }
       ++index;
     }
 
-    if (pointTime > imuTime[index] || index == 0) {
+    if (point_time > imuTime[index] || index == 0) {
       return imuRot[index];
     }
-
+    const Eigen::Vector3d prev_rot = imuRot[index - 1];
+    const Eigen::Vector3d curr_rot = imuRot[index - 0];
+    const double prev_time = imuTime[index - 1];
+    const double curr_time = imuTime[index - 0];
     const double diff = imuTime[index] - imuTime[index - 1];
-    const double ratioFront = (pointTime - imuTime[index - 1]) / diff;
-    const double ratioBack = (imuTime[index] - pointTime) / diff;
-    return imuRot[index] * ratioFront + imuRot[index - 1] * ratioBack;
+    return curr_rot * (point_time - prev_time) / diff + prev_rot * (curr_time - point_time) / diff;
   }
 
   Eigen::Vector3d findPosition(
