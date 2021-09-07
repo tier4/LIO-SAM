@@ -51,7 +51,6 @@ public:
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
-    std::vector<float> curvature(N_SCAN * Horizon_SCAN);
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<int> label(N_SCAN * Horizon_SCAN);
 
@@ -66,16 +65,6 @@ public:
 
     const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
-    const std::vector<float> & range = cloudInfo.pointRange;
-    for (int i = 5; i < points.size() - 5; i++) {
-      const float d = range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
-        range[i] * 10 +
-        range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
-
-      curvature[i] = d * d;
-      curvature_indices[i] = i;
-    }
-
     for (int i = 5; i < points.size() - 5; i++) {
       label[i] = 0;
     }
@@ -83,6 +72,8 @@ public:
     for (int i = 5; i < points.size() - 5; i++) {
       neighbor_picked[i] = false;
     }
+
+    const std::vector<float> & range = cloudInfo.pointRange;
 
     const std::vector<int> & column_index = cloudInfo.pointColInd;
     // mark occluded points and parallel beam points
@@ -117,6 +108,16 @@ public:
       if (diff1 > 0.02 * range[i] && diff2 > 0.02 * range[i]) {
         neighbor_picked[i] = true;
       }
+    }
+
+    std::vector<float> curvature(N_SCAN * Horizon_SCAN);
+    for (int i = 5; i < points.size() - 5; i++) {
+      const float d = range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
+        range[i] * 10 +
+        range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
+
+      curvature[i] = d * d;
+      curvature_indices[i] = i;
     }
 
     pcl::PointCloud<PointType> corner;
