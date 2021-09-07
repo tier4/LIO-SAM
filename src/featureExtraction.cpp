@@ -146,12 +146,12 @@ public:
           }
 
           largestPickedNum++;
-          if (largestPickedNum <= 20) {
-            label[ind] = 1;
-            corner.push_back(points[ind]);
-          } else {
+          if (largestPickedNum > 20) {
             break;
           }
+
+          label[ind] = 1;
+          corner.push_back(points[ind]);
 
           neighbor_picked[ind] = true;
           for (int l = 1; l <= 5; l++) {
