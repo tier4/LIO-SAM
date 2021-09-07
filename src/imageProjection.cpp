@@ -58,6 +58,16 @@ bool ringIsAvailable(const sensor_msgs::PointCloud2 & pointcloud)
   return false;
 }
 
+bool timeStampIsAvailable(const sensor_msgs::PointCloud2 & pointcloud)
+{
+  for (auto & field : pointcloud.fields) {
+    if (field.name == "time" || field.name == "t" || field.name == "time_stamp") {
+      return true;
+    }
+  }
+  return false;
+}
+
 pcl::PointCloud<PointXYZIRT> convert(
   sensor_msgs::PointCloud2 & currentCloudMsg,
   const SensorType & sensor)
@@ -119,7 +129,7 @@ private:
   pcl::PointCloud<PointType>::Ptr fullCloud;
   pcl::PointCloud<PointType>::Ptr extractedCloud;
 
-  int deskewFlag;
+  bool deskewFlag;
   cv::Mat rangeMat;
 
   bool odomDeskewFlag;
@@ -135,7 +145,7 @@ private:
 
 public:
   ImageProjection()
-  : deskewFlag(0)
+  : deskewFlag(true)
   {
     subImu = nh.subscribe(
       imuTopic, 2000,
@@ -290,15 +300,9 @@ public:
     }
 
     // check point time
-    if (deskewFlag == 0) {
-      deskewFlag = -1;
-      for (auto & field : currentCloudMsg.fields) {
-        if (field.name == "time" || field.name == "t" || field.name == "time_stamp") {
-          deskewFlag = 1;
-          break;
-        }
-      }
-      if (deskewFlag == -1) {
+    if (deskewFlag) {
+      deskewFlag = timeStampIsAvailable(currentCloudMsg);
+      if (!deskewFlag) {
         ROS_WARN(
           "Point cloud timestamp not available, deskew function disabled, system will drift significantly!");
       }
@@ -507,7 +511,7 @@ public:
 
   PointType deskewPoint(const PointType & point, double relTime, const int imuPointerCur)
   {
-    if (deskewFlag == -1 || !cloudInfo.imuAvailable) {
+    if (!deskewFlag || !cloudInfo.imuAvailable) {
       return point;
     }
 
