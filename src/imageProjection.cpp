@@ -501,14 +501,15 @@ public:
     return imuRot[imuPointerFront] * ratioFront + imuRot[imuPointerBack] * ratioBack;
   }
 
-  Eigen::Vector3d findPosition(const double relTime, const bool odomDeskewFlag)
+  Eigen::Vector3d findPosition(
+    const double relTime,
+    const bool odomAvailable,
+    const bool odomDeskewFlag) const
   {
-    if (!cloudInfo.odomAvailable || !odomDeskewFlag) {
-      return Eigen::Vector3d::Zero();
-    }
-
+    const bool f = !odomAvailable || !odomDeskewFlag;
     const float ratio = relTime / (timeScanEnd - timeScanCur);
-    return ratio * odomInc;
+    const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
+    return f ? zero : ratio * odomInc;
   }
 
   PointType deskewPoint(
@@ -522,7 +523,7 @@ public:
     double pointTime = timeScanCur + relTime;
 
     const Eigen::Vector3d rotCur = findRotation(pointTime, imuPointerCur);
-    const Eigen::Vector3d posCur = findPosition(relTime, odomDeskewFlag);
+    const Eigen::Vector3d posCur = findPosition(relTime, cloudInfo.odomAvailable, odomDeskewFlag);
 
     const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
 
