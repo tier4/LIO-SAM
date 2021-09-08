@@ -250,16 +250,18 @@ public:
       cloudInfo.startRingIndex[i] = count - 1 + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
-        if (rangeMat.at<float>(i, j) != FLT_MAX) {
-          // mark the points' column index for marking occlusion later
-          cloudInfo.pointColInd[count] = j;
-          // save range info
-          cloudInfo.pointRange[count] = rangeMat.at<float>(i, j);
-          // save extracted cloud
-          extractedCloud->push_back(fullCloud->points[j + i * Horizon_SCAN]);
-          // size of extracted cloud
-          ++count;
+        if (rangeMat.at<float>(i, j) == FLT_MAX) {
+          continue;
         }
+
+        // mark the points' column index for marking occlusion later
+        cloudInfo.pointColInd[count] = j;
+        // save range info
+        cloudInfo.pointRange[count] = rangeMat.at<float>(i, j);
+        // save extracted cloud
+        extractedCloud->push_back(fullCloud->points[j + i * Horizon_SCAN]);
+        // size of extracted cloud
+        ++count;
       }
       cloudInfo.endRingIndex[i] = count - 1 - 5;
     }
@@ -585,7 +587,7 @@ public:
 
       rangeMat.at<float>(row_index, columnIdn) = range;
 
-      int index = columnIdn + row_index * Horizon_SCAN;
+      const int index = columnIdn + row_index * Horizon_SCAN;
       fullCloud->points[index] = deskewPoint(thisPoint, point.time, imuPointerCur, odomDeskewFlag);
     }
   }
