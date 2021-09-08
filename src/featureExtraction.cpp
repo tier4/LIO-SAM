@@ -21,6 +21,13 @@ private:
   std::vector<float> values_;
 };
 
+enum class CurvatureLabel
+{
+  kDefault = 0,
+  kEdge = 1,
+  kSurface = -1
+};
+
 class FeatureExtraction : public ParamServer
 {
 
@@ -52,7 +59,7 @@ public:
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
-    std::vector<int> label(N_SCAN * Horizon_SCAN);
+    std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
 
     pcl::VoxelGrid<PointType> downSizeFilter;
 
@@ -66,7 +73,7 @@ public:
     const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
     for (int i = 5; i < points.size() - 5; i++) {
-      label[i] = 0;
+      label[i] = CurvatureLabel::kDefault;
     }
 
     for (int i = 5; i < points.size() - 5; i++) {
@@ -154,7 +161,7 @@ public:
 
           largestPickedNum++;
 
-          label[ind] = 1;
+          label[ind] = CurvatureLabel::kEdge;
           corner.push_back(points[ind]);
 
           neighbor_picked[ind] = true;
@@ -180,7 +187,7 @@ public:
             continue;
           }
 
-          label[ind] = -1;
+          label[ind] = CurvatureLabel::kSurface;
           neighbor_picked[ind] = true;
 
           for (int l = 1; l <= 5; l++) {
@@ -204,7 +211,7 @@ public:
         }
 
         for (int k = sp; k <= ep; k++) {
-          if (label[k] <= 0) {
+          if (label[k] == CurvatureLabel::kDefault || label[k] == CurvatureLabel::kEdge) {
             surfaceCloudScan->push_back(points[k]);
           }
         }
