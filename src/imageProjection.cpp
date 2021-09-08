@@ -548,19 +548,15 @@ public:
     const int imuPointerCur,
     const bool odomDeskewFlag)
   {
-    for (const PointXYZIRT & point : points) {
-      PointType thisPoint;
-      thisPoint.x = point.x;
-      thisPoint.y = point.y;
-      thisPoint.z = point.z;
-      thisPoint.intensity = point.intensity;
+    for (const PointXYZIRT & p : points) {
+      const PointType point = makePoint(Eigen::Vector3d(p.x, p.y, p.z), p.intensity);
 
-      float range = pointDistance(thisPoint);
+      float range = pointDistance(point);
       if (range < lidarMinRange || lidarMaxRange < range) {
         continue;
       }
 
-      const int row_index = point.ring;
+      const int row_index = p.ring;
       if (row_index < 0 || N_SCAN <= row_index) {
         continue;
       }
@@ -569,7 +565,7 @@ public:
         continue;
       }
 
-      float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
+      float horizonAngle = atan2(point.x, point.y) * 180 / M_PI;
 
       static float ang_res_x = 360.0 / float(Horizon_SCAN);
       int columnIdn = -round((horizonAngle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
@@ -588,7 +584,7 @@ public:
       rangeMat.at<float>(row_index, columnIdn) = range;
 
       const int index = columnIdn + row_index * Horizon_SCAN;
-      fullCloud->points[index] = deskewPoint(thisPoint, point.time, imuPointerCur, odomDeskewFlag);
+      fullCloud->points[index] = deskewPoint(point, p.time, imuPointerCur, odomDeskewFlag);
     }
   }
 };
