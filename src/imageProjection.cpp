@@ -549,9 +549,10 @@ public:
     const bool odomDeskewFlag)
   {
     for (const PointXYZIRT & p : points) {
-      const PointType point = makePoint(Eigen::Vector3d(p.x, p.y, p.z), p.intensity);
+      const Eigen::Vector3d q(p.x, p.y, p.z);
+      const PointType point = makePoint(q, p.intensity);
 
-      float range = pointDistance(point);
+      const float range = q.norm();
       if (range < lidarMinRange || lidarMaxRange < range) {
         continue;
       }

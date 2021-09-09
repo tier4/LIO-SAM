@@ -392,11 +392,6 @@ pcl::PointCloud < PointType > getPointCloud(const sensor_msgs::PointCloud2 & ros
   return pclcloud;
 }
 
-float pointDistance(PointType p)
-{
-  return sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-}
-
 float pointDistance(PointType p1, PointType p2)
 {
   return sqrt(
