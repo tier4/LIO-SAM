@@ -219,7 +219,6 @@ void projectPointCloud(
   const double timeScanEnd,
   const int downsampleRate,
   const int Horizon_SCAN,
-  const bool deskewFlag,
   const bool imuAvailable,
   const bool odomAvailable,
   bool & firstPointFlag,
@@ -255,7 +254,7 @@ void projectPointCloud(
 
     const int index = column_index + row_index * Horizon_SCAN;
 
-    if (!deskewFlag || !imuAvailable) {
+    if (!imuAvailable) {
       fullCloud->points[index] = point;
       continue;
     }
@@ -295,7 +294,6 @@ private:
   pcl::PointCloud<PointType>::Ptr fullCloud;
   pcl::PointCloud<PointType>::Ptr extractedCloud;
 
-  bool deskewFlag;
   cv::Mat rangeMat;
 
   bool odomDeskewFlag;
@@ -311,7 +309,6 @@ private:
 
 public:
   ImageProjection()
-  : deskewFlag(true)
   {
     subImu = nh.subscribe(
       imuTopic, 2000,
@@ -392,7 +389,7 @@ public:
       lidarMinRange, lidarMaxRange,
       timeScanCur, timeScanEnd,
       downsampleRate, Horizon_SCAN,
-      deskewFlag, cloudInfo.imuAvailable, cloudInfo.odomAvailable, firstPointFlag,
+      cloudInfo.imuAvailable, cloudInfo.odomAvailable, firstPointFlag,
       rangeMat, fullCloud, transStartInverse
     );
 
@@ -477,12 +474,12 @@ public:
     }
 
     // check point time
-    if (deskewFlag) {
-      deskewFlag = timeStampIsAvailable(currentCloudMsg);
-      if (!deskewFlag) {
-        ROS_WARN(
-          "Point cloud timestamp not available, deskew function disabled, system will drift significantly!");
-      }
+    if (!timeStampIsAvailable(currentCloudMsg)) {
+      ROS_ERROR(
+        "Point cloud timestamp not available, deskew function disabled, "
+        "system will drift significantly!"
+      );
+      ros::shutdown();
     }
 
     return true;
