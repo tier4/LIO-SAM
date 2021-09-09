@@ -90,6 +90,11 @@ bool timeStampIsAvailable(const sensor_msgs::PointCloud2 & pointcloud)
   return false;
 }
 
+float rad2deg(const float rad)
+{
+  return rad * 180 / M_PI;
+}
+
 pcl::PointCloud<PointXYZIRT> convert(
   sensor_msgs::PointCloud2 & currentCloudMsg,
   const SensorType & sensor)
@@ -566,7 +571,7 @@ public:
         continue;
       }
 
-      float horizonAngle = atan2(point.x, point.y) * 180 / M_PI;
+      const float horizonAngle = rad2deg(atan2(point.x, point.y));
 
       static float ang_res_x = 360.0 / float(Horizon_SCAN);
       int columnIdn = -round((horizonAngle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
