@@ -266,6 +266,70 @@ void projectPointCloud(
   }
 }
 
+void odomDeskewInfo(
+  const double timeScanCur,
+  const double timeScanEnd,
+  lio_sam::cloud_info & cloudInfo,
+  std::deque<nav_msgs::Odometry> & odomQueue,
+  bool & odomDeskewFlag,
+  Eigen::Vector3d & odomInc)
+{
+  cloudInfo.odomAvailable = false;
+
+  while (!odomQueue.empty()) {
+    if (timeInSec(odomQueue.front().header) < timeScanCur - 0.01) {
+      odomQueue.pop_front();
+    } else {
+      break;
+    }
+  }
+
+  if (odomQueue.empty()) {
+    return;
+  }
+
+  if (timeInSec(odomQueue.front().header) > timeScanCur) {
+    return;
+  }
+
+  // get start odometry at the beinning of the scan
+  const unsigned int start_index = indexNextTimeOf(odomQueue, timeScanCur);
+  const nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
+
+  const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
+  const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
+  // Initial guess used in mapOptimization
+  cloudInfo.initialXYZ = eigenToVector3(start_point);
+  cloudInfo.initialRPY = eigenToVector3(start_rpy);
+
+  cloudInfo.odomAvailable = true;
+
+  // get end odometry at the end of the scan
+  odomDeskewFlag = false;
+
+  if (timeInSec(odomQueue.back().header) < timeScanEnd) {
+    return;
+  }
+
+  const unsigned int end_index = indexNextTimeOf(odomQueue, timeScanEnd);
+  const nav_msgs::Odometry endOdomMsg = odomQueue[end_index];
+
+  if (int(round(startOdomMsg.pose.covariance[0])) != int(round(endOdomMsg.pose.covariance[0]))) {
+    return;
+  }
+
+  const Eigen::Affine3d transBegin = makeAffine(start_point, start_rpy);
+
+  const Eigen::Vector3d end_rpy = quaternionToRPY(endOdomMsg.pose.pose.orientation);
+  const Eigen::Vector3d end_point = pointToEigen(endOdomMsg.pose.pose.position);
+  const Eigen::Affine3d transEnd = makeAffine(end_point, end_rpy);
+
+  const Eigen::Affine3d transBt = transBegin.inverse() * transEnd;
+
+  odomInc = transBt.translation();
+  odomDeskewFlag = true;
+}
+
 void imuDeskewInfo(
   std::array<double, queueLength> & imuTime,
   std::array<Eigen::Vector3d, queueLength> & imuRot,
@@ -575,67 +639,9 @@ public:
     }
 
     imuDeskewInfo(imuTime, imuRot, imu_buffer, cloudInfo, imuPointerCur, timeScanCur, timeScanEnd);
-    odomDeskewInfo();
+    odomDeskewInfo(timeScanCur, timeScanEnd, cloudInfo, odomQueue, odomDeskewFlag, odomInc);
 
     return true;
-  }
-
-  void odomDeskewInfo()
-  {
-    cloudInfo.odomAvailable = false;
-
-    while (!odomQueue.empty()) {
-      if (timeInSec(odomQueue.front().header) < timeScanCur - 0.01) {
-        odomQueue.pop_front();
-      } else {
-        break;
-      }
-    }
-
-    if (odomQueue.empty()) {
-      return;
-    }
-
-    if (timeInSec(odomQueue.front().header) > timeScanCur) {
-      return;
-    }
-
-    // get start odometry at the beinning of the scan
-    const unsigned int start_index = indexNextTimeOf(odomQueue, timeScanCur);
-    const nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
-
-    const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
-    const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
-    // Initial guess used in mapOptimization
-    cloudInfo.initialXYZ = eigenToVector3(start_point);
-    cloudInfo.initialRPY = eigenToVector3(start_rpy);
-
-    cloudInfo.odomAvailable = true;
-
-    // get end odometry at the end of the scan
-    odomDeskewFlag = false;
-
-    if (timeInSec(odomQueue.back().header) < timeScanEnd) {
-      return;
-    }
-
-    const unsigned int end_index = indexNextTimeOf(odomQueue, timeScanEnd);
-    const nav_msgs::Odometry endOdomMsg = odomQueue[end_index];
-
-    if (int(round(startOdomMsg.pose.covariance[0])) != int(round(endOdomMsg.pose.covariance[0]))) {
-      return;
-    }
-
-    const Eigen::Affine3d transBegin = makeAffine(start_point, start_rpy);
-
-    const Eigen::Vector3d end_rpy = quaternionToRPY(endOdomMsg.pose.pose.orientation);
-    const Eigen::Vector3d end_point = pointToEigen(endOdomMsg.pose.pose.position);
-    const Eigen::Affine3d transEnd = makeAffine(end_point, end_rpy);
-
-    const Eigen::Affine3d transBt = transBegin.inverse() * transEnd;
-
-    odomInc = transBt.translation();
-    odomDeskewFlag = true;
   }
 };
 
