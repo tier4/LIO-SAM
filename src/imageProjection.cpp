@@ -128,6 +128,146 @@ pcl::PointCloud<PointXYZIRT> convert(
   throw std::runtime_error("Unknown sensor type");
 }
 
+Eigen::Vector3d findRotation(
+  const std::array<Eigen::Vector3d, queueLength> & imuRot,
+  const double point_time, const int imuPointerCur,
+  const std::array<double, queueLength> & imuTime)
+{
+  int index = imuPointerCur;
+  for (int i = 0; i < imuPointerCur; i++) {
+    if (imuTime[i] > point_time) {
+      index = i;
+      break;
+    }
+  }
+
+  if (point_time > imuTime[index] || index == 0) {
+    return imuRot[index];
+  }
+  const Eigen::Vector3d prev_rot = imuRot[index - 1];
+  const Eigen::Vector3d curr_rot = imuRot[index - 0];
+  const double prev_time = imuTime[index - 1];
+  const double curr_time = imuTime[index - 0];
+  const double diff = imuTime[index] - imuTime[index - 1];
+  return curr_rot * (point_time - prev_time) / diff + prev_rot * (curr_time - point_time) / diff;
+}
+
+Eigen::Vector3d findPosition(
+  const Eigen::Vector3d & odomInc,
+  const double timeScanCur,
+  const double timeScanEnd,
+  const double relTime,
+  const bool odomAvailable,
+  const bool odomDeskewFlag)
+{
+  const bool f = !odomAvailable || !odomDeskewFlag;
+  const float ratio = relTime / (timeScanEnd - timeScanCur);
+  const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
+  return f ? zero : ratio * odomInc;
+}
+
+PointType deskewPoint(
+  const Eigen::Vector3d & odomInc,
+  const std::array<Eigen::Vector3d, queueLength> & imuRot,
+  const std::array<double, queueLength> & imuTime,
+  const double timeScanCur,
+  const double timeScanEnd,
+  const PointType & point,
+  const double relTime,
+  const int imuPointerCur,
+  const bool odomDeskewFlag,
+  const bool deskewFlag,
+  const bool imuAvailable,
+  const bool odomAvailable,
+  bool & firstPointFlag,
+  Eigen::Affine3d & transStartInverse)
+{
+  if (!deskewFlag || !imuAvailable) {
+    return point;
+  }
+
+  double pointTime = timeScanCur + relTime;
+
+  const Eigen::Vector3d rotCur = findRotation(
+    imuRot, pointTime, imuPointerCur, imuTime
+  );
+  const Eigen::Vector3d posCur = findPosition(
+    odomInc, timeScanCur, timeScanEnd, relTime,
+    odomAvailable, odomDeskewFlag
+  );
+
+  const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
+
+  if (firstPointFlag) {
+    transStartInverse = transform.inverse();
+    firstPointFlag = false;
+  }
+
+  // transform points to start
+  const Eigen::Affine3d transBt = transStartInverse * transform;
+
+  const Eigen::Vector3d p(point.x, point.y, point.z);
+
+  const Eigen::Vector3d q = transBt * p;
+  return makePoint(q, point.intensity);
+}
+
+void projectPointCloud(
+  const Eigen::Vector3d & odomInc,
+  const std::array<Eigen::Vector3d, queueLength> & imuRot,
+  const std::array<double, queueLength> & imuTime,
+  const Points<PointXYZIRT>::type & points,
+  const int imuPointerCur,
+  const bool odomDeskewFlag,
+  const float lidarMinRange,
+  const float lidarMaxRange,
+  const double timeScanCur,
+  const double timeScanEnd,
+  const int downsampleRate,
+  const int Horizon_SCAN,
+  const bool deskewFlag,
+  const bool imuAvailable,
+  const bool odomAvailable,
+  bool & firstPointFlag,
+  cv::Mat & rangeMat,
+  pcl::PointCloud<PointType>::Ptr & fullCloud,
+  Eigen::Affine3d & transStartInverse)
+{
+  for (const PointXYZIRT & p : points) {
+    const Eigen::Vector3d q(p.x, p.y, p.z);
+    const PointType point = makePoint(q, p.intensity);
+
+    const float range = q.norm();
+    if (range < lidarMinRange || lidarMaxRange < range) {
+      continue;
+    }
+
+    const int row_index = p.ring;
+
+    if (row_index % downsampleRate != 0) {
+      continue;
+    }
+
+    const float angle = rad2deg(atan2(point.x, point.y));
+    const int f = static_cast<int>(Horizon_SCAN * (angle - 90.0) / 360.0);
+    const int c = Horizon_SCAN / 2 - f;
+    const int column_index = c % Horizon_SCAN;
+
+    if (rangeMat.at<float>(row_index, column_index) != FLT_MAX) {
+      continue;
+    }
+
+    rangeMat.at<float>(row_index, column_index) = range;
+
+    const int index = column_index + row_index * Horizon_SCAN;
+    fullCloud->points[index] = deskewPoint(
+      odomInc, imuRot, imuTime, timeScanCur, timeScanEnd, point,
+      p.time, imuPointerCur, odomDeskewFlag,
+      deskewFlag, imuAvailable, odomAvailable,
+      firstPointFlag, transStartInverse);
+  }
+}
+
 class ImageProjection : public ParamServer
 {
 private:
@@ -247,7 +387,15 @@ public:
       return;
     }
 
-    projectPointCloud(laserCloudIn->points, imuPointerCur, odomDeskewFlag);
+    projectPointCloud(
+      odomInc, imuRot, imuTime, laserCloudIn->points,
+      imuPointerCur, odomDeskewFlag,
+      lidarMinRange, lidarMaxRange,
+      timeScanCur, timeScanEnd,
+      downsampleRate, Horizon_SCAN,
+      deskewFlag, cloudInfo.imuAvailable, cloudInfo.odomAvailable, firstPointFlag,
+      rangeMat, fullCloud, transStartInverse
+    );
 
     int count = 0;
     // extract segmented cloud for lidar odometry
@@ -486,107 +634,6 @@ public:
 
     odomInc = transBt.translation();
     odomDeskewFlag = true;
-  }
-
-  Eigen::Vector3d findRotation(const double point_time, const int imuPointerCur) const
-  {
-    int index = imuPointerCur;
-    for (int i = 0; i < imuPointerCur; i++) {
-      if (imuTime[i] > point_time) {
-        index = i;
-        break;
-      }
-    }
-
-    if (point_time > imuTime[index] || index == 0) {
-      return imuRot[index];
-    }
-    const Eigen::Vector3d prev_rot = imuRot[index - 1];
-    const Eigen::Vector3d curr_rot = imuRot[index - 0];
-    const double prev_time = imuTime[index - 1];
-    const double curr_time = imuTime[index - 0];
-    const double diff = imuTime[index] - imuTime[index - 1];
-    return curr_rot * (point_time - prev_time) / diff + prev_rot * (curr_time - point_time) / diff;
-  }
-
-  Eigen::Vector3d findPosition(
-    const double relTime,
-    const bool odomAvailable,
-    const bool odomDeskewFlag) const
-  {
-    const bool f = !odomAvailable || !odomDeskewFlag;
-    const float ratio = relTime / (timeScanEnd - timeScanCur);
-    const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
-    return f ? zero : ratio * odomInc;
-  }
-
-  PointType deskewPoint(
-    const PointType & point, const double relTime,
-    const int imuPointerCur, const bool odomDeskewFlag)
-  {
-    if (!deskewFlag || !cloudInfo.imuAvailable) {
-      return point;
-    }
-
-    double pointTime = timeScanCur + relTime;
-
-    const Eigen::Vector3d rotCur = findRotation(pointTime, imuPointerCur);
-    const Eigen::Vector3d posCur = findPosition(relTime, cloudInfo.odomAvailable, odomDeskewFlag);
-
-    const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
-
-    if (firstPointFlag) {
-      transStartInverse = transform.inverse();
-      firstPointFlag = false;
-    }
-
-    // transform points to start
-    const Eigen::Affine3d transBt = transStartInverse * transform;
-
-    const Eigen::Vector3d p(point.x, point.y, point.z);
-
-    const Eigen::Vector3d q = transBt * p;
-    return makePoint(q, point.intensity);
-  }
-
-  void projectPointCloud(
-    const Points<PointXYZIRT>::type & points,
-    const int imuPointerCur,
-    const bool odomDeskewFlag)
-  {
-    for (const PointXYZIRT & p : points) {
-      const Eigen::Vector3d q(p.x, p.y, p.z);
-      const PointType point = makePoint(q, p.intensity);
-
-      const float range = q.norm();
-      if (range < lidarMinRange || lidarMaxRange < range) {
-        continue;
-      }
-
-      const int row_index = p.ring;
-      assert(0 <= row_index && row_index < N_SCAN);
-
-      if (row_index % downsampleRate != 0) {
-        continue;
-      }
-
-      const float angle = rad2deg(atan2(point.x, point.y));
-
-      const float ang_res_x = 360.0 / float(Horizon_SCAN);
-      const int c = -round((angle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
-      const int column_index = static_cast<int>(c) % Horizon_SCAN;
-
-      assert(0 <= column_index && column_index < Horizon_SCAN);
-
-      if (rangeMat.at<float>(row_index, column_index) != FLT_MAX) {
-        continue;
-      }
-
-      rangeMat.at<float>(row_index, column_index) = range;
-
-      const int index = column_index + row_index * Horizon_SCAN;
-      fullCloud->points[index] = deskewPoint(point, p.time, imuPointerCur, odomDeskewFlag);
-    }
   }
 };
 
