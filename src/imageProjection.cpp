@@ -573,10 +573,8 @@ public:
       const float horizonAngle = rad2deg(atan2(point.x, point.y));
 
       const float ang_res_x = 360.0 / float(Horizon_SCAN);
-      int columnIdn = -round((horizonAngle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
-      if (columnIdn >= Horizon_SCAN) {
-        columnIdn -= Horizon_SCAN;
-      }
+      const int c = -round((horizonAngle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
+      const int columnIdn = static_cast<int>(c) % Horizon_SCAN;
 
       assert(0 <= columnIdn && columnIdn < Horizon_SCAN);
 
