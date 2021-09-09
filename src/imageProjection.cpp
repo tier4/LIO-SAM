@@ -266,6 +266,72 @@ void projectPointCloud(
   }
 }
 
+void imuDeskewInfo(
+  std::array<double, queueLength> & imuTime,
+  std::array<Eigen::Vector3d, queueLength> & imuRot,
+  std::deque<sensor_msgs::Imu> & imu_buffer,
+  lio_sam::cloud_info & cloudInfo,
+  int & imuPointerCur,
+  double timeScanCur,
+  double timeScanEnd)
+{
+  cloudInfo.imuAvailable = false;
+
+  while (!imu_buffer.empty()) {
+    if (timeInSec(imu_buffer.front().header) < timeScanCur - 0.01) {
+      imu_buffer.pop_front();
+    } else {
+      break;
+    }
+  }
+
+  if (imu_buffer.empty()) {
+    return;
+  }
+
+  imuPointerCur = 0;
+
+  for (int i = 0; i < (int)imu_buffer.size(); ++i) {
+    double currentImuTime = timeInSec(imu_buffer[i].header);
+
+    // get roll, pitch, and yaw estimation for this scan
+    if (currentImuTime <= timeScanCur) {
+      const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer[i].orientation);
+      cloudInfo.initialIMU.x = rpy(0);
+      cloudInfo.initialIMU.y = rpy(1);
+      cloudInfo.initialIMU.z = rpy(2);
+    }
+
+    if (currentImuTime > timeScanEnd + 0.01) {
+      break;
+    }
+
+    if (imuPointerCur == 0) {
+      imuRot[0] = Eigen::Vector3d::Zero();
+      imuTime[0] = currentImuTime;
+      ++imuPointerCur;
+      continue;
+    }
+
+    // get angular velocity
+    const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer[i].angular_velocity);
+
+    // integrate rotation
+    double timeDiff = currentImuTime - imuTime[imuPointerCur - 1];
+    imuRot[imuPointerCur] = imuRot[imuPointerCur - 1] + angular * timeDiff;
+    imuTime[imuPointerCur] = currentImuTime;
+    ++imuPointerCur;
+  }
+
+  --imuPointerCur;
+
+  if (imuPointerCur <= 0) {
+    return;
+  }
+
+  cloudInfo.imuAvailable = true;
+}
+
 class ImageProjection : public ParamServer
 {
 private:
@@ -508,70 +574,10 @@ public:
       return false;
     }
 
-    imuDeskewInfo(imuPointerCur);
-
+    imuDeskewInfo(imuTime, imuRot, imu_buffer, cloudInfo, imuPointerCur, timeScanCur, timeScanEnd);
     odomDeskewInfo();
 
     return true;
-  }
-
-  void imuDeskewInfo(int & imuPointerCur)
-  {
-    cloudInfo.imuAvailable = false;
-
-    while (!imu_buffer.empty()) {
-      if (timeInSec(imu_buffer.front().header) < timeScanCur - 0.01) {
-        imu_buffer.pop_front();
-      } else {
-        break;
-      }
-    }
-
-    if (imu_buffer.empty()) {
-      return;
-    }
-
-    imuPointerCur = 0;
-
-    for (int i = 0; i < (int)imu_buffer.size(); ++i) {
-      double currentImuTime = timeInSec(imu_buffer[i].header);
-
-      // get roll, pitch, and yaw estimation for this scan
-      if (currentImuTime <= timeScanCur) {
-        const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer[i].orientation);
-        cloudInfo.initialIMU.x = rpy(0);
-        cloudInfo.initialIMU.y = rpy(1);
-        cloudInfo.initialIMU.z = rpy(2);
-      }
-
-      if (currentImuTime > timeScanEnd + 0.01) {
-        break;
-      }
-
-      if (imuPointerCur == 0) {
-        imuRot[0] = Eigen::Vector3d::Zero();
-        imuTime[0] = currentImuTime;
-        ++imuPointerCur;
-        continue;
-      }
-
-      // get angular velocity
-      const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer[i].angular_velocity);
-
-      // integrate rotation
-      double timeDiff = currentImuTime - imuTime[imuPointerCur - 1];
-      imuRot[imuPointerCur] = imuRot[imuPointerCur - 1] + angular * timeDiff;
-      imuTime[imuPointerCur] = currentImuTime;
-      ++imuPointerCur;
-    }
-
-    --imuPointerCur;
-
-    if (imuPointerCur <= 0) {
-      return;
-    }
-
-    cloudInfo.imuAvailable = true;
   }
 
   void odomDeskewInfo()
