@@ -570,21 +570,21 @@ public:
         continue;
       }
 
-      const float horizonAngle = rad2deg(atan2(point.x, point.y));
+      const float angle = rad2deg(atan2(point.x, point.y));
 
       const float ang_res_x = 360.0 / float(Horizon_SCAN);
-      const int c = -round((horizonAngle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
-      const int columnIdn = static_cast<int>(c) % Horizon_SCAN;
+      const int c = -round((angle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
+      const int column_index = static_cast<int>(c) % Horizon_SCAN;
 
-      assert(0 <= columnIdn && columnIdn < Horizon_SCAN);
+      assert(0 <= column_index && column_index < Horizon_SCAN);
 
-      if (rangeMat.at<float>(row_index, columnIdn) != FLT_MAX) {
+      if (rangeMat.at<float>(row_index, column_index) != FLT_MAX) {
         continue;
       }
 
-      rangeMat.at<float>(row_index, columnIdn) = range;
+      rangeMat.at<float>(row_index, column_index) = range;
 
-      const int index = columnIdn + row_index * Horizon_SCAN;
+      const int index = column_index + row_index * Horizon_SCAN;
       fullCloud->points[index] = deskewPoint(point, p.time, imuPointerCur, odomDeskewFlag);
     }
   }
