@@ -176,16 +176,10 @@ PointType deskewPoint(
   const double relTime,
   const int imuPointerCur,
   const bool odomDeskewFlag,
-  const bool deskewFlag,
-  const bool imuAvailable,
   const bool odomAvailable,
   bool & firstPointFlag,
   Eigen::Affine3d & transStartInverse)
 {
-  if (!deskewFlag || !imuAvailable) {
-    return point;
-  }
-
   double pointTime = timeScanCur + relTime;
 
   const Eigen::Vector3d rotCur = findRotation(
@@ -235,7 +229,6 @@ void projectPointCloud(
 {
   for (const PointXYZIRT & p : points) {
     const Eigen::Vector3d q(p.x, p.y, p.z);
-    const PointType point = makePoint(q, p.intensity);
 
     const float range = q.norm();
     if (range < lidarMinRange || lidarMaxRange < range) {
@@ -248,6 +241,7 @@ void projectPointCloud(
       continue;
     }
 
+    const PointType point = makePoint(q, p.intensity);
     const float angle = rad2deg(atan2(point.x, point.y));
     const int f = static_cast<int>(Horizon_SCAN * (angle - 90.0) / 360.0);
     const int c = Horizon_SCAN / 2 - f;
@@ -260,10 +254,15 @@ void projectPointCloud(
     rangeMat.at<float>(row_index, column_index) = range;
 
     const int index = column_index + row_index * Horizon_SCAN;
+
+    if (!deskewFlag || !imuAvailable) {
+      fullCloud->points[index] = point;
+      continue;
+    }
+
     fullCloud->points[index] = deskewPoint(
       odomInc, imuRot, imuTime, timeScanCur, timeScanEnd, point,
-      p.time, imuPointerCur, odomDeskewFlag,
-      deskewFlag, imuAvailable, odomAvailable,
+      p.time, imuPointerCur, odomDeskewFlag, odomAvailable,
       firstPointFlag, transStartInverse);
   }
 }
