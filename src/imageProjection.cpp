@@ -255,14 +255,15 @@ public:
       cloudInfo.startRingIndex[i] = count - 1 + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
-        if (rangeMat.at<float>(i, j) == FLT_MAX) {
+        const float range = rangeMat.at<float>(i, j);
+        if (range == FLT_MAX) {
           continue;
         }
 
         // mark the points' column index for marking occlusion later
         cloudInfo.pointColInd[count] = j;
         // save range info
-        cloudInfo.pointRange[count] = rangeMat.at<float>(i, j);
+        cloudInfo.pointRange[count] = range;
         // save extracted cloud
         extractedCloud->push_back(fullCloud->points[j + i * Horizon_SCAN]);
         // size of extracted cloud
@@ -563,9 +564,7 @@ public:
       }
 
       const int row_index = p.ring;
-      if (row_index < 0 || N_SCAN <= row_index) {
-        continue;
-      }
+      assert(0 <= row_index && row_index < N_SCAN);
 
       if (row_index % downsampleRate != 0) {
         continue;
@@ -573,15 +572,13 @@ public:
 
       const float horizonAngle = rad2deg(atan2(point.x, point.y));
 
-      static float ang_res_x = 360.0 / float(Horizon_SCAN);
+      const float ang_res_x = 360.0 / float(Horizon_SCAN);
       int columnIdn = -round((horizonAngle - 90.0) / ang_res_x) + Horizon_SCAN / 2;
       if (columnIdn >= Horizon_SCAN) {
         columnIdn -= Horizon_SCAN;
       }
 
-      if (columnIdn < 0 || columnIdn >= Horizon_SCAN) {
-        continue;
-      }
+      assert(0 <= columnIdn && columnIdn < Horizon_SCAN);
 
       if (rangeMat.at<float>(row_index, columnIdn) != FLT_MAX) {
         continue;
