@@ -441,6 +441,61 @@ bool deskewInfo(
   return true;
 }
 
+bool cachePointCloud(
+  const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg,
+  const SensorType & sensor,
+  double & timeScanCur,
+  double & timeScanEnd,
+  std_msgs::Header & cloudHeader,
+  pcl::PointCloud<PointXYZIRT>::Ptr & laserCloudIn,
+  std::deque<sensor_msgs::PointCloud2> & cloudQueue)
+{
+
+  // cache point cloud
+  cloudQueue.push_back(*laserCloudMsg);
+  if (cloudQueue.size() <= 2) {
+    return false;
+  }
+
+  // convert cloud
+  sensor_msgs::PointCloud2 currentCloudMsg = std::move(cloudQueue.front());
+  cloudQueue.pop_front();
+  try {
+    *laserCloudIn = convert(currentCloudMsg, sensor);
+  } catch (const std::runtime_error & e) {
+    ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
+    ros::shutdown();
+  }
+
+  // get timestamp
+  cloudHeader = currentCloudMsg.header;
+  timeScanCur = timeInSec(cloudHeader);
+  timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
+
+  // check dense flag
+  if (laserCloudIn->is_dense == false) {
+    ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
+    ros::shutdown();
+  }
+
+  // check ring channel
+  if (!ringIsAvailable(currentCloudMsg)) {
+    ROS_ERROR("Point cloud ring channel not available, please configure your point cloud data!");
+    ros::shutdown();
+  }
+
+  // check point time
+  if (!timeStampIsAvailable(currentCloudMsg)) {
+    ROS_ERROR(
+      "Point cloud timestamp not available, deskew function disabled, "
+      "system will drift significantly!"
+    );
+    ros::shutdown();
+  }
+
+  return true;
+}
+
 class ImageProjection : public ParamServer
 {
 private:
@@ -548,7 +603,10 @@ public:
 
   void cloudHandler(const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg)
   {
-    if (!cachePointCloud(laserCloudMsg)) {
+    if (!cachePointCloud(
+        laserCloudMsg, sensor, timeScanCur, timeScanEnd,
+        cloudHeader, laserCloudIn, cloudQueue))
+    {
       return;
     }
 
@@ -611,54 +669,6 @@ public:
       imuTime[i] = 0;
       imuRot[i] = Eigen::Vector3d::Zero();
     }
-  }
-
-  bool cachePointCloud(const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg)
-  {
-
-    // cache point cloud
-    cloudQueue.push_back(*laserCloudMsg);
-    if (cloudQueue.size() <= 2) {
-      return false;
-    }
-
-    // convert cloud
-    sensor_msgs::PointCloud2 currentCloudMsg = std::move(cloudQueue.front());
-    cloudQueue.pop_front();
-    try {
-      *laserCloudIn = convert(currentCloudMsg, sensor);
-    } catch (const std::runtime_error & e) {
-      ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
-      ros::shutdown();
-    }
-
-    // get timestamp
-    cloudHeader = currentCloudMsg.header;
-    timeScanCur = timeInSec(cloudHeader);
-    timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
-
-    // check dense flag
-    if (laserCloudIn->is_dense == false) {
-      ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
-      ros::shutdown();
-    }
-
-    // check ring channel
-    if (!ringIsAvailable(currentCloudMsg)) {
-      ROS_ERROR("Point cloud ring channel not available, please configure your point cloud data!");
-      ros::shutdown();
-    }
-
-    // check point time
-    if (!timeStampIsAvailable(currentCloudMsg)) {
-      ROS_ERROR(
-        "Point cloud timestamp not available, deskew function disabled, "
-        "system will drift significantly!"
-      );
-      ros::shutdown();
-    }
-
-    return true;
   }
 };
 
