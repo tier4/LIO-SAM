@@ -441,7 +441,7 @@ bool deskewInfo(
   return true;
 }
 
-bool cachePointCloud(
+void cachePointCloud(
   const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg,
   const SensorType & sensor,
   double & timeScanCur,
@@ -450,13 +450,6 @@ bool cachePointCloud(
   pcl::PointCloud<PointXYZIRT>::Ptr & laserCloudIn,
   std::deque<sensor_msgs::PointCloud2> & cloudQueue)
 {
-
-  // cache point cloud
-  cloudQueue.push_back(*laserCloudMsg);
-  if (cloudQueue.size() <= 2) {
-    return false;
-  }
-
   // convert cloud
   sensor_msgs::PointCloud2 currentCloudMsg = std::move(cloudQueue.front());
   cloudQueue.pop_front();
@@ -492,8 +485,6 @@ bool cachePointCloud(
     );
     ros::shutdown();
   }
-
-  return true;
 }
 
 class ImageProjection : public ParamServer
@@ -603,12 +594,14 @@ public:
 
   void cloudHandler(const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg)
   {
-    if (!cachePointCloud(
-        laserCloudMsg, sensor, timeScanCur, timeScanEnd,
-        cloudHeader, laserCloudIn, cloudQueue))
-    {
+    cloudQueue.push_back(*laserCloudMsg);
+    if (cloudQueue.size() <= 2) {
       return;
     }
+
+    cachePointCloud(
+      laserCloudMsg, sensor, timeScanCur, timeScanEnd,
+      cloudHeader, laserCloudIn, cloudQueue);
 
     if (!deskewInfo(
         timeScanCur, timeScanEnd, cloudInfo, odomInc,
