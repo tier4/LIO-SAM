@@ -97,12 +97,12 @@ float rad2deg(const float rad)
 }
 
 pcl::PointCloud<PointXYZIRT> convert(
-  sensor_msgs::PointCloud2 & currentCloudMsg,
+  const sensor_msgs::PointCloud2 & currentCloudMsg,
   const SensorType & sensor)
 {
   pcl::PointCloud<PointXYZIRT> laserCloudIn;
   if (sensor == SensorType::VELODYNE) {
-    pcl::moveFromROSMsg(currentCloudMsg, laserCloudIn);
+    pcl::fromROSMsg(currentCloudMsg, laserCloudIn);
     return laserCloudIn;
   }
 
@@ -110,7 +110,7 @@ pcl::PointCloud<PointXYZIRT> convert(
     // Convert to Velodyne format
     pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
 
-    pcl::moveFromROSMsg(currentCloudMsg, tmpOusterCloudIn);
+    pcl::fromROSMsg(currentCloudMsg, tmpOusterCloudIn);
     laserCloudIn.points.resize(tmpOusterCloudIn.size());
     laserCloudIn.is_dense = tmpOusterCloudIn.is_dense;
     for (size_t i = 0; i < tmpOusterCloudIn.size(); i++) {
