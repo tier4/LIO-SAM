@@ -442,28 +442,17 @@ bool deskewInfo(
 }
 
 void cachePointCloud(
+  const sensor_msgs::PointCloud2 & currentCloudMsg,
   const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg,
   const SensorType & sensor,
-  double & timeScanCur,
-  double & timeScanEnd,
-  std_msgs::Header & cloudHeader,
-  pcl::PointCloud<PointXYZIRT>::Ptr & laserCloudIn,
-  std::deque<sensor_msgs::PointCloud2> & cloudQueue)
+  pcl::PointCloud<PointXYZIRT>::Ptr & laserCloudIn)
 {
-  // convert cloud
-  sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
-  cloudQueue.pop_front();
   try {
     *laserCloudIn = convert(currentCloudMsg, sensor);
   } catch (const std::runtime_error & e) {
     ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
     ros::shutdown();
   }
-
-  // get timestamp
-  cloudHeader = currentCloudMsg.header;
-  timeScanCur = timeInSec(cloudHeader);
-  timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
 
   // check dense flag
   if (laserCloudIn->is_dense == false) {
@@ -599,9 +588,16 @@ public:
       return;
     }
 
-    cachePointCloud(
-      laserCloudMsg, sensor, timeScanCur, timeScanEnd,
-      cloudHeader, laserCloudIn, cloudQueue);
+    // convert cloud
+    const sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
+    cloudQueue.pop_front();
+
+    cachePointCloud(currentCloudMsg, laserCloudMsg, sensor, laserCloudIn);
+
+    // get timestamp
+    cloudHeader = currentCloudMsg.header;
+    timeScanCur = timeInSec(cloudHeader);
+    timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
 
     if (!deskewInfo(
         timeScanCur, timeScanEnd, cloudInfo, odomInc,
