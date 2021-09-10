@@ -42,6 +42,7 @@ using PointXYZIRT = VelodynePointXYZIRT;
 const int queueLength = 2000;
 
 std::mutex imuLock;
+std::mutex odoLock;
 
 PointType makePoint(const Eigen::Vector3d & point, const float intensity)
 {
@@ -396,11 +397,48 @@ void imuDeskewInfo(
   cloudInfo.imuAvailable = true;
 }
 
+bool deskewInfo(
+  const double timeScanCur,
+  const double timeScanEnd,
+  lio_sam::cloud_info & cloudInfo,
+  Eigen::Vector3d & odomInc,
+  std::array<double, queueLength> & imuTime,
+  std::array<Eigen::Vector3d, queueLength> & imuRot,
+  std::deque<sensor_msgs::Imu> & imu_buffer,
+  std::deque<nav_msgs::Odometry> & odomQueue,
+  bool & odomDeskewFlag,
+  int & imuPointerCur)
+{
+  std::lock_guard<std::mutex> lock1(imuLock);
+  std::lock_guard<std::mutex> lock2(odoLock);
+
+  // make sure IMU data available for the scan
+  if (imu_buffer.empty()) {
+    ROS_DEBUG("IMU queue empty ...");
+    return false;
+  }
+
+  if (timeInSec(imu_buffer.front().header) > timeScanCur) {
+    ROS_DEBUG("IMU time = %f", timeInSec(imu_buffer.front().header));
+    ROS_DEBUG("LiDAR time = %f", timeScanCur);
+    ROS_DEBUG("Timestamp of IMU data too late");
+    return false;
+  }
+
+  if (timeInSec(imu_buffer.back().header) < timeScanEnd) {
+    ROS_DEBUG("Timestamp of IMU data too early");
+    return false;
+  }
+
+  imuDeskewInfo(imuTime, imuRot, imu_buffer, cloudInfo, imuPointerCur, timeScanCur, timeScanEnd);
+  odomDeskewInfo(timeScanCur, timeScanEnd, cloudInfo, odomQueue, odomDeskewFlag, odomInc);
+
+  return true;
+}
+
 class ImageProjection : public ParamServer
 {
 private:
-  std::mutex odoLock;
-
   ros::Subscriber subLaserCloud;
 
   ros::Publisher pubExtractedCloud;
@@ -509,7 +547,10 @@ public:
       return;
     }
 
-    if (!deskewInfo(imuPointerCur)) {
+    if (!deskewInfo(
+        timeScanCur, timeScanEnd, cloudInfo, odomInc,
+        imuTime, imuRot, imu_buffer, odomQueue, odomDeskewFlag, imuPointerCur))
+    {
       return;
     }
 
@@ -611,35 +652,6 @@ public:
       );
       ros::shutdown();
     }
-
-    return true;
-  }
-
-  bool deskewInfo(int & imuPointerCur)
-  {
-    std::lock_guard<std::mutex> lock1(imuLock);
-    std::lock_guard<std::mutex> lock2(odoLock);
-
-    // make sure IMU data available for the scan
-    if (imu_buffer.empty()) {
-      ROS_DEBUG("IMU queue empty ...");
-      return false;
-    }
-
-    if (timeInSec(imu_buffer.front().header) > timeScanCur) {
-      ROS_DEBUG("IMU time = %f", timeInSec(imu_buffer.front().header));
-      ROS_DEBUG("LiDAR time = %f", timeScanCur);
-      ROS_DEBUG("Timestamp of IMU data too late");
-      return false;
-    }
-
-    if (timeInSec(imu_buffer.back().header) < timeScanEnd) {
-      ROS_DEBUG("Timestamp of IMU data too early");
-      return false;
-    }
-
-    imuDeskewInfo(imuTime, imuRot, imu_buffer, cloudInfo, imuPointerCur, timeScanCur, timeScanEnd);
-    odomDeskewInfo(timeScanCur, timeScanEnd, cloudInfo, odomQueue, odomDeskewFlag, odomInc);
 
     return true;
   }
