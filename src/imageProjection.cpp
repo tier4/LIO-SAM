@@ -337,10 +337,11 @@ void imuDeskewInfo(
   std::array<double, queueLength> & imuTime,
   std::array<Eigen::Vector3d, queueLength> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
-  lio_sam::cloud_info & cloudInfo,
-  int & imuPointerCur)
+  int & imuPointerCur,
+  geometry_msgs::Vector3 & initialIMU,
+  bool & imuAvailable)
 {
-  cloudInfo.imuAvailable = false;
+  imuAvailable = false;
 
   while (!imu_buffer.empty()) {
     if (timeInSec(imu_buffer.front().header) < timeScanCur - 0.01) {
@@ -362,9 +363,9 @@ void imuDeskewInfo(
     // get roll, pitch, and yaw estimation for this scan
     if (currentImuTime <= timeScanCur) {
       const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer[i].orientation);
-      cloudInfo.initialIMU.x = rpy(0);
-      cloudInfo.initialIMU.y = rpy(1);
-      cloudInfo.initialIMU.z = rpy(2);
+      initialIMU.x = rpy(0);
+      initialIMU.y = rpy(1);
+      initialIMU.z = rpy(2);
     }
 
     if (currentImuTime > timeScanEnd + 0.01) {
@@ -394,7 +395,7 @@ void imuDeskewInfo(
     return;
   }
 
-  cloudInfo.imuAvailable = true;
+  imuAvailable = true;
 }
 
 bool deskewInfo(
@@ -430,7 +431,11 @@ bool deskewInfo(
     return false;
   }
 
-  imuDeskewInfo(timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer, cloudInfo, imuPointerCur);
+  bool imuAvailable;
+  imuDeskewInfo(
+    timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer, imuPointerCur,
+    cloudInfo.initialIMU, imuAvailable);
+  cloudInfo.imuAvailable = imuAvailable;
   odomDeskewInfo(timeScanCur, timeScanEnd, cloudInfo, odomQueue, odomDeskewFlag, odomInc);
 
   return true;
