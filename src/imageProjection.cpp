@@ -451,7 +451,7 @@ void cachePointCloud(
   std::deque<sensor_msgs::PointCloud2> & cloudQueue)
 {
   // convert cloud
-  sensor_msgs::PointCloud2 currentCloudMsg = std::move(cloudQueue.front());
+  sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
   cloudQueue.pop_front();
   try {
     *laserCloudIn = convert(currentCloudMsg, sensor);
