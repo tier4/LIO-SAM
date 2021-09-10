@@ -332,13 +332,13 @@ void odomDeskewInfo(
 }
 
 void imuDeskewInfo(
+  const double timeScanCur,
+  const double timeScanEnd,
   std::array<double, queueLength> & imuTime,
   std::array<Eigen::Vector3d, queueLength> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
   lio_sam::cloud_info & cloudInfo,
-  int & imuPointerCur,
-  double timeScanCur,
-  double timeScanEnd)
+  int & imuPointerCur)
 {
   cloudInfo.imuAvailable = false;
 
@@ -430,7 +430,7 @@ bool deskewInfo(
     return false;
   }
 
-  imuDeskewInfo(imuTime, imuRot, imu_buffer, cloudInfo, imuPointerCur, timeScanCur, timeScanEnd);
+  imuDeskewInfo(timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer, cloudInfo, imuPointerCur);
   odomDeskewInfo(timeScanCur, timeScanEnd, cloudInfo, odomQueue, odomDeskewFlag, odomInc);
 
   return true;
