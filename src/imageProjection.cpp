@@ -441,43 +441,6 @@ bool deskewInfo(
   return true;
 }
 
-pcl::PointCloud<PointXYZIRT> cachePointCloud(
-  const sensor_msgs::PointCloud2 & currentCloudMsg,
-  const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg,
-  const SensorType & sensor)
-{
-  pcl::PointCloud<PointXYZIRT> laserCloudIn;
-  try {
-    laserCloudIn = convert(currentCloudMsg, sensor);
-  } catch (const std::runtime_error & e) {
-    ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
-    ros::shutdown();
-  }
-
-  // check dense flag
-  if (laserCloudIn.is_dense == false) {
-    ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
-    ros::shutdown();
-  }
-
-  // check ring channel
-  if (!ringIsAvailable(currentCloudMsg)) {
-    ROS_ERROR("Point cloud ring channel not available, please configure your point cloud data!");
-    ros::shutdown();
-  }
-
-  // check point time
-  if (!timeStampIsAvailable(currentCloudMsg)) {
-    ROS_ERROR(
-      "Point cloud timestamp not available, deskew function disabled, "
-      "system will drift significantly!"
-    );
-    ros::shutdown();
-  }
-
-  return laserCloudIn;
-}
-
 class ImageProjection : public ParamServer
 {
 private:
@@ -594,7 +557,36 @@ public:
     const sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
     cloudQueue.pop_front();
 
-    *laserCloudIn = cachePointCloud(currentCloudMsg, laserCloudMsg, sensor);
+    try {
+      *laserCloudIn = convert(currentCloudMsg, sensor);
+    } catch (const std::runtime_error & e) {
+      ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
+      ros::shutdown();
+    }
+
+    // check dense flag
+    if (laserCloudIn->is_dense == false) {
+      ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
+      ros::shutdown();
+    }
+
+    // check ring channel
+    if (!ringIsAvailable(currentCloudMsg)) {
+      ROS_ERROR(
+        "Point cloud ring channel not available, "
+        "please configure your point cloud data!"
+      );
+      ros::shutdown();
+    }
+
+    // check point time
+    if (!timeStampIsAvailable(currentCloudMsg)) {
+      ROS_ERROR(
+        "Point cloud timestamp not available, deskew function disabled, "
+        "system will drift significantly!"
+      );
+      ros::shutdown();
+    }
 
     // get timestamp
     cloudHeader = currentCloudMsg.header;
