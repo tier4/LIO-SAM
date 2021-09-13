@@ -270,12 +270,14 @@ void projectPointCloud(
 void odomDeskewInfo(
   const double timeScanCur,
   const double timeScanEnd,
-  lio_sam::cloud_info & cloudInfo,
+  bool & odomAvailable,
+  geometry_msgs::Vector3 & initialXYZ,
+  geometry_msgs::Vector3 & initialRPY,
   std::deque<nav_msgs::Odometry> & odomQueue,
   bool & odomDeskewFlag,
   Eigen::Vector3d & odomInc)
 {
-  cloudInfo.odomAvailable = false;
+  odomAvailable = false;
 
   while (!odomQueue.empty()) {
     if (timeInSec(odomQueue.front().header) < timeScanCur - 0.01) {
@@ -300,10 +302,10 @@ void odomDeskewInfo(
   const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
   const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
   // Initial guess used in mapOptimization
-  cloudInfo.initialXYZ = eigenToVector3(start_point);
-  cloudInfo.initialRPY = eigenToVector3(start_rpy);
+  initialXYZ = eigenToVector3(start_point);
+  initialRPY = eigenToVector3(start_rpy);
 
-  cloudInfo.odomAvailable = true;
+  odomAvailable = true;
 
   // get end odometry at the end of the scan
   odomDeskewFlag = false;
@@ -436,7 +438,12 @@ bool deskewInfo(
     timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer, imuPointerCur,
     cloudInfo.initialIMU, imuAvailable);
   cloudInfo.imuAvailable = imuAvailable;
-  odomDeskewInfo(timeScanCur, timeScanEnd, cloudInfo, odomQueue, odomDeskewFlag, odomInc);
+  bool odomAvailable;
+  odomDeskewInfo(
+    timeScanCur, timeScanEnd,
+    odomAvailable, cloudInfo.initialXYZ, cloudInfo.initialRPY,
+    odomQueue, odomDeskewFlag, odomInc);
+  cloudInfo.odomAvailable = odomAvailable;
 
   return true;
 }
