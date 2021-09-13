@@ -403,12 +403,16 @@ void imuDeskewInfo(
 bool deskewInfo(
   const double timeScanCur,
   const double timeScanEnd,
-  lio_sam::cloud_info & cloudInfo,
   Eigen::Vector3d & odomInc,
   std::array<double, queueLength> & imuTime,
   std::array<Eigen::Vector3d, queueLength> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
   std::deque<nav_msgs::Odometry> & odomQueue,
+  geometry_msgs::Vector3 & initialIMU,
+  geometry_msgs::Vector3 & initialXYZ,
+  geometry_msgs::Vector3 & initialRPY,
+  bool & imuAvailable,
+  bool & odomAvailable,
   bool & odomDeskewFlag,
   int & imuPointerCur)
 {
@@ -433,17 +437,16 @@ bool deskewInfo(
     return false;
   }
 
-  bool imuAvailable;
   imuDeskewInfo(
     timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer, imuPointerCur,
-    cloudInfo.initialIMU, imuAvailable);
-  cloudInfo.imuAvailable = imuAvailable;
-  bool odomAvailable;
+    initialIMU, imuAvailable);
+
   odomDeskewInfo(
     timeScanCur, timeScanEnd,
-    odomAvailable, cloudInfo.initialXYZ, cloudInfo.initialRPY,
+    odomAvailable,
+    initialXYZ,
+    initialRPY,
     odomQueue, odomDeskewFlag, odomInc);
-  cloudInfo.odomAvailable = odomAvailable;
 
   return true;
 }
@@ -600,12 +603,20 @@ public:
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
-    if (!deskewInfo(
-        timeScanCur, timeScanEnd, cloudInfo, odomInc,
-        imuTime, imuRot, imu_buffer, odomQueue, odomDeskewFlag, imuPointerCur))
-    {
+    bool imuAvailable;
+    bool odomAvailable;
+    const bool flag = deskewInfo(
+      timeScanCur, timeScanEnd, odomInc,
+      imuTime, imuRot, imu_buffer, odomQueue,
+      cloudInfo.initialIMU, cloudInfo.initialXYZ, cloudInfo.initialRPY,
+      imuAvailable, odomAvailable, odomDeskewFlag, imuPointerCur);
+
+    if (!flag) {
       return;
     }
+
+    cloudInfo.odomAvailable = odomAvailable;
+    cloudInfo.imuAvailable = imuAvailable;
 
     projectPointCloud(
       odomInc, imuRot, imuTime, laserCloudIn->points,
