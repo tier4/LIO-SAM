@@ -277,8 +277,6 @@ void odomDeskewInfo(
   bool & odomDeskewFlag,
   Eigen::Vector3d & odomInc)
 {
-  odomAvailable = false;
-
   while (!odomQueue.empty()) {
     if (timeInSec(odomQueue.front().header) < timeScanCur - 0.01) {
       odomQueue.pop_front();
@@ -343,7 +341,6 @@ void imuDeskewInfo(
   geometry_msgs::Vector3 & initialIMU,
   bool & imuAvailable)
 {
-  imuAvailable = false;
 
   while (!imu_buffer.empty()) {
     if (timeInSec(imu_buffer.front().header) < timeScanCur - 0.01) {
@@ -603,8 +600,9 @@ public:
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
-    bool imuAvailable;
-    bool odomAvailable;
+    bool imuAvailable = false;
+    bool odomAvailable = false;
+
     const bool flag = deskewInfo(
       timeScanCur, timeScanEnd, odomInc,
       imuTime, imuRot, imu_buffer, odomQueue,
