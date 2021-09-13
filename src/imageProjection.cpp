@@ -331,6 +331,17 @@ void odomDeskewInfo(
   odomDeskewFlag = true;
 }
 
+void dropBefore(const double time, std::deque<sensor_msgs::Imu> & buffer)
+{
+  while (!buffer.empty()) {
+    if (timeInSec(buffer.front().header) < time) {
+      buffer.pop_front();
+    } else {
+      break;
+    }
+  }
+}
+
 void imuDeskewInfo(
   const double timeScanCur,
   const double timeScanEnd,
@@ -341,14 +352,7 @@ void imuDeskewInfo(
   geometry_msgs::Vector3 & initialIMU,
   bool & imuAvailable)
 {
-
-  while (!imu_buffer.empty()) {
-    if (timeInSec(imu_buffer.front().header) < timeScanCur - 0.01) {
-      imu_buffer.pop_front();
-    } else {
-      break;
-    }
-  }
+  dropBefore(timeScanCur - 0.01, imu_buffer);
 
   if (imu_buffer.empty()) {
     return;
@@ -357,7 +361,7 @@ void imuDeskewInfo(
   imuPointerCur = 0;
 
   for (int i = 0; i < (int)imu_buffer.size(); ++i) {
-    double currentImuTime = timeInSec(imu_buffer[i].header);
+    const double currentImuTime = timeInSec(imu_buffer[i].header);
 
     // get roll, pitch, and yaw estimation for this scan
     if (currentImuTime <= timeScanCur) {
