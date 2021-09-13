@@ -225,12 +225,6 @@ public:
       surface += downsampled;
     }
 
-    // free cloud info memory
-    cloudInfo.startRingIndex.clear();
-    cloudInfo.endRingIndex.clear();
-    cloudInfo.pointColInd.clear();
-    cloudInfo.pointRange.clear();
-
     // save newly extracted features
     cloudInfo.cloud_corner = publishCloud(&pubCornerPoints, corner, stamp, lidarFrame);
     cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surface, stamp, lidarFrame);

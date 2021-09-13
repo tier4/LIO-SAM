@@ -472,7 +472,6 @@ private:
   bool odomDeskewFlag;
   Eigen::Vector3d odomInc;
 
-  lio_sam::cloud_info cloudInfo;
   double timeScanCur;
   double timeScanEnd;
   std_msgs::Header cloudHeader;
@@ -506,12 +505,6 @@ public:
     extractedCloud.reset(new pcl::PointCloud<PointType>());
 
     fullCloud->points.resize(N_SCAN * Horizon_SCAN);
-
-    cloudInfo.startRingIndex.assign(N_SCAN, 0);
-    cloudInfo.endRingIndex.assign(N_SCAN, 0);
-
-    cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
-    cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
     laserCloudIn->clear();
     extractedCloud->clear();
@@ -592,6 +585,13 @@ public:
     cloudHeader = currentCloudMsg.header;
     timeScanCur = timeInSec(cloudHeader);
     timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
+
+    lio_sam::cloud_info cloudInfo;
+    cloudInfo.startRingIndex.assign(N_SCAN, 0);
+    cloudInfo.endRingIndex.assign(N_SCAN, 0);
+
+    cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
+    cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
     if (!deskewInfo(
         timeScanCur, timeScanEnd, cloudInfo, odomInc,
