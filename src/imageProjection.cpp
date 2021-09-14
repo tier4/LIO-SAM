@@ -467,10 +467,6 @@ private:
   bool odomDeskewFlag;
   Eigen::Vector3d odomInc;
 
-  double timeScanCur;
-  double timeScanEnd;
-  std_msgs::Header cloudHeader;
-
   std::deque<sensor_msgs::Imu> imu_buffer;
   IMUConverter imu_converter_;
 
@@ -577,9 +573,9 @@ public:
     }
 
     // get timestamp
-    cloudHeader = currentCloudMsg.header;
-    timeScanCur = timeInSec(cloudHeader);
-    timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
+    const std_msgs::Header cloudHeader = currentCloudMsg.header;
+    const double timeScanCur = timeInSec(cloudHeader);
+    const double timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
 
     lio_sam::cloud_info cloudInfo;
     cloudInfo.startRingIndex.assign(N_SCAN, 0);
