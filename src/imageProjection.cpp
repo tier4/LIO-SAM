@@ -66,11 +66,6 @@ unsigned int indexNextTimeOf(const std::deque<nav_msgs::Odometry> & queue, const
   return queue.size() - 1;
 }
 
-double timeInSec(const std_msgs::Header & header)
-{
-  return header.stamp.toSec();
-}
-
 bool ringIsAvailable(const sensor_msgs::PointCloud2 & pointcloud)
 {
   for (const auto & field : pointcloud.fields) {
@@ -329,17 +324,6 @@ void odomDeskewInfo(
 
   odomInc = transBt.translation();
   odomDeskewFlag = true;
-}
-
-void dropBefore(const double time, std::deque<sensor_msgs::Imu> & buffer)
-{
-  while (!buffer.empty()) {
-    if (timeInSec(buffer.front().header) < time) {
-      buffer.pop_front();
-    } else {
-      break;
-    }
-  }
 }
 
 void imuDeskewInfo(

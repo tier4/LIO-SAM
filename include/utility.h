@@ -399,4 +399,21 @@ float pointDistance(PointType p1, PointType p2)
     (p1.z - p2.z));
 }
 
+double timeInSec(const std_msgs::Header & header)
+{
+  return header.stamp.toSec();
+}
+
+template < typename T >
+void dropBefore(const double time, std::deque < T > & buffer)
+{
+  while (!buffer.empty()) {
+    if (timeInSec(buffer.front().header) < time) {
+      buffer.pop_front();
+    } else {
+      break;
+    }
+  }
+}
+
 #endif
