@@ -58,6 +58,7 @@ public:
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
+    // used to prevent from labeling a neighbor as surface or edge
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
 
@@ -86,28 +87,27 @@ public:
     // mark occluded points and parallel beam points
     for (int i = 5; i < points.size() - 6; ++i) {
       // occluded points
-      const float depth1 = range[i];
-      const float depth2 = range[i + 1];
       const int d = std::abs(int(column_index[i + 1] - column_index[i]));
 
-      if (d < 10) {
-        // 10 pixel diff in range image
-        if (depth1 - depth2 > 0.3) {
-          neighbor_picked[i - 5] = true;
-          neighbor_picked[i - 4] = true;
-          neighbor_picked[i - 3] = true;
-          neighbor_picked[i - 2] = true;
-          neighbor_picked[i - 1] = true;
-          neighbor_picked[i - 0] = true;
-        } else if (depth2 - depth1 > 0.3) {
-          neighbor_picked[i + 1] = true;
-          neighbor_picked[i + 2] = true;
-          neighbor_picked[i + 3] = true;
-          neighbor_picked[i + 4] = true;
-          neighbor_picked[i + 5] = true;
-          neighbor_picked[i + 6] = true;
-        }
+      // 10 pixel diff in range image
+      if (d < 10 && range[i] - range[i + 1] > 0.3) {
+        neighbor_picked[i - 5] = true;
+        neighbor_picked[i - 4] = true;
+        neighbor_picked[i - 3] = true;
+        neighbor_picked[i - 2] = true;
+        neighbor_picked[i - 1] = true;
+        neighbor_picked[i - 0] = true;
       }
+
+      if (d < 10 && range[i + 1] - range[i] > 0.3) {
+        neighbor_picked[i + 1] = true;
+        neighbor_picked[i + 2] = true;
+        neighbor_picked[i + 3] = true;
+        neighbor_picked[i + 4] = true;
+        neighbor_picked[i + 5] = true;
+        neighbor_picked[i + 6] = true;
+      }
+
       // parallel beam
       const float ratio1 = std::abs(float(range[i - 1] - range[i])) / range[i];
       const float ratio2 = std::abs(float(range[i + 1] - range[i])) / range[i];
