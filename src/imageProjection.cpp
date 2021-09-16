@@ -444,16 +444,10 @@ private:
 
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
 
-  std::array<double, queueLength> imuTime;
-  std::array<Eigen::Vector3d, queueLength> imuRot;
-
-  int imuPointerCur;
   bool firstPointFlag;
   Eigen::Affine3d transStartInverse;
 
   pcl::PointCloud<PointType>::Ptr fullCloud;
-
-  cv::Mat rangeMat;
 
   bool odomDeskewFlag;
   Eigen::Vector3d odomInc;
@@ -486,17 +480,8 @@ public:
 
     fullCloud->points.resize(N_SCAN * Horizon_SCAN);
 
-    // reset range matrix for range image projection
-    rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
-
-    imuPointerCur = 0;
     firstPointFlag = true;
     odomDeskewFlag = false;
-
-    for (int i = 0; i < queueLength; ++i) {
-      imuTime[i] = 0;
-      imuRot[i] = Eigen::Vector3d::Zero();
-    }
 
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
@@ -576,9 +561,18 @@ public:
       return;
     }
 
+    std::array<double, queueLength> imuTime;
+    std::array<Eigen::Vector3d, queueLength> imuRot;
+
+    for (int i = 0; i < queueLength; ++i) {
+      imuTime[i] = 0;
+      imuRot[i] = Eigen::Vector3d::Zero();
+    }
+
     bool imuAvailable = false;
     bool odomAvailable = false;
 
+    int imuPointerCur = 0;
     deskewInfo(
       timeScanCur, timeScanEnd, odomInc,
       imuTime, imuRot, imu_buffer, odomQueue,
@@ -587,6 +581,9 @@ public:
 
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
+
+    // reset range matrix for range image projection
+    cv::Mat rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
 
     projectPointCloud(
       odomInc, imuRot, imuTime, laserCloudIn.points,
@@ -628,17 +625,8 @@ public:
       cloudHeader.stamp, lidarFrame);
     pubLaserCloudInfo.publish(cloudInfo);
 
-    // reset range matrix for range image projection
-    rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
-
-    imuPointerCur = 0;
     firstPointFlag = true;
     odomDeskewFlag = false;
-
-    for (int i = 0; i < queueLength; ++i) {
-      imuTime[i] = 0;
-      imuRot[i] = Eigen::Vector3d::Zero();
-    }
   }
 };
 
