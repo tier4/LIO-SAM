@@ -451,9 +451,7 @@ private:
   bool firstPointFlag;
   Eigen::Affine3d transStartInverse;
 
-  pcl::PointCloud<PointXYZIRT>::Ptr laserCloudIn;
   pcl::PointCloud<PointType>::Ptr fullCloud;
-  pcl::PointCloud<PointType>::Ptr extractedCloud;
 
   cv::Mat rangeMat;
 
@@ -484,14 +482,10 @@ public:
     pubLaserCloudInfo =
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
 
-    laserCloudIn.reset(new pcl::PointCloud<PointXYZIRT>());
     fullCloud.reset(new pcl::PointCloud<PointType>());
-    extractedCloud.reset(new pcl::PointCloud<PointType>());
 
     fullCloud->points.resize(N_SCAN * Horizon_SCAN);
 
-    laserCloudIn->clear();
-    extractedCloud->clear();
     // reset range matrix for range image projection
     rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
 
@@ -534,15 +528,16 @@ public:
     const sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
     cloudQueue.pop_front();
 
+    pcl::PointCloud<PointXYZIRT> laserCloudIn;
     try {
-      *laserCloudIn = convert(currentCloudMsg, sensor);
+      laserCloudIn = convert(currentCloudMsg, sensor);
     } catch (const std::runtime_error & e) {
       ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
       ros::shutdown();
     }
 
     // check dense flag
-    if (laserCloudIn->is_dense == false) {
+    if (laserCloudIn.is_dense == false) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
       ros::shutdown();
     }
@@ -568,7 +563,7 @@ public:
     // get timestamp
     const std_msgs::Header cloudHeader = currentCloudMsg.header;
     const double timeScanCur = timeInSec(cloudHeader);
-    const double timeScanEnd = timeScanCur + laserCloudIn->points.back().time;
+    const double timeScanEnd = timeScanCur + laserCloudIn.points.back().time;
 
     lio_sam::cloud_info cloudInfo;
     cloudInfo.startRingIndex.assign(N_SCAN, 0);
@@ -594,7 +589,7 @@ public:
     cloudInfo.imuAvailable = imuAvailable;
 
     projectPointCloud(
-      odomInc, imuRot, imuTime, laserCloudIn->points,
+      odomInc, imuRot, imuTime, laserCloudIn.points,
       imuPointerCur, odomDeskewFlag,
       lidarMinRange, lidarMaxRange,
       timeScanCur, timeScanEnd,
@@ -603,6 +598,7 @@ public:
       rangeMat, fullCloud, transStartInverse
     );
 
+    pcl::PointCloud<PointType> extractedCloud;
     int count = 0;
     // extract segmented cloud for lidar odometry
     for (int i = 0; i < N_SCAN; ++i) {
@@ -619,7 +615,7 @@ public:
         // save range info
         cloudInfo.pointRange[count] = range;
         // save extracted cloud
-        extractedCloud->push_back(fullCloud->points[j + i * Horizon_SCAN]);
+        extractedCloud.push_back(fullCloud->points[j + i * Horizon_SCAN]);
         // size of extracted cloud
         ++count;
       }
@@ -628,12 +624,10 @@ public:
 
     cloudInfo.header = cloudHeader;
     cloudInfo.cloud_deskewed = publishCloud(
-      &pubExtractedCloud, *extractedCloud,
+      &pubExtractedCloud, extractedCloud,
       cloudHeader.stamp, lidarFrame);
     pubLaserCloudInfo.publish(cloudInfo);
 
-    laserCloudIn->clear();
-    extractedCloud->clear();
     // reset range matrix for range image projection
     rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
 
