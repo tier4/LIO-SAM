@@ -333,7 +333,6 @@ void imuDeskewInfo(
   for (int i = 0; i < (int)imu_buffer.size(); ++i) {
     const double currentImuTime = timeInSec(imu_buffer[i].header);
 
-    // get roll, pitch, and yaw estimation for this scan
     if (currentImuTime <= timeScanCur) {
       const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer[i].orientation);
       initialIMU.x = rpy(0);
@@ -371,21 +370,12 @@ void imuDeskewInfo(
   imuAvailable = true;
 }
 
-bool deskewInfo(
+bool checkImuTime(
+  const std::deque<sensor_msgs::Imu> & imu_buffer,
   const double timeScanCur,
-  const double timeScanEnd,
-  Eigen::Vector3d & odomInc,
-  std::array<double, queueLength> & imuTime,
-  std::array<Eigen::Vector3d, queueLength> & imuRot,
-  std::deque<sensor_msgs::Imu> & imu_buffer,
-  std::deque<nav_msgs::Odometry> & odomQueue,
-  geometry_msgs::Vector3 & initialIMU,
-  geometry_msgs::Pose & initial_pose,
-  bool & imuAvailable,
-  bool & odomAvailable,
-  bool & odomDeskewFlag,
-  int & imuPointerCur)
+  const double timeScanEnd)
 {
+
   std::lock_guard<std::mutex> lock1(imuLock);
   std::lock_guard<std::mutex> lock2(odoLock);
 
@@ -407,6 +397,27 @@ bool deskewInfo(
     return false;
   }
 
+  return true;
+}
+
+void deskewInfo(
+  const double timeScanCur,
+  const double timeScanEnd,
+  Eigen::Vector3d & odomInc,
+  std::array<double, queueLength> & imuTime,
+  std::array<Eigen::Vector3d, queueLength> & imuRot,
+  std::deque<sensor_msgs::Imu> & imu_buffer,
+  std::deque<nav_msgs::Odometry> & odomQueue,
+  geometry_msgs::Vector3 & initialIMU,
+  geometry_msgs::Pose & initial_pose,
+  bool & imuAvailable,
+  bool & odomAvailable,
+  bool & odomDeskewFlag,
+  int & imuPointerCur)
+{
+  std::lock_guard<std::mutex> lock1(imuLock);
+  std::lock_guard<std::mutex> lock2(odoLock);
+
   imuDeskewInfo(
     timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer, imuPointerCur,
     initialIMU, imuAvailable);
@@ -416,8 +427,6 @@ bool deskewInfo(
     odomAvailable,
     initial_pose,
     odomQueue, odomDeskewFlag, odomInc);
-
-  return true;
 }
 
 class ImageProjection : public ParamServer
@@ -568,18 +577,18 @@ public:
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
+    if (!checkImuTime(imu_buffer, timeScanCur, timeScanEnd)) {
+      return;
+    }
+
     bool imuAvailable = false;
     bool odomAvailable = false;
 
-    const bool flag = deskewInfo(
+    deskewInfo(
       timeScanCur, timeScanEnd, odomInc,
       imuTime, imuRot, imu_buffer, odomQueue,
       cloudInfo.initialIMU, cloudInfo.initial_pose,
       imuAvailable, odomAvailable, odomDeskewFlag, imuPointerCur);
-
-    if (!flag) {
-      return;
-    }
 
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
