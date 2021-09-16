@@ -171,45 +171,6 @@ Eigen::Vector3d findPosition(
   return ratio * odomInc;
 }
 
-PointType deskewPoint(
-  const Eigen::Vector3d & odomInc,
-  const std::vector<Eigen::Vector3d> & imuRot,
-  const std::vector<double> & imuTime,
-  const double timeScanCur,
-  const double timeScanEnd,
-  const PointType & point,
-  const double relTime,
-  const bool odomDeskewFlag,
-  const bool odomAvailable,
-  bool & firstPointFlag,
-  Eigen::Affine3d & transStartInverse)
-{
-  double pointTime = timeScanCur + relTime;
-
-  const Eigen::Vector3d rotCur = findRotation(
-    imuRot, pointTime, imuTime
-  );
-  const Eigen::Vector3d posCur = findPosition(
-    odomInc, timeScanCur, timeScanEnd, relTime,
-    odomAvailable, odomDeskewFlag
-  );
-
-  const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
-
-  if (firstPointFlag) {
-    transStartInverse = transform.inverse();
-    firstPointFlag = false;
-  }
-
-  // transform points to start
-  const Eigen::Affine3d transBt = transStartInverse * transform;
-
-  const Eigen::Vector3d p(point.x, point.y, point.z);
-
-  const Eigen::Vector3d q = transBt * p;
-  return makePoint(q, point.intensity);
-}
-
 void projectPointCloud(
   const Eigen::Vector3d & odomInc,
   const std::vector<Eigen::Vector3d> & imuRot,
@@ -262,10 +223,24 @@ void projectPointCloud(
       continue;
     }
 
-    fullCloud.points[index] = deskewPoint(
-      odomInc, imuRot, imuTime, timeScanCur, timeScanEnd, point,
-      p.time, odomDeskewFlag, odomAvailable,
-      firstPointFlag, transStartInverse);
+    const Eigen::Vector3d rotCur = findRotation(imuRot, timeScanCur + p.time, imuTime);
+    const Eigen::Vector3d posCur = findPosition(
+      odomInc, timeScanCur, timeScanEnd, p.time,
+      odomAvailable, odomDeskewFlag
+    );
+
+    const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
+
+    if (firstPointFlag) {
+      transStartInverse = transform.inverse();
+      firstPointFlag = false;
+    }
+
+    // transform points to start
+    const Eigen::Affine3d transBt = transStartInverse * transform;
+
+    const Eigen::Vector3d v(point.x, point.y, point.z);
+    fullCloud.points[index] = makePoint(transBt * v, point.intensity);
   }
 }
 
