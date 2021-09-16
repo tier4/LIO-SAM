@@ -334,10 +334,7 @@ void imuDeskewInfo(
     const double currentImuTime = timeInSec(imu_buffer[i].header);
 
     if (currentImuTime <= timeScanCur) {
-      const Eigen::Vector3d rpy = quaternionToRPY(imu_buffer[i].orientation);
-      initialIMU.x = rpy(0);
-      initialIMU.y = rpy(1);
-      initialIMU.z = rpy(2);
+      initialIMU = eigenToVector3(quaternionToRPY(imu_buffer[i].orientation));
     }
 
     if (currentImuTime > timeScanEnd + 0.01) {
