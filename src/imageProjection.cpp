@@ -129,8 +129,8 @@ Eigen::Vector3d findRotation(
   const double point_time, const int imuPointerCur,
   const std::vector<double> & imuTime)
 {
-  int index = imuPointerCur;
-  for (int i = 0; i < imuPointerCur; i++) {
+  int index = imuTime.size() - 1;
+  for (int i = 0; i < imuTime.size() - 1; i++) {
     if (imuTime[i] > point_time) {
       index = i;
       break;
@@ -328,8 +328,6 @@ void imuDeskewInfo(
     return;
   }
 
-  imuPointerCur = 0;
-
   for (int i = 0; i < (int)imu_buffer.size(); ++i) {
     const double currentImuTime = timeInSec(imu_buffer[i].header);
 
@@ -341,10 +339,9 @@ void imuDeskewInfo(
       break;
     }
 
-    if (imuPointerCur == 0) {
+    if (imuTime.size() == 0) {
       imuRot.push_back(Eigen::Vector3d::Zero());
       imuTime.push_back(currentImuTime);
-      ++imuPointerCur;
       continue;
     }
 
@@ -356,12 +353,9 @@ void imuDeskewInfo(
     const Eigen::Vector3d rot = imuRot.back() + angular * timeDiff;
     imuRot.push_back(rot);
     imuTime.push_back(currentImuTime);
-    ++imuPointerCur;
   }
 
-  --imuPointerCur;
-
-  if (imuPointerCur <= 0) {
+  if (imuTime.size() - 1 <= 0) {
     return;
   }
 
