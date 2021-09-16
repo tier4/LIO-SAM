@@ -677,7 +677,7 @@ public:
     static bool lastImuPreTransAvailable = false;
     static Eigen::Affine3d lastImuPreTransformation;
     if (cloudInfo.odomAvailable) {
-      Eigen::Affine3d transBack = makeAffine(cloudInfo.initialXYZ, cloudInfo.initialRPY);
+      Eigen::Affine3d transBack = odom2affine(cloudInfo.initial_pose);
       if (!lastImuPreTransAvailable) {
         lastImuPreTransformation = transBack;
         lastImuPreTransAvailable = true;

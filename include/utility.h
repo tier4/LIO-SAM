@@ -369,9 +369,25 @@ Eigen::Vector3d quaternionToRPY(const geometry_msgs::Quaternion & orientation)
   return quaternionToRPY(quat);
 }
 
+Eigen::Affine3d odom2affine(const geometry_msgs::Pose & pose)
+{
+  const Eigen::Vector3d point = pointToEigen(pose.position);
+  const Eigen::Vector3d rpy = quaternionToRPY(pose.orientation);
+  return makeAffine(point, rpy);
+}
+
 geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v)
 {
   geometry_msgs::Vector3 p;
+  p.x = v[0];
+  p.y = v[1];
+  p.z = v[2];
+  return p;
+}
+
+geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v)
+{
+  geometry_msgs::Point p;
   p.x = v[0];
   p.y = v[1];
   p.z = v[2];

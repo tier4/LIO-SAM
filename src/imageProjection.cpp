@@ -266,8 +266,7 @@ void odomDeskewInfo(
   const double timeScanCur,
   const double timeScanEnd,
   bool & odomAvailable,
-  geometry_msgs::Vector3 & initialXYZ,
-  geometry_msgs::Vector3 & initialRPY,
+  geometry_msgs::Pose & initial_pose,
   std::deque<nav_msgs::Odometry> & odomQueue,
   bool & odomDeskewFlag,
   Eigen::Vector3d & odomInc)
@@ -286,11 +285,9 @@ void odomDeskewInfo(
   const unsigned int start_index = indexNextTimeOf(odomQueue, timeScanCur);
   const nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
 
+  initial_pose = startOdomMsg.pose.pose;
   const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
   const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
-  // Initial guess used in mapOptimization
-  initialXYZ = eigenToVector3(start_point);
-  initialRPY = eigenToVector3(start_rpy);
 
   odomAvailable = true;
 
@@ -388,8 +385,7 @@ bool deskewInfo(
   std::deque<sensor_msgs::Imu> & imu_buffer,
   std::deque<nav_msgs::Odometry> & odomQueue,
   geometry_msgs::Vector3 & initialIMU,
-  geometry_msgs::Vector3 & initialXYZ,
-  geometry_msgs::Vector3 & initialRPY,
+  geometry_msgs::Pose & initial_pose,
   bool & imuAvailable,
   bool & odomAvailable,
   bool & odomDeskewFlag,
@@ -423,8 +419,7 @@ bool deskewInfo(
   odomDeskewInfo(
     timeScanCur, timeScanEnd,
     odomAvailable,
-    initialXYZ,
-    initialRPY,
+    initial_pose,
     odomQueue, odomDeskewFlag, odomInc);
 
   return true;
@@ -584,7 +579,7 @@ public:
     const bool flag = deskewInfo(
       timeScanCur, timeScanEnd, odomInc,
       imuTime, imuRot, imu_buffer, odomQueue,
-      cloudInfo.initialIMU, cloudInfo.initialXYZ, cloudInfo.initialRPY,
+      cloudInfo.initialIMU, cloudInfo.initial_pose,
       imuAvailable, odomAvailable, odomDeskewFlag, imuPointerCur);
 
     if (!flag) {

@@ -14,8 +14,7 @@ int64 odomAvailable
 geometry_msgs/Vector3 initialIMU
 
 # Initial guess from imu pre-integration
-geometry_msgs/Vector3 initialXYZ
-geometry_msgs/Vector3 initialRPY
+geometry_msgs/Pose initial_pose
 
 # Point cloud messages
 sensor_msgs/PointCloud2 cloud_deskewed  # original cloud deskewed
