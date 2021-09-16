@@ -171,21 +171,51 @@ Eigen::Vector3d findPosition(
   return ratio * odomInc;
 }
 
+class PositionFinder
+{
+public:
+  PositionFinder(
+    const Eigen::Vector3d & odomInc,
+    const double timeScanCur,
+    const double timeScanEnd,
+    const bool odomAvailable,
+    const bool odomDeskewFlag)
+  : odomInc(odomInc),
+    timeScanCur(timeScanCur),
+    timeScanEnd(timeScanEnd),
+    odomAvailable(odomAvailable),
+    odomDeskewFlag(odomDeskewFlag) {}
+
+  Eigen::Vector3d operator()(const double relTime) const
+  {
+    if (!odomAvailable || !odomDeskewFlag) {
+      return Eigen::Vector3d::Zero();
+    }
+
+    const float ratio = relTime / (timeScanEnd - timeScanCur);
+    return ratio * odomInc;
+  }
+
+private:
+  const Eigen::Vector3d & odomInc;
+  const double timeScanCur;
+  const double timeScanEnd;
+  const bool odomAvailable;
+  const bool odomDeskewFlag;
+};
+
 void projectPointCloud(
-  const Eigen::Vector3d & odomInc,
   const std::vector<Eigen::Vector3d> & imuRot,
   const std::vector<double> & imuTime,
   const Points<PointXYZIRT>::type & points,
-  const bool odomDeskewFlag,
   const float lidarMinRange,
   const float lidarMaxRange,
   const double timeScanCur,
-  const double timeScanEnd,
   const int downsampleRate,
   const int N_SCAN,
   const int Horizon_SCAN,
   const bool imuAvailable,
-  const bool odomAvailable,
+  const PositionFinder & calc_position,
   bool & firstPointFlag,
   cv::Mat & rangeMat,
   pcl::PointCloud<PointType> & fullCloud,
@@ -226,10 +256,7 @@ void projectPointCloud(
     }
 
     const Eigen::Vector3d rotCur = findRotation(imuRot, timeScanCur + p.time, imuTime);
-    const Eigen::Vector3d posCur = findPosition(
-      odomInc, timeScanCur, timeScanEnd, p.time,
-      odomAvailable, odomDeskewFlag
-    );
+    const Eigen::Vector3d posCur = calc_position(p.time);
 
     const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
 
@@ -548,15 +575,19 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
 
+    const PositionFinder calc_position(
+      odomInc, timeScanCur, timeScanEnd,
+      odomAvailable, odomDeskewFlag
+    );
+
     cv::Mat rangeMat;
     projectPointCloud(
-      odomInc, imuRot, imuTime, laserCloudIn.points,
-      odomDeskewFlag,
+      imuRot, imuTime, laserCloudIn.points,
       lidarMinRange, lidarMaxRange,
-      timeScanCur, timeScanEnd,
+      timeScanCur,
       downsampleRate, N_SCAN, Horizon_SCAN,
-      cloudInfo.imuAvailable, cloudInfo.odomAvailable, firstPointFlag,
-      rangeMat, fullCloud, transStartInverse
+      cloudInfo.imuAvailable, calc_position,
+      firstPointFlag, rangeMat, fullCloud, transStartInverse
     );
 
     pcl::PointCloud<PointType> extractedCloud;
