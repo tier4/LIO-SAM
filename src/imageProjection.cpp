@@ -125,9 +125,9 @@ pcl::PointCloud<PointXYZIRT> convert(
 }
 
 Eigen::Vector3d findRotation(
-  const std::array<Eigen::Vector3d, queueLength> & imuRot,
+  const std::vector<Eigen::Vector3d> & imuRot,
   const double point_time, const int imuPointerCur,
-  const std::array<double, queueLength> & imuTime)
+  const std::vector<double> & imuTime)
 {
   int index = imuPointerCur;
   for (int i = 0; i < imuPointerCur; i++) {
@@ -164,8 +164,8 @@ Eigen::Vector3d findPosition(
 
 PointType deskewPoint(
   const Eigen::Vector3d & odomInc,
-  const std::array<Eigen::Vector3d, queueLength> & imuRot,
-  const std::array<double, queueLength> & imuTime,
+  const std::vector<Eigen::Vector3d> & imuRot,
+  const std::vector<double> & imuTime,
   const double timeScanCur,
   const double timeScanEnd,
   const PointType & point,
@@ -204,8 +204,8 @@ PointType deskewPoint(
 
 void projectPointCloud(
   const Eigen::Vector3d & odomInc,
-  const std::array<Eigen::Vector3d, queueLength> & imuRot,
-  const std::array<double, queueLength> & imuTime,
+  const std::vector<Eigen::Vector3d> & imuRot,
+  const std::vector<double> & imuTime,
   const Points<PointXYZIRT>::type & points,
   const int imuPointerCur,
   const bool odomDeskewFlag,
@@ -315,8 +315,8 @@ void odomDeskewInfo(
 void imuDeskewInfo(
   const double timeScanCur,
   const double timeScanEnd,
-  std::array<double, queueLength> & imuTime,
-  std::array<Eigen::Vector3d, queueLength> & imuRot,
+  std::vector<double> & imuTime,
+  std::vector<Eigen::Vector3d> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
   int & imuPointerCur,
   geometry_msgs::Vector3 & initialIMU,
@@ -342,8 +342,8 @@ void imuDeskewInfo(
     }
 
     if (imuPointerCur == 0) {
-      imuRot[0] = Eigen::Vector3d::Zero();
-      imuTime[0] = currentImuTime;
+      imuRot.push_back(Eigen::Vector3d::Zero());
+      imuTime.push_back(currentImuTime);
       ++imuPointerCur;
       continue;
     }
@@ -352,9 +352,10 @@ void imuDeskewInfo(
     const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer[i].angular_velocity);
 
     // integrate rotation
-    double timeDiff = currentImuTime - imuTime[imuPointerCur - 1];
-    imuRot[imuPointerCur] = imuRot[imuPointerCur - 1] + angular * timeDiff;
-    imuTime[imuPointerCur] = currentImuTime;
+    double timeDiff = currentImuTime - imuTime.back();
+    const Eigen::Vector3d rot = imuRot.back() + angular * timeDiff;
+    imuRot.push_back(rot);
+    imuTime.push_back(currentImuTime);
     ++imuPointerCur;
   }
 
@@ -401,8 +402,8 @@ void deskewInfo(
   const double timeScanCur,
   const double timeScanEnd,
   Eigen::Vector3d & odomInc,
-  std::array<double, queueLength> & imuTime,
-  std::array<Eigen::Vector3d, queueLength> & imuRot,
+  std::vector<double> & imuTime,
+  std::vector<Eigen::Vector3d> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
   std::deque<nav_msgs::Odometry> & odomQueue,
   geometry_msgs::Vector3 & initialIMU,
@@ -556,13 +557,8 @@ public:
       return;
     }
 
-    std::array<double, queueLength> imuTime;
-    std::array<Eigen::Vector3d, queueLength> imuRot;
-
-    for (int i = 0; i < queueLength; ++i) {
-      imuTime[i] = 0;
-      imuRot[i] = Eigen::Vector3d::Zero();
-    }
+    std::vector<double> imuTime;
+    std::vector<Eigen::Vector3d> imuRot;
 
     bool imuAvailable = false;
     bool odomAvailable = false;
