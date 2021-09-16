@@ -182,6 +182,7 @@ void projectPointCloud(
   const double timeScanCur,
   const double timeScanEnd,
   const int downsampleRate,
+  const int N_SCAN,
   const int Horizon_SCAN,
   const bool imuAvailable,
   const bool odomAvailable,
@@ -190,6 +191,7 @@ void projectPointCloud(
   pcl::PointCloud<PointType> & fullCloud,
   Eigen::Affine3d & transStartInverse)
 {
+  rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
   for (const PointXYZIRT & p : points) {
     const Eigen::Vector3d q(p.x, p.y, p.z);
 
@@ -546,15 +548,13 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
 
-    // reset range matrix for range image projection
-    cv::Mat rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
-
+    cv::Mat rangeMat;
     projectPointCloud(
       odomInc, imuRot, imuTime, laserCloudIn.points,
       odomDeskewFlag,
       lidarMinRange, lidarMaxRange,
       timeScanCur, timeScanEnd,
-      downsampleRate, Horizon_SCAN,
+      downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable, cloudInfo.odomAvailable, firstPointFlag,
       rangeMat, fullCloud, transStartInverse
     );
