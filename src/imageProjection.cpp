@@ -219,7 +219,7 @@ void projectPointCloud(
   const bool odomAvailable,
   bool & firstPointFlag,
   cv::Mat & rangeMat,
-  pcl::PointCloud<PointType>::Ptr & fullCloud,
+  pcl::PointCloud<PointType> & fullCloud,
   Eigen::Affine3d & transStartInverse)
 {
   for (const PointXYZIRT & p : points) {
@@ -251,11 +251,11 @@ void projectPointCloud(
     const int index = column_index + row_index * Horizon_SCAN;
 
     if (!imuAvailable) {
-      fullCloud->points[index] = point;
+      fullCloud.points[index] = point;
       continue;
     }
 
-    fullCloud->points[index] = deskewPoint(
+    fullCloud.points[index] = deskewPoint(
       odomInc, imuRot, imuTime, timeScanCur, timeScanEnd, point,
       p.time, imuPointerCur, odomDeskewFlag, odomAvailable,
       firstPointFlag, transStartInverse);
@@ -447,7 +447,7 @@ private:
   bool firstPointFlag;
   Eigen::Affine3d transStartInverse;
 
-  pcl::PointCloud<PointType>::Ptr fullCloud;
+  pcl::PointCloud<PointType> fullCloud;
 
   bool odomDeskewFlag;
   Eigen::Vector3d odomInc;
@@ -476,9 +476,7 @@ public:
     pubLaserCloudInfo =
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
 
-    fullCloud.reset(new pcl::PointCloud<PointType>());
-
-    fullCloud->points.resize(N_SCAN * Horizon_SCAN);
+    fullCloud.points.resize(N_SCAN * Horizon_SCAN);
 
     firstPointFlag = true;
     odomDeskewFlag = false;
@@ -612,7 +610,7 @@ public:
         // save range info
         cloudInfo.pointRange[count] = range;
         // save extracted cloud
-        extractedCloud.push_back(fullCloud->points[j + i * Horizon_SCAN]);
+        extractedCloud.push_back(fullCloud.points[j + i * Horizon_SCAN]);
         // size of extracted cloud
         ++count;
       }
