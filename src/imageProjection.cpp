@@ -286,8 +286,6 @@ void odomDeskewInfo(
   const nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
 
   initial_pose = startOdomMsg.pose.pose;
-  const Eigen::Vector3d start_rpy = quaternionToRPY(startOdomMsg.pose.pose.orientation);
-  const Eigen::Vector3d start_point = pointToEigen(startOdomMsg.pose.pose.position);
 
   odomAvailable = true;
 
@@ -305,11 +303,8 @@ void odomDeskewInfo(
     return;
   }
 
-  const Eigen::Affine3d transBegin = makeAffine(start_point, start_rpy);
-
-  const Eigen::Vector3d end_rpy = quaternionToRPY(endOdomMsg.pose.pose.orientation);
-  const Eigen::Vector3d end_point = pointToEigen(endOdomMsg.pose.pose.position);
-  const Eigen::Affine3d transEnd = makeAffine(end_point, end_rpy);
+  const Eigen::Affine3d transBegin = odom2affine(startOdomMsg.pose.pose);
+  const Eigen::Affine3d transEnd = odom2affine(endOdomMsg.pose.pose);
 
   const Eigen::Affine3d transBt = transBegin.inverse() * transEnd;
 
