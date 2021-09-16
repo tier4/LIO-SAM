@@ -121,13 +121,8 @@ public:
     if (lidarOdomTime == -1) {
       return;
     }
-    while (!imuOdomQueue.empty()) {
-      if (imuOdomQueue.front().header.stamp.toSec() <= lidarOdomTime) {
-        imuOdomQueue.pop_front();
-      } else {
-        break;
-      }
-    }
+
+    dropBefore(lidarOdomTime, imuOdomQueue);
     Eigen::Affine3f imuOdomAffineFront = odom2affine(imuOdomQueue.front());
     Eigen::Affine3f imuOdomAffineBack = odom2affine(imuOdomQueue.back());
     Eigen::Affine3f imuOdomAffineIncre = imuOdomAffineFront.inverse() *

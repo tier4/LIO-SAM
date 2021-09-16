@@ -272,13 +272,7 @@ void odomDeskewInfo(
   bool & odomDeskewFlag,
   Eigen::Vector3d & odomInc)
 {
-  while (!odomQueue.empty()) {
-    if (timeInSec(odomQueue.front().header) < timeScanCur - 0.01) {
-      odomQueue.pop_front();
-    } else {
-      break;
-    }
-  }
+  dropBefore(timeScanCur - 0.01, odomQueue);
 
   if (odomQueue.empty()) {
     return;
