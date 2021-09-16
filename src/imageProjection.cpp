@@ -156,10 +156,12 @@ Eigen::Vector3d findPosition(
   const bool odomAvailable,
   const bool odomDeskewFlag)
 {
-  const bool f = !odomAvailable || !odomDeskewFlag;
+  if (!odomAvailable || !odomDeskewFlag) {
+    return Eigen::Vector3d::Zero();
+  }
+
   const float ratio = relTime / (timeScanEnd - timeScanCur);
-  const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
-  return f ? zero : ratio * odomInc;
+  return ratio * odomInc;
 }
 
 PointType deskewPoint(
