@@ -131,45 +131,43 @@ Eigen::Vector3d interpolatePose(
   return rot1 * (t - t0) / (t1 - t0) + rot0 * (t1 - t) / (t1 - t0);
 }
 
-Eigen::Vector3d findRotation(
-  const std::vector<Eigen::Vector3d> & imuRot,
-  const double point_time,
-  const std::vector<double> & imuTime)
+class RotationFinder
 {
-  int index = imuTime.size() - 1;
-  for (int i = 0; i < imuTime.size() - 1; i++) {
-    if (imuTime[i] > point_time) {
-      index = i;
-      break;
+public:
+  RotationFinder(
+    const double timeScanCur,
+    const std::vector<Eigen::Vector3d> & imuRot,
+    const std::vector<double> & imuTime)
+  : timeScanCur(timeScanCur), imuRot(imuRot), imuTime(imuTime) {}
+
+  Eigen::Vector3d operator()(const double relTime) const
+  {
+    const double point_time = timeScanCur + relTime;
+
+    int index = imuTime.size() - 1;
+    for (int i = 0; i < imuTime.size() - 1; i++) {
+      if (imuTime[i] > point_time) {
+        index = i;
+        break;
+      }
     }
+
+    if (point_time > imuTime[index] || index == 0) {
+      return imuRot[index];
+    }
+
+    return interpolatePose(
+      imuRot[index - 1], imuRot[index - 0],
+      imuTime[index - 1], imuTime[index - 0],
+      point_time
+    );
   }
 
-  if (point_time > imuTime[index] || index == 0) {
-    return imuRot[index];
-  }
-
-  return interpolatePose(
-    imuRot[index - 1], imuRot[index - 0],
-    imuTime[index - 1], imuTime[index - 0],
-    point_time
-  );
-}
-
-Eigen::Vector3d findPosition(
-  const Eigen::Vector3d & odomInc,
-  const double timeScanCur,
-  const double timeScanEnd,
-  const double relTime,
-  const bool odomAvailable,
-  const bool odomDeskewFlag)
-{
-  if (!odomAvailable || !odomDeskewFlag) {
-    return Eigen::Vector3d::Zero();
-  }
-
-  const float ratio = relTime / (timeScanEnd - timeScanCur);
-  return ratio * odomInc;
-}
+private:
+  const double timeScanCur;
+  const std::vector<Eigen::Vector3d> imuRot;
+  const std::vector<double> imuTime;
+};
 
 class PositionFinder
 {
@@ -205,16 +203,14 @@ private:
 };
 
 void projectPointCloud(
-  const std::vector<Eigen::Vector3d> & imuRot,
-  const std::vector<double> & imuTime,
   const Points<PointXYZIRT>::type & points,
   const float lidarMinRange,
   const float lidarMaxRange,
-  const double timeScanCur,
   const int downsampleRate,
   const int N_SCAN,
   const int Horizon_SCAN,
   const bool imuAvailable,
+  const RotationFinder & calc_rotation,
   const PositionFinder & calc_position,
   bool & firstPointFlag,
   cv::Mat & rangeMat,
@@ -255,7 +251,7 @@ void projectPointCloud(
       continue;
     }
 
-    const Eigen::Vector3d rotCur = findRotation(imuRot, timeScanCur + p.time, imuTime);
+    const Eigen::Vector3d rotCur = calc_rotation(p.time);
     const Eigen::Vector3d posCur = calc_position(p.time);
 
     const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
@@ -580,13 +576,14 @@ public:
       odomAvailable, odomDeskewFlag
     );
 
+    const RotationFinder calc_rotation(timeScanCur, imuRot, imuTime);
+
     cv::Mat rangeMat;
     projectPointCloud(
-      imuRot, imuTime, laserCloudIn.points,
+      laserCloudIn.points,
       lidarMinRange, lidarMaxRange,
-      timeScanCur,
       downsampleRate, N_SCAN, Horizon_SCAN,
-      cloudInfo.imuAvailable, calc_position,
+      cloudInfo.imuAvailable, calc_rotation, calc_position,
       firstPointFlag, rangeMat, fullCloud, transStartInverse
     );
 
