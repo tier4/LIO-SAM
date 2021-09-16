@@ -126,7 +126,7 @@ pcl::PointCloud<PointXYZIRT> convert(
 
 Eigen::Vector3d findRotation(
   const std::vector<Eigen::Vector3d> & imuRot,
-  const double point_time, const int imuPointerCur,
+  const double point_time,
   const std::vector<double> & imuTime)
 {
   int index = imuTime.size() - 1;
@@ -170,7 +170,6 @@ PointType deskewPoint(
   const double timeScanEnd,
   const PointType & point,
   const double relTime,
-  const int imuPointerCur,
   const bool odomDeskewFlag,
   const bool odomAvailable,
   bool & firstPointFlag,
@@ -179,7 +178,7 @@ PointType deskewPoint(
   double pointTime = timeScanCur + relTime;
 
   const Eigen::Vector3d rotCur = findRotation(
-    imuRot, pointTime, imuPointerCur, imuTime
+    imuRot, pointTime, imuTime
   );
   const Eigen::Vector3d posCur = findPosition(
     odomInc, timeScanCur, timeScanEnd, relTime,
@@ -207,7 +206,6 @@ void projectPointCloud(
   const std::vector<Eigen::Vector3d> & imuRot,
   const std::vector<double> & imuTime,
   const Points<PointXYZIRT>::type & points,
-  const int imuPointerCur,
   const bool odomDeskewFlag,
   const float lidarMinRange,
   const float lidarMaxRange,
@@ -257,7 +255,7 @@ void projectPointCloud(
 
     fullCloud.points[index] = deskewPoint(
       odomInc, imuRot, imuTime, timeScanCur, timeScanEnd, point,
-      p.time, imuPointerCur, odomDeskewFlag, odomAvailable,
+      p.time, odomDeskewFlag, odomAvailable,
       firstPointFlag, transStartInverse);
   }
 }
@@ -318,7 +316,6 @@ void imuDeskewInfo(
   std::vector<double> & imuTime,
   std::vector<Eigen::Vector3d> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
-  int & imuPointerCur,
   geometry_msgs::Vector3 & initialIMU,
   bool & imuAvailable)
 {
@@ -404,14 +401,13 @@ void deskewInfo(
   geometry_msgs::Pose & initial_pose,
   bool & imuAvailable,
   bool & odomAvailable,
-  bool & odomDeskewFlag,
-  int & imuPointerCur)
+  bool & odomDeskewFlag)
 {
   std::lock_guard<std::mutex> lock1(imuLock);
   std::lock_guard<std::mutex> lock2(odoLock);
 
   imuDeskewInfo(
-    timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer, imuPointerCur,
+    timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer,
     initialIMU, imuAvailable);
 
   odomDeskewInfo(
@@ -557,12 +553,11 @@ public:
     bool imuAvailable = false;
     bool odomAvailable = false;
 
-    int imuPointerCur = 0;
     deskewInfo(
       timeScanCur, timeScanEnd, odomInc,
       imuTime, imuRot, imu_buffer, odomQueue,
       cloudInfo.initialIMU, cloudInfo.initial_pose,
-      imuAvailable, odomAvailable, odomDeskewFlag, imuPointerCur);
+      imuAvailable, odomAvailable, odomDeskewFlag);
 
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
@@ -572,7 +567,7 @@ public:
 
     projectPointCloud(
       odomInc, imuRot, imuTime, laserCloudIn.points,
-      imuPointerCur, odomDeskewFlag,
+      odomDeskewFlag,
       lidarMinRange, lidarMaxRange,
       timeScanCur, timeScanEnd,
       downsampleRate, Horizon_SCAN,
