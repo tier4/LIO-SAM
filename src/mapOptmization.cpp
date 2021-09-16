@@ -653,16 +653,11 @@ public:
 
     static Eigen::Affine3d lastImuTransformation;
 
-    const float roll = cloudInfo.initialIMU.x;
-    const float pitch = cloudInfo.initialIMU.y;
-    const float yaw = cloudInfo.initialIMU.z;
     const Eigen::Vector3d rpy = vector3ToEigen(cloudInfo.initialIMU);
 
     // initialization
     if (cloudKeyPoses3D.points.empty()) {
-      posevec(0) = roll;
-      posevec(1) = pitch;
-      posevec(2) = yaw;
+      posevec.head(3) = vector3ToEigen(cloudInfo.initialIMU);
 
       if (!useImuHeadingInitialization) {
         posevec(2) = 0;
