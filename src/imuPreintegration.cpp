@@ -30,6 +30,18 @@ gtsam::Pose3 makeGtsamPose(const geometry_msgs::Pose & pose)
   );
 }
 
+Eigen::Affine3f odom2affine(const geometry_msgs::Pose & pose)
+{
+  double x, y, z, roll, pitch, yaw;
+  x = pose.position.x;
+  y = pose.position.y;
+  z = pose.position.z;
+  tf::Quaternion orientation;
+  tf::quaternionMsgToTF(pose.orientation, orientation);
+  tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+  return pcl::getTransformation(x, y, z, roll, pitch, yaw);
+}
+
 class TransformFusion : public ParamServer
 {
 public:
@@ -79,23 +91,11 @@ public:
     pubImuPath = nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1);
   }
 
-  Eigen::Affine3f odom2affine(nav_msgs::Odometry odom)
-  {
-    double x, y, z, roll, pitch, yaw;
-    x = odom.pose.pose.position.x;
-    y = odom.pose.pose.position.y;
-    z = odom.pose.pose.position.z;
-    tf::Quaternion orientation;
-    tf::quaternionMsgToTF(odom.pose.pose.orientation, orientation);
-    tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
-    return pcl::getTransformation(x, y, z, roll, pitch, yaw);
-  }
-
   void lidarOdometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    lidarOdomAffine = odom2affine(*odomMsg);
+    lidarOdomAffine = odom2affine(odomMsg->pose.pose);
 
     lidarOdomTime = odomMsg->header.stamp.toSec();
   }
@@ -123,8 +123,8 @@ public:
     }
 
     dropBefore(lidarOdomTime, imuOdomQueue);
-    Eigen::Affine3f imuOdomAffineFront = odom2affine(imuOdomQueue.front());
-    Eigen::Affine3f imuOdomAffineBack = odom2affine(imuOdomQueue.back());
+    Eigen::Affine3f imuOdomAffineFront = odom2affine(imuOdomQueue.front().pose.pose);
+    Eigen::Affine3f imuOdomAffineBack = odom2affine(imuOdomQueue.back().pose.pose);
     Eigen::Affine3f imuOdomAffineIncre = imuOdomAffineFront.inverse() *
       imuOdomAffineBack;
     Eigen::Affine3f imuOdomAffineLast = lidarOdomAffine * imuOdomAffineIncre;
