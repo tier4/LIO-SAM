@@ -124,6 +124,13 @@ pcl::PointCloud<PointXYZIRT> convert(
   throw std::runtime_error("Unknown sensor type");
 }
 
+Eigen::Vector3d interpolatePose(
+  const Eigen::Vector3d & rot0, const Eigen::Vector3d & rot1,
+  const double t0, const double t1, const double t)
+{
+  return rot1 * (t - t0) / (t1 - t0) + rot0 * (t1 - t) / (t1 - t0);
+}
+
 Eigen::Vector3d findRotation(
   const std::vector<Eigen::Vector3d> & imuRot,
   const double point_time,
@@ -140,12 +147,12 @@ Eigen::Vector3d findRotation(
   if (point_time > imuTime[index] || index == 0) {
     return imuRot[index];
   }
-  const Eigen::Vector3d prev_rot = imuRot[index - 1];
-  const Eigen::Vector3d curr_rot = imuRot[index - 0];
-  const double prev_time = imuTime[index - 1];
-  const double curr_time = imuTime[index - 0];
-  const double diff = imuTime[index] - imuTime[index - 1];
-  return curr_rot * (point_time - prev_time) / diff + prev_rot * (curr_time - point_time) / diff;
+
+  return interpolatePose(
+    imuRot[index - 1], imuRot[index - 0],
+    imuTime[index - 1], imuTime[index - 0],
+    point_time
+  );
 }
 
 Eigen::Vector3d findPosition(
