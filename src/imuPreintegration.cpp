@@ -159,6 +159,25 @@ public:
   }
 };
 
+bool failureDetection(
+  const gtsam::Vector3 & velocity,
+  const gtsam::imuBias::ConstantBias & bias)
+{
+  if (velocity.norm() > 30) {
+    ROS_WARN("Large velocity, reset IMU-preintegration!");
+    return true;
+  }
+
+  const Eigen::Vector3d ba = bias.accelerometer();
+  const Eigen::Vector3d bg = bias.gyroscope();
+  if (ba.norm() > 1.0 || bg.norm() > 1.0) {
+    ROS_WARN("Large bias, reset IMU-preintegration!");
+    return true;
+  }
+
+  return false;
+}
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -486,30 +505,6 @@ public:
 
     ++key;
     doneFirstOpt = true;
-  }
-
-  bool failureDetection(
-    const gtsam::Vector3 & velCur,
-    const gtsam::imuBias::ConstantBias & biasCur)
-  {
-    Eigen::Vector3f vel(velCur.x(), velCur.y(), velCur.z());
-    if (vel.norm() > 30) {
-      ROS_WARN("Large velocity, reset IMU-preintegration!");
-      return true;
-    }
-
-    Eigen::Vector3f ba(biasCur.accelerometer().x(),
-      biasCur.accelerometer().y(),
-      biasCur.accelerometer().z());
-    Eigen::Vector3f bg(biasCur.gyroscope().x(),
-      biasCur.gyroscope().y(),
-      biasCur.gyroscope().z());
-    if (ba.norm() > 1.0 || bg.norm() > 1.0) {
-      ROS_WARN("Large bias, reset IMU-preintegration!");
-      return true;
-    }
-
-    return false;
   }
 
   void imuHandler(const sensor_msgs::Imu::ConstPtr & imu_raw)
