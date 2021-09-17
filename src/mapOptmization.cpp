@@ -227,11 +227,11 @@ public:
   Values isamCurrentEstimate;
   Eigen::MatrixXd poseCovariance;
 
-  ros::Publisher pubLaserCloudSurround;
-  ros::Publisher pubLaserOdometryGlobal;
-  ros::Publisher pubLaserOdometryIncremental;
-  ros::Publisher pubKeyPoses;
-  ros::Publisher pubPath;
+  const ros::Publisher pubLaserCloudSurround;
+  const ros::Publisher pubLaserOdometryGlobal;
+  const ros::Publisher pubLaserOdometryIncremental;
+  const ros::Publisher pubKeyPoses;
+  const ros::Publisher pubPath;
 
   ros::Publisher pubRecentKeyFrames;
   ros::Publisher pubRecentKeyFrame;
@@ -314,21 +314,18 @@ public:
   Eigen::Affine3d incrementalOdometryAffineBack;
 
   mapOptimization()
+  : pubLaserCloudSurround(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1)),
+    pubLaserOdometryGlobal(nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry", 1)),
+    pubLaserOdometryIncremental(
+      nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 1)),
+    pubKeyPoses(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/trajectory", 1)),
+    pubPath(nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1))
   {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.1;
     parameters.relinearizeSkip = 1;
     isam = new ISAM2(parameters);
 
-    pubKeyPoses =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/trajectory", 1);
-    pubLaserCloudSurround =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1);
-    pubLaserOdometryGlobal =
-      nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry", 1);
-    pubLaserOdometryIncremental =
-      nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 1);
-    pubPath = nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1);
 
     subCloud = nh.subscribe<lio_sam::cloud_info>(
       "lio_sam/feature/cloud_info", 1,
