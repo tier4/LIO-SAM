@@ -284,27 +284,6 @@ public:
     imuIntegratorOpt_ = new gtsam::PreintegratedImuMeasurements(p, prior_imu_bias);
   }
 
-  void resetOptimization()
-  {
-    gtsam::ISAM2Params optParameters;
-    optParameters.relinearizeThreshold = 0.1;
-    optParameters.relinearizeSkip = 1;
-    optimizer = gtsam::ISAM2(optParameters);
-
-    gtsam::NonlinearFactorGraph newGraphFactors;
-    graphFactors = newGraphFactors;
-
-    gtsam::Values NewGraphValues;
-    graphValues = NewGraphValues;
-  }
-
-  void resetParams()
-  {
-    lastImuT_imu = -1;
-    doneFirstOpt = false;
-    systemInitialized = false;
-  }
-
   void odometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
   {
     std::lock_guard<std::mutex> lock(mtx);
@@ -320,8 +299,17 @@ public:
     bool degenerate = (int)odomMsg->pose.covariance[0] == 1 ? true : false;
 
     // 0. initialize system
-    if (systemInitialized == false) {
-      resetOptimization();
+    if (!systemInitialized) {
+      gtsam::ISAM2Params optParameters;
+      optParameters.relinearizeThreshold = 0.1;
+      optParameters.relinearizeSkip = 1;
+      optimizer = gtsam::ISAM2(optParameters);
+
+      gtsam::NonlinearFactorGraph newGraphFactors;
+      graphFactors = newGraphFactors;
+
+      gtsam::Values NewGraphValues;
+      graphValues = NewGraphValues;
 
       // pop old IMU message
       while (!imuQueOpt.empty()) {
@@ -362,27 +350,28 @@ public:
       return;
     }
 
-
     // reset graph for speed
     if (key == 100) {
       // get updated noise before reset
-      gtsam::noiseModel::Gaussian::shared_ptr updatedPoseNoise =
-        gtsam::noiseModel::Gaussian::Covariance(
-        optimizer.marginalCovariance(
-          X(
-            key - 1)));
-      gtsam::noiseModel::Gaussian::shared_ptr updatedVelNoise =
-        gtsam::noiseModel::Gaussian::Covariance(
-        optimizer.marginalCovariance(
-          V(
-            key - 1)));
-      gtsam::noiseModel::Gaussian::shared_ptr updatedBiasNoise =
-        gtsam::noiseModel::Gaussian::Covariance(
-        optimizer.marginalCovariance(
-          B(
-            key - 1)));
+      const auto updatedPoseNoise =
+        gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(X(key - 1)));
+      const auto updatedVelNoise =
+        gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(V(key - 1)));
+      const auto updatedBiasNoise =
+        gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(B(key - 1)));
+
       // reset graph
-      resetOptimization();
+      gtsam::ISAM2Params optParameters;
+      optParameters.relinearizeThreshold = 0.1;
+      optParameters.relinearizeSkip = 1;
+      optimizer = gtsam::ISAM2(optParameters);
+
+      gtsam::NonlinearFactorGraph newGraphFactors;
+      graphFactors = newGraphFactors;
+
+      gtsam::Values NewGraphValues;
+      graphValues = NewGraphValues;
+
       // add pose
       gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, updatedPoseNoise);
       graphFactors.add(priorPose);
@@ -430,17 +419,15 @@ public:
     // add imu factor to graph
     const gtsam::PreintegratedImuMeasurements & preint_imu =
       dynamic_cast<const gtsam::PreintegratedImuMeasurements &>(*imuIntegratorOpt_);
-    gtsam::ImuFactor imu_factor(X(key - 1), V(key - 1), X(key), V(key), B(key - 1),
-      preint_imu);
+    gtsam::ImuFactor imu_factor(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), preint_imu);
     graphFactors.add(imu_factor);
     // add imu bias between factor
     graphFactors.add(
       gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
-        B(key - 1),
-        B(key), gtsam::imuBias::ConstantBias(),
+        B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
         gtsam::noiseModel::Diagonal::Sigmas(
-          sqrt(imuIntegratorOpt_->deltaTij()) *
-          noiseModelBetweenBias)));
+          sqrt(imuIntegratorOpt_->deltaTij()) * noiseModelBetweenBias))
+    );
     // add pose factor
     gtsam::Pose3 curPose = lidarPose.compose(lidar2Imu);
     gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curPose,
@@ -466,10 +453,11 @@ public:
     imuIntegratorOpt_->resetIntegrationAndSetBias(prevBias_);
     // check optimization
     if (failureDetection(prevVel_, prevBias_)) {
-      resetParams();
+      lastImuT_imu = -1;
+      doneFirstOpt = false;
+      systemInitialized = false;
       return;
     }
-
 
     // 2. after optiization, re-propagate imu odometry preintegration
     prev_ = prevState_;
