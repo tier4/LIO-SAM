@@ -240,8 +240,6 @@ public:
   ros::Subscriber subCloud;
   ros::Subscriber subGPS;
 
-  ros::ServiceServer srvSaveMap;
-
   std::deque<nav_msgs::Odometry> gpsQueue;
   lio_sam::cloud_info cloudInfo;
 
@@ -339,10 +337,6 @@ public:
     subGPS = nh.subscribe<nav_msgs::Odometry>(
       gpsTopic, 200,
       &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
-
-    srvSaveMap = nh.advertiseService(
-      "lio_sam/save_map",
-      &mapOptimization::saveMapService, this);
 
     pubRecentKeyFrames =
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1);
@@ -457,97 +451,12 @@ public:
     gpsQueue.push_back(*gpsMsg);
   }
 
-  bool saveMapService(
-    lio_sam::save_mapRequest & req,
-    lio_sam::save_mapResponse & res)
-  {
-    std::string saveMapDirectory;
-
-    std::cout << "****************************************************" << std::endl;
-    std::cout << "Saving map to pcd files ..." << std::endl;
-    if (req.destination.empty()) {
-      saveMapDirectory = std::getenv("HOME") +
-        savePCDDirectory;
-    } else {saveMapDirectory = std::getenv("HOME") + req.destination;}
-    std::cout << "Save destination: " << saveMapDirectory << std::endl;
-    // create directory and remove old files;
-    system((std::string("exec rm -r ") + saveMapDirectory).c_str());
-    system((std::string("mkdir -p ") + saveMapDirectory).c_str());
-    // save key frame transformations
-    pcl::io::savePCDFileBinary(saveMapDirectory + "/trajectory.pcd", cloudKeyPoses3D);
-    pcl::io::savePCDFileBinary(saveMapDirectory + "/transformations.pcd", cloudKeyPoses6D);
-    // extract global point cloud map
-    pcl::PointCloud<PointType>::Ptr globalCornerCloud(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType> globalCornerCloudDS;
-    pcl::PointCloud<PointType>::Ptr globalSurfCloud(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType> globalSurfCloudDS;
-    pcl::PointCloud<PointType> globalMapCloud;
-    for (int i = 0; i < (int)cloudKeyPoses3D.size(); i++) {
-      *globalCornerCloud += transformPointCloud(cornerCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
-      *globalSurfCloud += transformPointCloud(surfCloudKeyFrames[i], cloudKeyPoses6D.points[i]);
-      std::cout << "\r" << std::flush << "Processing feature cloud " << i << " of " <<
-        cloudKeyPoses6D.size() << " ...";
-    }
-
-    if (req.resolution != 0) {
-      std::cout << "\n\nSave resolution: " << req.resolution << std::endl;
-
-      // down-sample and save corner cloud
-      downSizeFilterCorner.setInputCloud(globalCornerCloud);
-      downSizeFilterCorner.setLeafSize(
-        req.resolution, req.resolution,
-        req.resolution);
-      downSizeFilterCorner.filter(globalCornerCloudDS);
-      pcl::io::savePCDFileBinary(saveMapDirectory + "/CornerMap.pcd", globalCornerCloudDS);
-      // down-sample and save surf cloud
-      downSizeFilterSurf.setInputCloud(globalSurfCloud);
-      downSizeFilterSurf.setLeafSize(req.resolution, req.resolution, req.resolution);
-      downSizeFilterSurf.filter(globalSurfCloudDS);
-      pcl::io::savePCDFileBinary(saveMapDirectory + "/SurfMap.pcd", globalSurfCloudDS);
-    } else {
-      // save corner cloud
-      pcl::io::savePCDFileBinary(saveMapDirectory + "/CornerMap.pcd", *globalCornerCloud);
-      // save surf cloud
-      pcl::io::savePCDFileBinary(saveMapDirectory + "/SurfMap.pcd", *globalSurfCloud);
-    }
-
-    // save global point cloud map
-    globalMapCloud += *globalCornerCloud;
-    globalMapCloud += *globalSurfCloud;
-
-    int ret = pcl::io::savePCDFileBinary(saveMapDirectory + "/GlobalMap.pcd", globalMapCloud);
-    res.success = ret == 0;
-
-    downSizeFilterCorner.setLeafSize(
-      mappingCornerLeafSize, mappingCornerLeafSize,
-      mappingCornerLeafSize);
-    downSizeFilterSurf.setLeafSize(
-      mappingSurfLeafSize, mappingSurfLeafSize,
-      mappingSurfLeafSize);
-
-    std::cout << "****************************************************" << std::endl;
-    std::cout << "Saving map to pcd files completed\n" << std::endl;
-
-    return true;
-  }
-
   void visualizeGlobalMapThread()
   {
     ros::Rate rate(0.2);
     while (ros::ok()) {
       rate.sleep();
       publishGlobalMap();
-    }
-
-    if (!savePCD) {
-      return;
-    }
-
-    lio_sam::save_mapRequest req;
-    lio_sam::save_mapResponse res;
-
-    if (!saveMapService(req, res)) {
-      std::cout << "Fail to save map" << std::endl;
     }
   }
 

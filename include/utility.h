@@ -84,10 +84,6 @@ public:
   float gpsCovThreshold;
   float poseCovThreshold;
 
-  // Save pcd
-  bool savePCD;
-  std::string savePCDDirectory;
-
   // Lidar Sensor Configuration
   SensorType sensor;
   int N_SCAN;
@@ -163,10 +159,6 @@ public:
     nh.param < bool > ("lio_sam/useGpsElevation", useGpsElevation, false);
     nh.param < float > ("lio_sam/gpsCovThreshold", gpsCovThreshold, 2.0);
     nh.param < float > ("lio_sam/poseCovThreshold", poseCovThreshold, 25.0);
-
-    nh.param < bool > ("lio_sam/savePCD", savePCD, false);
-    nh.param < std::string > ("lio_sam/savePCDDirectory", savePCDDirectory,
-    "/Downloads/LOAM/");
 
     std::string sensorStr;
     nh.param < std::string > ("lio_sam/sensor", sensorStr, "");
