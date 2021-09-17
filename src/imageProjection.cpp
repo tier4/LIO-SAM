@@ -202,6 +202,34 @@ private:
   const bool odomDeskewFlag;
 };
 
+class AffineFinder
+{
+public:
+  AffineFinder(
+    const std::vector<Eigen::Vector3d> & imuRot,
+    const std::vector<double> & imuTime,
+    const Eigen::Vector3d & odomInc,
+    const double timeScanCur,
+    const double timeScanEnd,
+    const bool odomAvailable,
+    const bool odomDeskewFlag)
+  : calc_rotation(RotationFinder(timeScanCur, imuRot, imuTime)),
+    calc_position(PositionFinder(odomInc, timeScanCur, timeScanEnd, odomAvailable, odomDeskewFlag))
+  {
+  }
+
+  Eigen::Affine3d operator()(const double relTime) const
+  {
+    const Eigen::Vector3d r = calc_rotation(relTime);
+    const Eigen::Vector3d p = calc_position(relTime);
+    return makeAffine(p, r);
+  }
+
+private:
+  const RotationFinder calc_rotation;
+  const PositionFinder calc_position;
+};
+
 void projectPointCloud(
   const Points<PointXYZIRT>::type & points,
   const float lidarMinRange,
@@ -210,8 +238,7 @@ void projectPointCloud(
   const int N_SCAN,
   const int Horizon_SCAN,
   const bool imuAvailable,
-  const RotationFinder & calc_rotation,
-  const PositionFinder & calc_position,
+  const AffineFinder & calc_transform,
   bool & firstPointFlag,
   cv::Mat & rangeMat,
   pcl::PointCloud<PointType> & fullCloud,
@@ -251,10 +278,7 @@ void projectPointCloud(
       continue;
     }
 
-    const Eigen::Vector3d rotCur = calc_rotation(p.time);
-    const Eigen::Vector3d posCur = calc_position(p.time);
-
-    const Eigen::Affine3d transform = makeAffine(posCur, rotCur);
+    const Eigen::Affine3d transform = calc_transform(p.time);
 
     if (firstPointFlag) {
       transStartInverse = transform.inverse();
@@ -571,19 +595,17 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
 
-    const PositionFinder calc_position(
-      odomInc, timeScanCur, timeScanEnd,
-      odomAvailable, odomDeskewFlag
+    const AffineFinder calc_transform(
+      imuRot, imuTime, odomInc,
+      timeScanCur, timeScanEnd, odomAvailable, odomDeskewFlag
     );
-
-    const RotationFinder calc_rotation(timeScanCur, imuRot, imuTime);
 
     cv::Mat rangeMat;
     projectPointCloud(
       laserCloudIn.points,
       lidarMinRange, lidarMaxRange,
       downsampleRate, N_SCAN, Horizon_SCAN,
-      cloudInfo.imuAvailable, calc_rotation, calc_position,
+      cloudInfo.imuAvailable, calc_transform,
       firstPointFlag, rangeMat, fullCloud, transStartInverse
     );
 
