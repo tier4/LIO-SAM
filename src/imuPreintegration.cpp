@@ -83,7 +83,7 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    lidarOdomAffine = odom2affine(odomMsg->pose.pose);
+    lidarOdomAffine = poseToAffine(odomMsg->pose.pose);
 
     lidarOdomTime = odomMsg->header.stamp.toSec();
   }
@@ -111,8 +111,8 @@ public:
     }
 
     dropBefore(lidarOdomTime, imuOdomQueue);
-    Eigen::Affine3d imuOdomAffineFront = odom2affine(imuOdomQueue.front().pose.pose);
-    Eigen::Affine3d imuOdomAffineBack = odom2affine(imuOdomQueue.back().pose.pose);
+    Eigen::Affine3d imuOdomAffineFront = poseToAffine(imuOdomQueue.front().pose.pose);
+    Eigen::Affine3d imuOdomAffineBack = poseToAffine(imuOdomQueue.back().pose.pose);
     Eigen::Affine3d imuOdomAffineIncre = imuOdomAffineFront.inverse() *
       imuOdomAffineBack;
     Eigen::Affine3d imuOdomAffineLast = lidarOdomAffine * imuOdomAffineIncre;

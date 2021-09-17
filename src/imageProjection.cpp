@@ -334,8 +334,8 @@ void odomDeskewInfo(
     return;
   }
 
-  const Eigen::Affine3d transBegin = odom2affine(startOdomMsg.pose.pose);
-  const Eigen::Affine3d transEnd = odom2affine(endOdomMsg.pose.pose);
+  const Eigen::Affine3d transBegin = poseToAffine(startOdomMsg.pose.pose);
+  const Eigen::Affine3d transEnd = poseToAffine(endOdomMsg.pose.pose);
 
   const Eigen::Affine3d transBt = transBegin.inverse() * transEnd;
 

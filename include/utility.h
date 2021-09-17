@@ -369,7 +369,7 @@ Eigen::Vector3d quaternionToRPY(const geometry_msgs::Quaternion & orientation)
   return quaternionToRPY(quat);
 }
 
-Eigen::Affine3d odom2affine(const geometry_msgs::Pose & pose)
+Eigen::Affine3d poseToAffine(const geometry_msgs::Pose & pose)
 {
   const Eigen::Vector3d rpy = quaternionToRPY(pose.orientation);
   const Eigen::Vector3d point = pointToEigen(pose.position);
