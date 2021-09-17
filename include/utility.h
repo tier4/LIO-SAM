@@ -371,6 +371,20 @@ Eigen::Vector3d quaternionToRPY(const geometry_msgs::Quaternion & orientation)
   return quaternionToRPY(quat);
 }
 
+Eigen::Quaterniond quaternionToEigen(const geometry_msgs::Quaternion & quat_msg)
+{
+  Eigen::Quaterniond quat_eigen;
+  tf::quaternionMsgToEigen(quat_msg, quat_eigen);
+  return quat_eigen;
+}
+
+geometry_msgs::Quaternion eigenToQuaternion(const Eigen::Quaterniond & quat_eigen)
+{
+  geometry_msgs::Quaternion quat_msg;
+  tf::quaternionEigenToMsg(quat_eigen, quat_msg);
+  return quat_msg;
+}
+
 Eigen::Affine3d poseToAffine(const geometry_msgs::Pose & pose)
 {
   Eigen::Affine3d affine;
