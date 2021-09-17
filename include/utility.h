@@ -373,9 +373,9 @@ Eigen::Vector3d quaternionToRPY(const geometry_msgs::Quaternion & orientation)
 
 Eigen::Affine3d poseToAffine(const geometry_msgs::Pose & pose)
 {
-  const Eigen::Vector3d rpy = quaternionToRPY(pose.orientation);
-  const Eigen::Vector3d point = pointToEigen(pose.position);
-  return makeAffine(rpy, point);
+  Eigen::Affine3d affine;
+  tf::poseMsgToEigen(pose, affine);
+  return affine;
 }
 
 geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v)
