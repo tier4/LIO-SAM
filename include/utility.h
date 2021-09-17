@@ -237,16 +237,17 @@ public:
 };
 
 sensor_msgs::PointCloud2 publishCloud(
-  ros::Publisher * thisPub,
-  pcl::PointCloud < PointType > & thisCloud, ros::Time thisStamp,
-  std::string thisFrame)
+  const ros::Publisher & thisPub,
+  const pcl::PointCloud < PointType > & thisCloud,
+  const ros::Time thisStamp,
+  const std::string thisFrame)
 {
   sensor_msgs::PointCloud2 tempCloud;
   pcl::toROSMsg(thisCloud, tempCloud);
   tempCloud.header.stamp = thisStamp;
   tempCloud.header.frame_id = thisFrame;
-  if (thisPub->getNumSubscribers() != 0) {
-    thisPub->publish(tempCloud);
+  if (thisPub.getNumSubscribers() != 0) {
+    thisPub.publish(tempCloud);
   }
   return tempCloud;
 }

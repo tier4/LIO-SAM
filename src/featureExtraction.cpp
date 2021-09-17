@@ -226,8 +226,8 @@ public:
     }
 
     // save newly extracted features
-    cloudInfo.cloud_corner = publishCloud(&pubCornerPoints, corner, stamp, lidarFrame);
-    cloudInfo.cloud_surface = publishCloud(&pubSurfacePoints, surface, stamp, lidarFrame);
+    cloudInfo.cloud_corner = publishCloud(pubCornerPoints, corner, stamp, lidarFrame);
+    cloudInfo.cloud_surface = publishCloud(pubSurfacePoints, surface, stamp, lidarFrame);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloudInfo);
   }

@@ -635,7 +635,7 @@ public:
 
     cloudInfo.header = cloudHeader;
     cloudInfo.cloud_deskewed = publishCloud(
-      &pubExtractedCloud, extractedCloud,
+      pubExtractedCloud, extractedCloud,
       cloudHeader.stamp, lidarFrame);
     pubLaserCloudInfo.publish(cloudInfo);
 

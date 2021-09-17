@@ -534,7 +534,7 @@ public:
     downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
     downSizeFilterGlobalMapKeyFrames.filter(globalMapKeyFramesDS);
     publishCloud(
-      &pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp,
+      pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp,
       odometryFrame);
   }
 
@@ -1373,10 +1373,10 @@ public:
       return;
     }
     // publish key poses
-    publishCloud(&pubKeyPoses, cloudKeyPoses3D, timeLaserInfoStamp, odometryFrame);
+    publishCloud(pubKeyPoses, cloudKeyPoses3D, timeLaserInfoStamp, odometryFrame);
     // Publish surrounding key frames
     publishCloud(
-      &pubRecentKeyFrames, *laserCloudSurfFromMapDS, timeLaserInfoStamp,
+      pubRecentKeyFrames, *laserCloudSurfFromMapDS, timeLaserInfoStamp,
       odometryFrame);
     // publish registered key frame
     if (pubRecentKeyFrame.getNumSubscribers() != 0) {
@@ -1384,7 +1384,7 @@ public:
       PointTypePose thisPose6D = trans2PointTypePose(posevec);
       cloudOut += transformPointCloud(*laserCloudCornerLastDS, thisPose6D);
       cloudOut += transformPointCloud(*laserCloudSurfLastDS, thisPose6D);
-      publishCloud(&pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
+      publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
     }
     // publish registered high-res raw cloud
     if (pubCloudRegisteredRaw.getNumSubscribers() != 0) {
@@ -1393,7 +1393,7 @@ public:
       PointTypePose thisPose6D = trans2PointTypePose(posevec);
       cloudOut = transformPointCloud(cloudOut, thisPose6D);
       publishCloud(
-        &pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp,
+        pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp,
         odometryFrame);
     }
     // publish path
