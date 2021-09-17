@@ -209,11 +209,6 @@ public:
   const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
 
-  const gtsam::noiseModel::Diagonal::shared_ptr priorPoseNoise;
-  const gtsam::noiseModel::Diagonal::shared_ptr priorVelNoise;
-  const gtsam::noiseModel::Diagonal::shared_ptr priorBiasNoise;
-  const gtsam::noiseModel::Diagonal::shared_ptr correctionNoise;
-  const gtsam::noiseModel::Diagonal::shared_ptr correctionNoise2;
   const gtsam::Vector noiseModelBetweenBias;
 
   gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
@@ -254,11 +249,6 @@ public:
   IMUPreintegration()
   : integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
     prior_imu_bias_(Eigen::Matrix<double, 1, 6>::Zero()),
-    priorPoseNoise(Diagonal::Sigmas(1e-2 * Vector6d::Ones())),
-    priorVelNoise(gtsam::noiseModel::Isotropic::Sigma(3, 1e4)),  // rad,rad,rad, m, m, m (m/s)
-    priorBiasNoise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)), // 1e-2 ~ 1e-3 seems to be good
-    correctionNoise(Diagonal::Sigmas((Vector6d() << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished())),
-    correctionNoise2(Diagonal::Sigmas(Vector6d::Ones())),
     noiseModelBetweenBias(
       (Vector6d() <<
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
@@ -290,7 +280,6 @@ public:
     }
 
     gtsam::Pose3 lidarPose = makeGtsamPose(odomMsg->pose.pose);
-    bool degenerate = (int)odomMsg->pose.covariance[0] == 1 ? true : false;
 
     // 0. initialize system
     if (!systemInitialized) {
@@ -314,6 +303,13 @@ public:
           break;
         }
       }
+
+      const Diagonal::shared_ptr priorPoseNoise(Diagonal::Sigmas(1e-2 * Vector6d::Ones()));
+      // rad,rad,rad, m, m, m (m/s)
+      const Diagonal::shared_ptr priorVelNoise(gtsam::noiseModel::Isotropic::Sigma(3, 1e4));
+      // 1e-2 ~ 1e-3 seems to be good
+      const Diagonal::shared_ptr priorBiasNoise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+
       // initial pose
       prevPose_ = lidarPose.compose(lidar2Imu);
       gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
@@ -324,8 +320,7 @@ public:
       graphFactors.add(priorVel);
       // initial bias
       prevBias_ = gtsam::imuBias::ConstantBias();
-      gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_,
-        priorBiasNoise);
+      gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, priorBiasNoise);
       graphFactors.add(priorBias);
       // add values
       graphValues.insert(X(0), prevPose_);
@@ -392,7 +387,7 @@ public:
     while (!imuQueOpt.empty()) {
       // pop and integrate imu data that is between two optimizations
       sensor_msgs::Imu & front = imuQueOpt.front();
-      double imuTime = timeInSec(front.header);
+      const double imuTime = timeInSec(front.header);
       if (imuTime < currentCorrectionTime - delta_t) {
         const double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
 
@@ -408,6 +403,8 @@ public:
         break;
       }
     }
+
+    const bool degenerate = odomMsg->pose.covariance[0] == 1;
     // add imu factor to graph
     const gtsam::PreintegratedImuMeasurements & preint_imu =
       dynamic_cast<const gtsam::PreintegratedImuMeasurements &>(imuIntegratorOpt_);
@@ -419,6 +416,12 @@ public:
         B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
         Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * noiseModelBetweenBias))
     );
+
+    const Diagonal::shared_ptr correctionNoise(
+      Diagonal::Sigmas((Vector6d() << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished())
+    );
+    const Diagonal::shared_ptr correctionNoise2(Diagonal::Sigmas(Vector6d::Ones()));
+
     // add pose factor
     gtsam::Pose3 curPose = lidarPose.compose(lidar2Imu);
     gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curPose,
