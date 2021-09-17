@@ -539,14 +539,8 @@ public:
 
     // integrate this single imu message
     imuIntegratorImu_->integrateMeasurement(
-      gtsam::Vector3(
-        thisImu.linear_acceleration.x,
-        thisImu.linear_acceleration.y,
-        thisImu.linear_acceleration.z),
-      gtsam::Vector3(
-        thisImu.angular_velocity.x,
-        thisImu.angular_velocity.y,
-        thisImu.angular_velocity.z),
+      vector3ToEigen(thisImu.linear_acceleration),
+      vector3ToEigen(thisImu.angular_velocity),
       dt
     );
 
@@ -562,28 +556,16 @@ public:
     odometry.child_frame_id = "odom_imu";
 
     // transform imu pose to ldiar
-    gtsam::Pose3 imuPose = gtsam::Pose3(
-      currentState.quaternion(),
-      currentState.position());
+    gtsam::Pose3 imuPose = currentState.pose();
     gtsam::Pose3 lidarPose = imuPose.compose(imu2Lidar);
 
-    odometry.pose.pose.position.x = lidarPose.translation().x();
-    odometry.pose.pose.position.y = lidarPose.translation().y();
-    odometry.pose.pose.position.z = lidarPose.translation().z();
-    odometry.pose.pose.orientation.x = lidarPose.rotation().toQuaternion().x();
-    odometry.pose.pose.orientation.y = lidarPose.rotation().toQuaternion().y();
-    odometry.pose.pose.orientation.z = lidarPose.rotation().toQuaternion().z();
-    odometry.pose.pose.orientation.w = lidarPose.rotation().toQuaternion().w();
+    odometry.pose.pose.position = eigenToPoint(lidarPose.translation());
+    odometry.pose.pose.orientation = eigenToQuaternion(lidarPose.rotation().toQuaternion());
 
-    odometry.twist.twist.linear.x = currentState.velocity().x();
-    odometry.twist.twist.linear.y = currentState.velocity().y();
-    odometry.twist.twist.linear.z = currentState.velocity().z();
-    odometry.twist.twist.angular.x = thisImu.angular_velocity.x +
-      prevBiasOdom.gyroscope().x();
-    odometry.twist.twist.angular.y = thisImu.angular_velocity.y +
-      prevBiasOdom.gyroscope().y();
-    odometry.twist.twist.angular.z = thisImu.angular_velocity.z +
-      prevBiasOdom.gyroscope().z();
+    odometry.twist.twist.linear = eigenToVector3(currentState.velocity());
+    const Eigen::Vector3d w = prevBiasOdom.gyroscope();
+    const Eigen::Vector3d v = vector3ToEigen(thisImu.angular_velocity);
+    odometry.twist.twist.angular = eigenToVector3(v + w);
     pubImuOdometry.publish(odometry);
   }
 };
