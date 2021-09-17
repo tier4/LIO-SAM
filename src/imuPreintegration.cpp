@@ -189,8 +189,8 @@ public:
   gtsam::NavState prevState_;
   gtsam::imuBias::ConstantBias prevBias_;
 
-  gtsam::NavState prevStateOdom;
-  gtsam::imuBias::ConstantBias prevBiasOdom;
+  gtsam::NavState prev_;
+  gtsam::imuBias::ConstantBias prev_bias_;
 
   bool doneFirstOpt = false;
   double lastImuT_imu = -1;
@@ -453,8 +453,8 @@ public:
 
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    prevStateOdom = prevState_;
-    prevBiasOdom = prevBias_;
+    prev_ = prevState_;
+    prev_bias_ = prevBias_;
     // first pop imu message older than current correction data
     double lastImuQT = -1;
     while (!imuQueImu.empty() &&
@@ -466,7 +466,7 @@ public:
     // repropogate
     if (!imuQueImu.empty()) {
       // reset bias use the newly optimized bias
-      imuIntegratorImu_->resetIntegrationAndSetBias(prevBiasOdom);
+      imuIntegratorImu_->resetIntegrationAndSetBias(prev_bias_);
       // integrate imu message from the beginning of this optimization
       for (int i = 0; i < (int)imuQueImu.size(); ++i) {
         sensor_msgs::Imu * thisImu = &imuQueImu[i];
@@ -533,21 +533,16 @@ public:
       return;
     }
 
-    double imuTime = ROS_TIME(&thisImu);
-    double dt = (lastImuT_imu < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_imu);
+    const double imuTime = timeInSec(thisImu.header);
+    const double dt = (lastImuT_imu < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_imu);
     lastImuT_imu = imuTime;
 
-    // integrate this single imu message
-    imuIntegratorImu_->integrateMeasurement(
-      vector3ToEigen(thisImu.linear_acceleration),
-      vector3ToEigen(thisImu.angular_velocity),
-      dt
-    );
+    const Eigen::Vector3d linear_acceleration = vector3ToEigen(thisImu.linear_acceleration);
+    const Eigen::Vector3d angular_velocity = vector3ToEigen(thisImu.angular_velocity);
+    imuIntegratorImu_->integrateMeasurement(linear_acceleration, angular_velocity, dt);
 
     // predict odometry
-    gtsam::NavState currentState = imuIntegratorImu_->predict(
-      prevStateOdom,
-      prevBiasOdom);
+    const gtsam::NavState current_imu = imuIntegratorImu_->predict(prev_, prev_bias_);
 
     // publish odometry
     nav_msgs::Odometry odometry;
@@ -556,15 +551,14 @@ public:
     odometry.child_frame_id = "odom_imu";
 
     // transform imu pose to ldiar
-    gtsam::Pose3 imuPose = currentState.pose();
-    gtsam::Pose3 lidarPose = imuPose.compose(imu2Lidar);
+    const gtsam::Pose3 lidar_pose = current_imu.pose().compose(imu2Lidar);
 
-    odometry.pose.pose.position = eigenToPoint(lidarPose.translation());
-    odometry.pose.pose.orientation = eigenToQuaternion(lidarPose.rotation().toQuaternion());
+    odometry.pose.pose.position = eigenToPoint(lidar_pose.translation());
+    odometry.pose.pose.orientation = eigenToQuaternion(lidar_pose.rotation().toQuaternion());
 
-    odometry.twist.twist.linear = eigenToVector3(currentState.velocity());
-    const Eigen::Vector3d w = prevBiasOdom.gyroscope();
-    const Eigen::Vector3d v = vector3ToEigen(thisImu.angular_velocity);
+    odometry.twist.twist.linear = eigenToVector3(current_imu.velocity());
+    const Eigen::Vector3d w = prev_bias_.gyroscope();
+    const Eigen::Vector3d v = angular_velocity;
     odometry.twist.twist.angular = eigenToVector3(v + w);
     pubImuOdometry.publish(odometry);
   }
