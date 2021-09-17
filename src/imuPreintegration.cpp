@@ -283,10 +283,8 @@ public:
 
     // 0. initialize system
     if (!systemInitialized) {
-      gtsam::ISAM2Params optParameters;
-      optParameters.relinearizeThreshold = 0.1;
-      optParameters.relinearizeSkip = 1;
-      optimizer = gtsam::ISAM2(optParameters);
+      const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
+      optimizer = gtsam::ISAM2(params);
 
       gtsam::NonlinearFactorGraph newGraphFactors;
       graphFactors = newGraphFactors;
@@ -350,10 +348,8 @@ public:
         gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(B(key - 1)));
 
       // reset graph
-      gtsam::ISAM2Params optParameters;
-      optParameters.relinearizeThreshold = 0.1;
-      optParameters.relinearizeSkip = 1;
-      optimizer = gtsam::ISAM2(optParameters);
+      const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
+      optimizer = gtsam::ISAM2(params);
 
       gtsam::NonlinearFactorGraph newGraphFactors;
       graphFactors = newGraphFactors;
