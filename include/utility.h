@@ -333,7 +333,7 @@ Eigen::Vector3d vector3ToEigen(const geometry_msgs::Vector3 & p)
   return Eigen::Vector3d(p.x, p.y, p.z);
 }
 
-Eigen::Affine3d makeAffine(const Eigen::Vector3d & point, const Eigen::Vector3d & rpy)
+Eigen::Affine3d makeAffine(const Eigen::Vector3d & rpy, const Eigen::Vector3d & point)
 {
   Eigen::Affine3d transform;
   pcl::getTransformation(point(0), point(1), point(2), rpy(0), rpy(1), rpy(2), transform);
@@ -341,8 +341,8 @@ Eigen::Affine3d makeAffine(const Eigen::Vector3d & point, const Eigen::Vector3d 
 }
 
 Eigen::Affine3d makeAffine(
-  const geometry_msgs::Vector3 & point,
-  const geometry_msgs::Vector3 & rpy)
+  const geometry_msgs::Vector3 & rpy,
+  const geometry_msgs::Vector3 & point)
 {
   Eigen::Affine3d transform;
   pcl::getTransformation(point.x, point.y, point.z, rpy.x, rpy.y, rpy.z, transform);
@@ -371,9 +371,9 @@ Eigen::Vector3d quaternionToRPY(const geometry_msgs::Quaternion & orientation)
 
 Eigen::Affine3d odom2affine(const geometry_msgs::Pose & pose)
 {
-  const Eigen::Vector3d point = pointToEigen(pose.position);
   const Eigen::Vector3d rpy = quaternionToRPY(pose.orientation);
-  return makeAffine(point, rpy);
+  const Eigen::Vector3d point = pointToEigen(pose.position);
+  return makeAffine(rpy, point);
 }
 
 geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v)

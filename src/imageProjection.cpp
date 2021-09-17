@@ -222,7 +222,7 @@ public:
   {
     const Eigen::Vector3d r = calc_rotation(relTime);
     const Eigen::Vector3d p = calc_position(relTime);
-    return makeAffine(p, r);
+    return makeAffine(r, p);
   }
 
 private:

@@ -663,7 +663,7 @@ public:
         posevec(2) = 0;
       }
 
-      lastImuTransformation = makeAffine(Eigen::Vector3d::Zero(), rpy);
+      lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
       // save imu before return;
       return;
     }
@@ -685,14 +685,14 @@ public:
         lastImuPreTransformation = transBack;
 
         // save imu before return;
-        lastImuTransformation = makeAffine(Eigen::Vector3d::Zero(), rpy);
+        lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
         return;
       }
     }
 
     // use imu incremental estimation for pose guess (only rotation)
     if (cloudInfo.imuAvailable) {
-      Eigen::Affine3d transBack = makeAffine(Eigen::Vector3d::Zero(), rpy);
+      Eigen::Affine3d transBack = makeAffine(rpy, Eigen::Vector3d::Zero());
       Eigen::Affine3d transIncre = lastImuTransformation.inverse() * transBack;
 
       Eigen::Affine3d transTobe = trans2Affine3d(posevec);
@@ -700,7 +700,7 @@ public:
       posevec = getPoseVec(transFinal);
 
       // save imu before return;
-      lastImuTransformation = makeAffine(Eigen::Vector3d::Zero(), rpy);
+      lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
       return;
     }
   }
