@@ -391,16 +391,14 @@ public:
     // 1. integrate imu data and optimize
     while (!imuQueOpt.empty()) {
       // pop and integrate imu data that is between two optimizations
-      sensor_msgs::Imu * thisImu = &imuQueOpt.front();
-      double imuTime = ROS_TIME(thisImu);
+      sensor_msgs::Imu & front = imuQueOpt.front();
+      double imuTime = timeInSec(front.header);
       if (imuTime < currentCorrectionTime - delta_t) {
         const double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
 
-        const geometry_msgs::Vector3 a = thisImu->linear_acceleration;
-        const geometry_msgs::Vector3 w = thisImu->angular_velocity;
         imuIntegratorOpt_.integrateMeasurement(
-          gtsam::Vector3(a.x, a.y, a.z),
-          gtsam::Vector3(w.x, w.y, w.z),
+          vector3ToEigen(front.linear_acceleration),
+          vector3ToEigen(front.angular_velocity),
           dt
         );
 
@@ -469,15 +467,12 @@ public:
       imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
       // integrate imu message from the beginning of this optimization
       for (int i = 0; i < (int)imuQueImu.size(); ++i) {
-        sensor_msgs::Imu * thisImu = &imuQueImu[i];
-        double imuTime = ROS_TIME(thisImu);
-
+        sensor_msgs::Imu & msg = imuQueImu[i];
+        const double imuTime = timeInSec(msg.header);
         const double dt = (lastImuQT < 0) ? (1.0 / 500.0) : (imuTime - lastImuQT);
-        const geometry_msgs::Vector3 a = thisImu->linear_acceleration;
-        const geometry_msgs::Vector3 w = thisImu->angular_velocity;
         imuIntegratorImu_.integrateMeasurement(
-          gtsam::Vector3(a.x, a.y, a.z),
-          gtsam::Vector3(w.x, w.y, w.z),
+          vector3ToEigen(msg.linear_acceleration),
+          vector3ToEigen(msg.angular_velocity),
           dt
         );
         lastImuQT = imuTime;
