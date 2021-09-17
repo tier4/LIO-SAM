@@ -282,7 +282,7 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    double currentCorrectionTime = ROS_TIME(odomMsg);
+    const double currentCorrectionTime = timeInSec(odomMsg->header);
 
     // make sure we have imu data to integrate
     if (imuQueOpt.empty()) {
@@ -307,8 +307,8 @@ public:
 
       // pop old IMU message
       while (!imuQueOpt.empty()) {
-        if (ROS_TIME(&imuQueOpt.front()) < currentCorrectionTime - delta_t) {
-          lastImuT_opt = ROS_TIME(&imuQueOpt.front());
+        if (timeInSec(imuQueOpt.front().header) < currentCorrectionTime - delta_t) {
+          lastImuT_opt = timeInSec(imuQueOpt.front().header);
           imuQueOpt.pop_front();
         } else {
           break;
@@ -456,9 +456,9 @@ public:
     // first pop imu message older than current correction data
     double lastImuQT = -1;
     while (!imuQueImu.empty() &&
-      ROS_TIME(&imuQueImu.front()) < currentCorrectionTime - delta_t)
+      timeInSec(imuQueImu.front().header) < currentCorrectionTime - delta_t)
     {
-      lastImuQT = ROS_TIME(&imuQueImu.front());
+      lastImuQT = timeInSec(imuQueImu.front().header);
       imuQueImu.pop_front();
     }
     // repropogate

@@ -259,12 +259,6 @@ sensor_msgs::PointCloud2 publishCloud(
   return tempCloud;
 }
 
-template < typename T >
-double ROS_TIME(T msg)
-{
-  return msg->header.stamp.toSec();
-}
-
 Eigen::Vector3d pointToEigen(const geometry_msgs::Point & p)
 {
   return Eigen::Vector3d(p.x, p.y, p.z);

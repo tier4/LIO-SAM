@@ -58,7 +58,7 @@ PointType makePoint(const Eigen::Vector3d & point, const float intensity)
 unsigned int indexNextTimeOf(const std::deque<nav_msgs::Odometry> & queue, const double time)
 {
   for (unsigned int i = 0; i < queue.size(); ++i) {
-    if (ROS_TIME(&queue[i]) < time) {
+    if (timeInSec(queue[i].header) < time) {
       continue;
     }
     return i;
