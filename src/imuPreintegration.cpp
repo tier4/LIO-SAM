@@ -516,14 +516,15 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    sensor_msgs::Imu thisImu;
-
-    try {
-      thisImu = imu_converter_.imuConverter(*imu_raw);
-    } catch (const std::runtime_error & e) {
-      ROS_ERROR(e.what());
-      ros::shutdown();
-    }
+    const sensor_msgs::Imu thisImu = [&] {
+        try {
+          return imu_converter_.imuConverter(*imu_raw);
+        } catch (const std::runtime_error & e) {
+          ROS_ERROR(e.what());
+          ros::shutdown();
+          return sensor_msgs::Imu();
+        }
+      } ();
 
     imuQueOpt.push_back(thisImu);
     imuQueImu.push_back(thisImu);
