@@ -41,9 +41,9 @@ public:
   ros::Publisher pubImuOdometry;
   ros::Publisher pubImuPath;
 
-  Eigen::Affine3f lidarOdomAffine;
-  Eigen::Affine3f imuOdomAffineFront;
-  Eigen::Affine3f imuOdomAffineBack;
+  Eigen::Affine3d lidarOdomAffine;
+  Eigen::Affine3d imuOdomAffineFront;
+  Eigen::Affine3d imuOdomAffineBack;
 
   tf::TransformListener tfListener;
   tf::StampedTransform lidar2Baselink;
@@ -83,7 +83,7 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    lidarOdomAffine = odom2affine(odomMsg->pose.pose).cast<float>();
+    lidarOdomAffine = odom2affine(odomMsg->pose.pose);
 
     lidarOdomTime = odomMsg->header.stamp.toSec();
   }
@@ -111,12 +111,12 @@ public:
     }
 
     dropBefore(lidarOdomTime, imuOdomQueue);
-    Eigen::Affine3f imuOdomAffineFront = odom2affine(imuOdomQueue.front().pose.pose).cast<float>();
-    Eigen::Affine3f imuOdomAffineBack = odom2affine(imuOdomQueue.back().pose.pose).cast<float>();
-    Eigen::Affine3f imuOdomAffineIncre = imuOdomAffineFront.inverse() *
+    Eigen::Affine3d imuOdomAffineFront = odom2affine(imuOdomQueue.front().pose.pose);
+    Eigen::Affine3d imuOdomAffineBack = odom2affine(imuOdomQueue.back().pose.pose);
+    Eigen::Affine3d imuOdomAffineIncre = imuOdomAffineFront.inverse() *
       imuOdomAffineBack;
-    Eigen::Affine3f imuOdomAffineLast = lidarOdomAffine * imuOdomAffineIncre;
-    float x, y, z, roll, pitch, yaw;
+    Eigen::Affine3d imuOdomAffineLast = lidarOdomAffine * imuOdomAffineIncre;
+    double x, y, z, roll, pitch, yaw;
     pcl::getTranslationAndEulerAngles(
       imuOdomAffineLast, x, y, z, roll, pitch,
       yaw);
