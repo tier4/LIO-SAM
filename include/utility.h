@@ -244,66 +244,6 @@ public:
   }
 };
 
-class IMUConverter {
-public:
-  IMUConverter() {
-    std::vector < double > extRotV;
-    std::vector < double > extRPYV;
-    nh.param < std::vector < double >> ("lio_sam/extrinsicRot", extRotV, std::vector < double > ());
-    nh.param < std::vector < double >> ("lio_sam/extrinsicRPY", extRPYV, std::vector < double > ());
-    extRot = Eigen::Map < const RowMajorMatrixXd > (extRotV.data(), 3, 3);
-    Eigen::Matrix3d extRPY = Eigen::Map < const RowMajorMatrixXd > (extRPYV.data(), 3, 3);
-    extQRPY = Eigen::Quaterniond(extRPY);
-  }
-
-  sensor_msgs::Imu imuConverter(const sensor_msgs::Imu & imu_in)
-  {
-    sensor_msgs::Imu imu_out = imu_in;
-    // rotate acceleration
-    Eigen::Vector3d acc(
-      imu_in.linear_acceleration.x,
-      imu_in.linear_acceleration.y,
-      imu_in.linear_acceleration.z);
-    acc = extRot * acc;
-    imu_out.linear_acceleration.x = acc.x();
-    imu_out.linear_acceleration.y = acc.y();
-    imu_out.linear_acceleration.z = acc.z();
-    // rotate gyroscope
-    Eigen::Vector3d gyr(
-      imu_in.angular_velocity.x,
-      imu_in.angular_velocity.y,
-      imu_in.angular_velocity.z);
-    gyr = extRot * gyr;
-    imu_out.angular_velocity.x = gyr.x();
-    imu_out.angular_velocity.y = gyr.y();
-    imu_out.angular_velocity.z = gyr.z();
-    // rotate roll pitch yaw
-    Eigen::Quaterniond q_from(
-      imu_in.orientation.w, imu_in.orientation.x,
-      imu_in.orientation.y, imu_in.orientation.z);
-    Eigen::Quaterniond q_final = q_from * extQRPY;
-    imu_out.orientation.x = q_final.x();
-    imu_out.orientation.y = q_final.y();
-    imu_out.orientation.z = q_final.z();
-    imu_out.orientation.w = q_final.w();
-
-    if (sqrt(
-        q_final.x() * q_final.x() + q_final.y() * q_final.y() + q_final.z() *
-        q_final.z() + q_final.w() * q_final.w()) < 0.1)
-    {
-      ROS_ERROR("Invalid quaternion, please use a 9-axis IMU!");
-      ros::shutdown();
-    }
-
-    return imu_out;
-  }
-
-private:
-  ros::NodeHandle nh;
-  Eigen::Matrix3d extRot;
-  Eigen::Quaterniond extQRPY;
-};
-
 sensor_msgs::PointCloud2 publishCloud(
   ros::Publisher * thisPub,
   pcl::PointCloud < PointType > & thisCloud, ros::Time thisStamp,
@@ -454,5 +394,45 @@ void dropBefore(const double time, std::deque < T > & buffer)
     }
   }
 }
+
+class IMUConverter {
+public:
+  IMUConverter() {
+    std::vector < double > extRotV;
+    std::vector < double > extRPYV;
+    nh.param < std::vector < double >> ("lio_sam/extrinsicRot", extRotV, std::vector < double > ());
+    nh.param < std::vector < double >> ("lio_sam/extrinsicRPY", extRPYV, std::vector < double > ());
+    extRot = Eigen::Map < const RowMajorMatrixXd > (extRotV.data(), 3, 3);
+    Eigen::Matrix3d extRPY = Eigen::Map < const RowMajorMatrixXd > (extRPYV.data(), 3, 3);
+    extQRPY = Eigen::Quaterniond(extRPY);
+  }
+
+  sensor_msgs::Imu imuConverter(const sensor_msgs::Imu & imu_in)
+  {
+    sensor_msgs::Imu imu_out = imu_in;
+    // rotate acceleration
+    const Eigen::Vector3d acc = vector3ToEigen(imu_in.linear_acceleration);
+    imu_out.linear_acceleration = eigenToVector3(extRot * acc);
+
+    const Eigen::Vector3d gyr = vector3ToEigen(imu_in.angular_velocity);
+    imu_out.angular_velocity = eigenToVector3(extRot * gyr);
+
+    const Eigen::Quaterniond q_from = quaternionToEigen(imu_in.orientation);
+    const Eigen::Quaterniond q_final = q_from * extQRPY;
+    imu_out.orientation = eigenToQuaternion(q_final);
+
+    if (q_final.norm() < 0.1) {
+      ROS_ERROR("Invalid quaternion, please use a 9-axis IMU!");
+      ros::shutdown();
+    }
+
+    return imu_out;
+  }
+
+private:
+  ros::NodeHandle nh;
+  Eigen::Matrix3d extRot;
+  Eigen::Quaterniond extQRPY;
+};
 
 #endif
