@@ -35,6 +35,8 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 
+#include <eigen_conversions/eigen_msg.h>
+
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -392,6 +394,13 @@ geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v)
   p.y = v[1];
   p.z = v[2];
   return p;
+}
+
+geometry_msgs::Pose affineToPose(const Eigen::Affine3d & affine)
+{
+  geometry_msgs::Pose pose;
+  tf::poseEigenToMsg(affine, pose);
+  return pose;
 }
 
 template < typename PointType >

@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   cv_bridge
+  eigen_conversions
   # pcl library
   pcl_conversions
   # msgs

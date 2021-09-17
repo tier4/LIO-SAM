@@ -116,18 +116,10 @@ public:
     Eigen::Affine3d imuOdomAffineIncre = imuOdomAffineFront.inverse() *
       imuOdomAffineBack;
     Eigen::Affine3d imuOdomAffineLast = lidarOdomAffine * imuOdomAffineIncre;
-    double x, y, z, roll, pitch, yaw;
-    pcl::getTranslationAndEulerAngles(
-      imuOdomAffineLast, x, y, z, roll, pitch,
-      yaw);
 
     // publish latest odometry
     nav_msgs::Odometry laserOdometry = imuOdomQueue.back();
-    laserOdometry.pose.pose.position.x = x;
-    laserOdometry.pose.pose.position.y = y;
-    laserOdometry.pose.pose.position.z = z;
-    laserOdometry.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(
-      roll, pitch, yaw);
+    laserOdometry.pose.pose = affineToPose(imuOdomAffineLast);
     pubImuOdometry.publish(laserOdometry);
 
     // publish tf
