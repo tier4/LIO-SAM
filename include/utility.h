@@ -422,8 +422,7 @@ public:
     imu_out.orientation = eigenToQuaternion(q_final);
 
     if (q_final.norm() < 0.1) {
-      ROS_ERROR("Invalid quaternion, please use a 9-axis IMU!");
-      ros::shutdown();
+      throw std::runtime_error("Invalid quaternion, please use a 9-axis IMU!");
     }
 
     return imu_out;
