@@ -192,6 +192,9 @@ bool failureDetection(
   return false;
 }
 
+using Diagonal = gtsam::noiseModel::Diagonal;
+using Vector6d = Eigen::Matrix<double, 1, 6>;
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -203,15 +206,16 @@ public:
 
   bool systemInitialized = false;
 
-  gtsam::noiseModel::Diagonal::shared_ptr priorPoseNoise;
-  gtsam::noiseModel::Diagonal::shared_ptr priorVelNoise;
-  gtsam::noiseModel::Diagonal::shared_ptr priorBiasNoise;
-  gtsam::noiseModel::Diagonal::shared_ptr correctionNoise;
-  gtsam::noiseModel::Diagonal::shared_ptr correctionNoise2;
-  gtsam::Vector noiseModelBetweenBias;
-
   const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
+
+  const gtsam::noiseModel::Diagonal::shared_ptr priorPoseNoise;
+  const gtsam::noiseModel::Diagonal::shared_ptr priorVelNoise;
+  const gtsam::noiseModel::Diagonal::shared_ptr priorBiasNoise;
+  const gtsam::noiseModel::Diagonal::shared_ptr correctionNoise;
+  const gtsam::noiseModel::Diagonal::shared_ptr correctionNoise2;
+  const gtsam::Vector noiseModelBetweenBias;
+
   gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
   gtsam::PreintegratedImuMeasurements imuIntegratorImu_;
 
@@ -250,6 +254,15 @@ public:
   IMUPreintegration()
   : integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
     prior_imu_bias_(Eigen::Matrix<double, 1, 6>::Zero()),
+    priorPoseNoise(Diagonal::Sigmas(1e-2 * Vector6d::Ones())),
+    priorVelNoise(gtsam::noiseModel::Isotropic::Sigma(3, 1e4)),  // rad,rad,rad, m, m, m (m/s)
+    priorBiasNoise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3)), // 1e-2 ~ 1e-3 seems to be good
+    correctionNoise(Diagonal::Sigmas((Vector6d() << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished())),
+    correctionNoise2(Diagonal::Sigmas(Vector6d::Ones())),
+    noiseModelBetweenBias(
+      (Vector6d() <<
+        imuAccBiasN, imuAccBiasN, imuAccBiasN,
+        imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
     imuIntegratorImu_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     imuIntegratorOpt_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_))
   {
@@ -263,25 +276,6 @@ public:
     pubImuOdometry = nh.advertise<nav_msgs::Odometry>(
       odomTopic + "_incremental",
       2000);
-
-    // rad,rad,rad,m, m, m
-    priorPoseNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2).finished()
-    );
-    priorVelNoise = gtsam::noiseModel::Isotropic::Sigma(3, 1e4);   // m/s
-    // 1e-2 ~ 1e-3 seems to be good
-    priorBiasNoise = gtsam::noiseModel::Isotropic::Sigma(6, 1e-3);
-    // rad,rad,rad,m, m, m
-    correctionNoise = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished()
-    );
-    // rad,rad,rad,m, m, m
-    correctionNoise2 = gtsam::noiseModel::Diagonal::Sigmas(
-      (gtsam::Vector(6) << 1, 1, 1, 1, 1, 1).finished()
-    );
-    noiseModelBetweenBias = \
-      (gtsam::Vector(6) << imuAccBiasN, imuAccBiasN, imuAccBiasN,
-      imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished();
   }
 
   void odometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
@@ -425,8 +419,7 @@ public:
     graphFactors.add(
       gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
         B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
-        gtsam::noiseModel::Diagonal::Sigmas(
-          sqrt(imuIntegratorOpt_.deltaTij()) * noiseModelBetweenBias))
+        Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * noiseModelBetweenBias))
     );
     // add pose factor
     gtsam::Pose3 curPose = lidarPose.compose(lidar2Imu);
