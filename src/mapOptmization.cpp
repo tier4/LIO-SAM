@@ -477,12 +477,9 @@ public:
     pcl::io::savePCDFileBinary(saveMapDirectory + "/trajectory.pcd", cloudKeyPoses3D);
     pcl::io::savePCDFileBinary(saveMapDirectory + "/transformations.pcd", cloudKeyPoses6D);
     // extract global point cloud map
-    pcl::PointCloud<PointType>::Ptr globalCornerCloud(new
-      pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr globalCornerCloudDS(new
-      pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr globalSurfCloud(new
-      pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr globalCornerCloud(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType> globalCornerCloudDS;
+    pcl::PointCloud<PointType>::Ptr globalSurfCloud(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType> globalSurfCloudDS;
     pcl::PointCloud<PointType> globalMapCloud;
     for (int i = 0; i < (int)cloudKeyPoses3D.size(); i++) {
@@ -500,35 +497,25 @@ public:
       downSizeFilterCorner.setLeafSize(
         req.resolution, req.resolution,
         req.resolution);
-      downSizeFilterCorner.filter(*globalCornerCloudDS);
-      pcl::io::savePCDFileBinary(
-        saveMapDirectory + "/CornerMap.pcd",
-        *globalCornerCloudDS);
+      downSizeFilterCorner.filter(globalCornerCloudDS);
+      pcl::io::savePCDFileBinary(saveMapDirectory + "/CornerMap.pcd", globalCornerCloudDS);
       // down-sample and save surf cloud
       downSizeFilterSurf.setInputCloud(globalSurfCloud);
       downSizeFilterSurf.setLeafSize(req.resolution, req.resolution, req.resolution);
       downSizeFilterSurf.filter(globalSurfCloudDS);
-      pcl::io::savePCDFileBinary(
-        saveMapDirectory + "/SurfMap.pcd",
-        globalSurfCloudDS);
+      pcl::io::savePCDFileBinary(saveMapDirectory + "/SurfMap.pcd", globalSurfCloudDS);
     } else {
       // save corner cloud
-      pcl::io::savePCDFileBinary(
-        saveMapDirectory + "/CornerMap.pcd",
-        *globalCornerCloud);
+      pcl::io::savePCDFileBinary(saveMapDirectory + "/CornerMap.pcd", *globalCornerCloud);
       // save surf cloud
-      pcl::io::savePCDFileBinary(
-        saveMapDirectory + "/SurfMap.pcd",
-        *globalSurfCloud);
+      pcl::io::savePCDFileBinary(saveMapDirectory + "/SurfMap.pcd", *globalSurfCloud);
     }
 
     // save global point cloud map
     globalMapCloud += *globalCornerCloud;
     globalMapCloud += *globalSurfCloud;
 
-    int ret = pcl::io::savePCDFileBinary(
-      saveMapDirectory + "/GlobalMap.pcd",
-      globalMapCloud);
+    int ret = pcl::io::savePCDFileBinary(saveMapDirectory + "/GlobalMap.pcd", globalMapCloud);
     res.success = ret == 0;
 
     downSizeFilterCorner.setLeafSize(
@@ -574,14 +561,10 @@ public:
       return;
     }
 
-    pcl::KdTreeFLANN<PointType>::Ptr kdtreeGlobalMap(new
-      pcl::KdTreeFLANN<PointType>());
-    pcl::PointCloud<PointType>::Ptr globalMapKeyPoses(new
-      pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr globalMapKeyPosesDS(new
-      pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr globalMapKeyFrames(new
-      pcl::PointCloud<PointType>());
+    pcl::KdTreeFLANN<PointType> kdtreeGlobalMap;
+    pcl::PointCloud<PointType>::Ptr globalMapKeyPoses(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType> globalMapKeyPosesDS;
+    pcl::PointCloud<PointType>::Ptr globalMapKeyFrames(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType> globalMapKeyFramesDS;
 
     // kd-tree to find near key frames to visualize
@@ -589,8 +572,8 @@ public:
     std::vector<float> pointSearchSqDisGlobalMap;
     // search near key frames to visualize
     mtx.lock();
-    kdtreeGlobalMap->setInputCloud(cloudKeyPoses3D.makeShared());
-    kdtreeGlobalMap->radiusSearch(
+    kdtreeGlobalMap.setInputCloud(cloudKeyPoses3D.makeShared());
+    kdtreeGlobalMap.radiusSearch(
       cloudKeyPoses3D.back(),
       globalMapVisualizationSearchRadius, pointSearchIndGlobalMap,
       pointSearchSqDisGlobalMap, 0);
@@ -608,23 +591,23 @@ public:
       globalMapVisualizationPoseDensity,
       globalMapVisualizationPoseDensity);   // for global map visualization
     downSizeFilterGlobalMapKeyPoses.setInputCloud(globalMapKeyPoses);
-    downSizeFilterGlobalMapKeyPoses.filter(*globalMapKeyPosesDS);
-    for (auto & pt : globalMapKeyPosesDS->points) {
-      kdtreeGlobalMap->nearestKSearch(
+    downSizeFilterGlobalMapKeyPoses.filter(globalMapKeyPosesDS);
+    for (auto & pt : globalMapKeyPosesDS.points) {
+      kdtreeGlobalMap.nearestKSearch(
         pt, 1, pointSearchIndGlobalMap,
         pointSearchSqDisGlobalMap);
       pt.intensity = cloudKeyPoses3D.points[pointSearchIndGlobalMap[0]].intensity;
     }
 
     // extract visualized and downsampled key frames
-    for (int i = 0; i < (int)globalMapKeyPosesDS->size(); ++i) {
+    for (int i = 0; i < (int)globalMapKeyPosesDS.size(); ++i) {
       if (pointDistance(
-          globalMapKeyPosesDS->points[i],
+          globalMapKeyPosesDS.points[i],
           cloudKeyPoses3D.back()) > globalMapVisualizationSearchRadius)
       {
         continue;
       }
-      int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
+      int thisKeyInd = (int)globalMapKeyPosesDS.points[i].intensity;
       *globalMapKeyFrames += transformPointCloud(
         cornerCloudKeyFrames[thisKeyInd],
         cloudKeyPoses6D.points[thisKeyInd]);
