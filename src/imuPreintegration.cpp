@@ -227,8 +227,8 @@ public:
   gtsam::NavState prevState_;
   gtsam::imuBias::ConstantBias prevBias_;
 
-  gtsam::NavState prev_;
-  gtsam::imuBias::ConstantBias prev_bias_;
+  gtsam::NavState prev_odom_;
+  gtsam::imuBias::ConstantBias prev_odom_bias_;
 
   bool doneFirstOpt = false;
   double lastImuT_imu = -1;
@@ -453,8 +453,8 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    prev_ = prevState_;
-    prev_bias_ = prevBias_;
+    prev_odom_ = prevState_;
+    prev_odom_bias_ = prevBias_;
     // first pop imu message older than current correction data
     double lastImuQT = -1;
     while (!imuQueImu.empty() &&
@@ -466,7 +466,7 @@ public:
     // repropogate
     if (!imuQueImu.empty()) {
       // reset bias use the newly optimized bias
-      imuIntegratorImu_.resetIntegrationAndSetBias(prev_bias_);
+      imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
       // integrate imu message from the beginning of this optimization
       for (int i = 0; i < (int)imuQueImu.size(); ++i) {
         sensor_msgs::Imu * thisImu = &imuQueImu[i];
@@ -505,7 +505,7 @@ public:
     imuQueOpt.push_back(thisImu);
     imuQueImu.push_back(thisImu);
 
-    if (doneFirstOpt == false) {
+    if (!doneFirstOpt) {
       return;
     }
 
@@ -518,7 +518,7 @@ public:
     imuIntegratorImu_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
 
     // predict odometry
-    const gtsam::NavState current_imu = imuIntegratorImu_.predict(prev_, prev_bias_);
+    const gtsam::NavState current_imu = imuIntegratorImu_.predict(prev_odom_, prev_odom_bias_);
 
     // publish odometry
     nav_msgs::Odometry odometry;
@@ -533,7 +533,7 @@ public:
     odometry.pose.pose.orientation = eigenToQuaternion(lidar_pose.rotation().toQuaternion());
 
     odometry.twist.twist.linear = eigenToVector3(current_imu.velocity());
-    const Eigen::Vector3d w = prev_bias_.gyroscope();
+    const Eigen::Vector3d w = prev_odom_bias_.gyroscope();
     const Eigen::Vector3d v = angular_velocity;
     odometry.twist.twist.angular = eigenToVector3(v + w);
     pubImuOdometry.publish(odometry);
