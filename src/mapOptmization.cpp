@@ -233,9 +233,9 @@ public:
   const ros::Publisher pubKeyPoses;
   const ros::Publisher pubPath;
 
-  ros::Publisher pubRecentKeyFrames;
-  ros::Publisher pubRecentKeyFrame;
-  ros::Publisher pubCloudRegisteredRaw;
+  const ros::Publisher pubRecentKeyFrames;
+  const ros::Publisher pubRecentKeyFrame;
+  const ros::Publisher pubCloudRegisteredRaw;
 
   ros::Subscriber subCloud;
   ros::Subscriber subGPS;
@@ -319,7 +319,12 @@ public:
     pubLaserOdometryIncremental(
       nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 1)),
     pubKeyPoses(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/trajectory", 1)),
-    pubPath(nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1))
+    pubPath(nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1)),
+    pubRecentKeyFrames(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1)),
+    pubRecentKeyFrame(
+      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1)),
+    pubCloudRegisteredRaw(
+      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered_raw", 1))
   {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.1;
@@ -334,15 +339,6 @@ public:
     subGPS = nh.subscribe<nav_msgs::Odometry>(
       gpsTopic, 200,
       &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
-
-    pubRecentKeyFrames =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1);
-    pubRecentKeyFrame =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1);
-    pubCloudRegisteredRaw =
-      nh.advertise<sensor_msgs::PointCloud2>(
-      "lio_sam/mapping/cloud_registered_raw",
-      1);
 
     downSizeFilterCorner.setLeafSize(
       mappingCornerLeafSize, mappingCornerLeafSize,
