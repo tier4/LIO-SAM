@@ -241,10 +241,10 @@ void projectPointCloud(
   const bool imuAvailable,
   const AffineFinder & calc_transform,
   cv::Mat & rangeMat,
-  Points<PointType>::type & output_points,
-  Eigen::Affine3d & transStartInverse)
+  Points<PointType>::type & output_points)
 {
   bool firstPointFlag = true;
+  Eigen::Affine3d transStartInverse;
 
   rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
 
@@ -437,8 +437,6 @@ private:
 
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
 
-  Eigen::Affine3d transStartInverse;
-
   std::deque<sensor_msgs::Imu> imu_buffer;
   const IMUConverter imu_converter_;
 
@@ -567,7 +565,7 @@ public:
       range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable, calc_transform,
-      rangeMat, output_points, transStartInverse
+      rangeMat, output_points
     );
 
     pcl::PointCloud<PointType> extractedCloud;
