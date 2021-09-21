@@ -529,7 +529,7 @@ public:
       } ();
 
     // check dense flag
-    if (laserCloudIn.is_dense == false) {
+    if (!laserCloudIn.is_dense) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
       ros::shutdown();
     }
@@ -557,16 +557,16 @@ public:
     const double timeScanCur = timeInSec(cloudHeader);
     const double timeScanEnd = timeScanCur + laserCloudIn.points.back().time;
 
+    if (!checkImuTime(imu_buffer, timeScanCur, timeScanEnd)) {
+      return;
+    }
+
     lio_sam::cloud_info cloudInfo;
     cloudInfo.startRingIndex.assign(N_SCAN, 0);
     cloudInfo.endRingIndex.assign(N_SCAN, 0);
 
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
-
-    if (!checkImuTime(imu_buffer, timeScanCur, timeScanEnd)) {
-      return;
-    }
 
     std::vector<double> imuTime;
     std::vector<Eigen::Vector3d> imuRot;
