@@ -32,27 +32,22 @@ class FeatureExtraction : public ParamServer
 {
 
 public:
-  ros::Subscriber subLaserCloudInfo;
+  const ros::Subscriber subLaserCloudInfo;
 
-  ros::Publisher pubLaserCloudInfo;
-  ros::Publisher pubCornerPoints;
-  ros::Publisher pubSurfacePoints;
+  const ros::Publisher pubLaserCloudInfo;
+  const ros::Publisher pubCornerPoints;
+  const ros::Publisher pubSurfacePoints;
   std::vector<int> curvature_indices;
   FeatureExtraction()
-  {
-    subLaserCloudInfo =
+  : pubLaserCloudInfo(nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1)),
+    pubCornerPoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1)),
+    pubSurfacePoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1)),
+    subLaserCloudInfo(
       nh.subscribe<lio_sam::cloud_info>(
-      "lio_sam/deskew/cloud_info", 1,
-      &FeatureExtraction::laserCloudInfoHandler, this,
-      ros::TransportHints().tcpNoDelay());
-
-    pubLaserCloudInfo =
-      nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1);
-    pubCornerPoints =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1);
-    pubSurfacePoints =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1);
-
+        "lio_sam/deskew/cloud_info", 1,
+        &FeatureExtraction::laserCloudInfoHandler, this,
+        ros::TransportHints().tcpNoDelay()))
+  {
     curvature_indices.resize(N_SCAN * Horizon_SCAN);
   }
 
