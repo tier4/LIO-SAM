@@ -423,34 +423,6 @@ bool checkImuTime(
   return true;
 }
 
-void deskewInfo(
-  const double scan_start_time,
-  const double scan_end_time,
-  Eigen::Vector3d & odomInc,
-  std::vector<double> & imuTime,
-  std::vector<Eigen::Vector3d> & imuRot,
-  std::deque<sensor_msgs::Imu> & imu_buffer,
-  std::deque<nav_msgs::Odometry> & odomQueue,
-  geometry_msgs::Vector3 & initialIMU,
-  geometry_msgs::Pose & initial_pose,
-  bool & imuAvailable,
-  bool & odomAvailable,
-  bool & odomDeskewFlag)
-{
-  std::lock_guard<std::mutex> lock1(imuLock);
-  std::lock_guard<std::mutex> lock2(odoLock);
-
-  imuDeskewInfo(
-    scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
-    initialIMU, imuAvailable);
-
-  odomDeskewInfo(
-    scan_start_time, scan_end_time,
-    odomAvailable,
-    initial_pose,
-    odomQueue, odomDeskewFlag, odomInc);
-}
-
 class ImageProjection : public ParamServer
 {
 private:
@@ -567,11 +539,19 @@ public:
     bool odomDeskewFlag = false;
     bool firstPointFlag = true;
 
-    deskewInfo(
-      scan_start_time, scan_end_time, odomInc,
-      imuTime, imuRot, imu_buffer, odomQueue,
-      cloudInfo.initialIMU, cloudInfo.initial_pose,
-      imuAvailable, odomAvailable, odomDeskewFlag);
+    {
+      std::lock_guard<std::mutex> lock1(imuLock);
+      std::lock_guard<std::mutex> lock2(odoLock);
+
+      imuDeskewInfo(
+        scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
+        cloudInfo.initialIMU, imuAvailable);
+
+      odomDeskewInfo(
+        scan_start_time, scan_end_time, odomAvailable,
+        cloudInfo.initial_pose,
+        odomQueue, odomDeskewFlag, odomInc);
+    }
 
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
