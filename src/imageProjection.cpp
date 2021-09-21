@@ -295,6 +295,13 @@ projectPointCloud(
   return {rangeMat, output_points};
 }
 
+bool odometryIsAvailable(
+  const std::deque<nav_msgs::Odometry> & odomQueue,
+  const double scan_start_time)
+{
+  return !(odomQueue.empty() || timeInSec(odomQueue.front().header) > scan_start_time);
+}
+
 void odomDeskewInfo(
   const double scan_start_time,
   const double scan_end_time,
@@ -306,11 +313,7 @@ void odomDeskewInfo(
 {
   dropBefore(scan_start_time - 0.01, odomQueue);
 
-  if (odomQueue.empty()) {
-    return;
-  }
-
-  if (timeInSec(odomQueue.front().header) > scan_start_time) {
+  if (!odometryIsAvailable(odomQueue, scan_start_time)) {
     return;
   }
 
