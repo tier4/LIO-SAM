@@ -240,12 +240,14 @@ void projectPointCloud(
   const int Horizon_SCAN,
   const bool imuAvailable,
   const AffineFinder & calc_transform,
-  bool & firstPointFlag,
   cv::Mat & rangeMat,
   Points<PointType>::type & output_points,
   Eigen::Affine3d & transStartInverse)
 {
+  bool firstPointFlag = true;
+
   rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
+
   for (const PointXYZIRT & p : input_points) {
     const Eigen::Vector3d q(p.x, p.y, p.z);
 
@@ -320,9 +322,6 @@ void odomDeskewInfo(
   initial_pose = start_msg.pose.pose;
 
   odomAvailable = true;
-
-  // get end odometry at the end of the scan
-  odomDeskewFlag = false;
 
   if (timeInSec(odomQueue.back().header) < scan_end_time) {
     return;
@@ -537,7 +536,6 @@ public:
 
     Eigen::Vector3d odomInc;
     bool odomDeskewFlag = false;
-    bool firstPointFlag = true;
 
     {
       std::lock_guard<std::mutex> lock1(imuLock);
@@ -569,7 +567,7 @@ public:
       range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable, calc_transform,
-      firstPointFlag, rangeMat, output_points, transStartInverse
+      rangeMat, output_points, transStartInverse
     );
 
     pcl::PointCloud<PointType> extractedCloud;
