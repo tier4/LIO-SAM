@@ -453,14 +453,14 @@ void deskewInfo(
 class ImageProjection : public ParamServer
 {
 private:
-  ros::Subscriber subLaserCloud;
+  const ros::Subscriber subLaserCloud;
 
-  ros::Publisher pubExtractedCloud;
-  ros::Publisher pubLaserCloudInfo;
+  const ros::Publisher pubExtractedCloud;
+  const ros::Publisher pubLaserCloudInfo;
 
-  ros::Subscriber subImu;
+  const ros::Subscriber subImu;
+  const ros::Subscriber subOdom;
 
-  ros::Subscriber subOdom;
   std::deque<nav_msgs::Odometry> odomQueue;
 
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
@@ -472,25 +472,22 @@ private:
 
 public:
   ImageProjection()
+  : subImu(nh.subscribe(
+        imuTopic, 2000,
+        &ImageProjection::imuHandler, this,
+        ros::TransportHints().tcpNoDelay())),
+    subOdom(nh.subscribe<nav_msgs::Odometry>(
+        odomTopic + "_incremental", 2000,
+        &ImageProjection::odometryHandler, this,
+        ros::TransportHints().tcpNoDelay())),
+    subLaserCloud(nh.subscribe<sensor_msgs::PointCloud2>(
+        pointCloudTopic, 5,
+        &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay())),
+    pubExtractedCloud(
+      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1)),
+    pubLaserCloudInfo(
+      nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1))
   {
-    subImu = nh.subscribe(
-      imuTopic, 2000,
-      &ImageProjection::imuHandler, this,
-      ros::TransportHints().tcpNoDelay());
-    subOdom = nh.subscribe<nav_msgs::Odometry>(
-      odomTopic + "_incremental", 2000,
-      &ImageProjection::odometryHandler, this,
-      ros::TransportHints().tcpNoDelay()
-    );
-    subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(
-      pointCloudTopic, 5,
-      &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay());
-
-    pubExtractedCloud =
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1);
-    pubLaserCloudInfo =
-      nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
-
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
 
