@@ -613,7 +613,7 @@ public:
     int count = 0;
     // extract segmented cloud for lidar odometry
     for (int i = 0; i < N_SCAN; ++i) {
-      cloudInfo.startRingIndex[i] = count - 1 + 5;
+      cloudInfo.startRingIndex[i] = count + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
         const float range = rangeMat.at<float>(i, j);
@@ -631,7 +631,7 @@ public:
         count += 1;
       }
 
-      cloudInfo.endRingIndex[i] = count - 1 - 5;
+      cloudInfo.endRingIndex[i] = count - 5;
     }
 
     cloudInfo.header = cloudHeader;

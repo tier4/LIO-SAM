@@ -37,7 +37,6 @@ public:
   const ros::Publisher pubLaserCloudInfo;
   const ros::Publisher pubCornerPoints;
   const ros::Publisher pubSurfacePoints;
-  std::vector<int> curvature_indices;
   FeatureExtraction()
   : pubLaserCloudInfo(nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1)),
     pubCornerPoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1)),
@@ -48,7 +47,6 @@ public:
         &FeatureExtraction::laserCloudInfoHandler, this,
         ros::TransportHints().tcpNoDelay()))
   {
-    curvature_indices.resize(N_SCAN * Horizon_SCAN);
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
@@ -113,6 +111,7 @@ public:
     }
 
     std::vector<float> curvature(N_SCAN * Horizon_SCAN);
+    std::vector<int> curvature_indices(N_SCAN * Horizon_SCAN, 0);
     for (int i = 5; i < points.size() - 5; i++) {
       const float d = range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
         range[i] * 10 +
