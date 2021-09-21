@@ -231,7 +231,7 @@ private:
 };
 
 void projectPointCloud(
-  const Points<PointXYZIRT>::type & points,
+  const Points<PointXYZIRT>::type & input_points,
   const float lidarMinRange,
   const float lidarMaxRange,
   const int downsampleRate,
@@ -245,7 +245,7 @@ void projectPointCloud(
   Eigen::Affine3d & transStartInverse)
 {
   rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
-  for (const PointXYZIRT & p : points) {
+  for (const PointXYZIRT & p : input_points) {
     const Eigen::Vector3d q(p.x, p.y, p.z);
 
     const float range = q.norm();
