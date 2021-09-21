@@ -628,8 +628,9 @@ public:
         // save extracted cloud
         extractedCloud.push_back(fullCloud.points[j + i * Horizon_SCAN]);
         // size of extracted cloud
-        ++count;
+        count += 1;
       }
+
       cloudInfo.endRingIndex[i] = count - 1 - 5;
     }
 

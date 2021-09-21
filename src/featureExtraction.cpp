@@ -130,15 +130,18 @@ public:
     pcl::PointCloud<PointType> corner;
     pcl::PointCloud<PointType> surface;
 
-    const std::vector<int> & start_index = cloudInfo.startRingIndex;
-    const std::vector<int> & end_index = cloudInfo.endRingIndex;
+    const std::vector<int> & start_indices = cloudInfo.startRingIndex;
+    const std::vector<int> & end_indices = cloudInfo.endRingIndex;
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new pcl::PointCloud<PointType>());
 
+      const int start_index = start_indices[i];
+      const int end_index = end_indices[i];
       for (int j = 0; j < 6; j++) {
 
-        const int sp = (start_index[i] * (6 - j) + end_index[i] * j) / 6;
-        const int ep = (start_index[i] * (5 - j) + end_index[i] * (j + 1)) / 6 - 1;
+        const int k = j + 1;
+        const int sp = static_cast<int>(start_index * (1. - j / 6.) + end_index * j / 6.);
+        const int ep = static_cast<int>(start_index * (1. - k / 6.) + end_index * k / 6. - 1.);
 
         if (sp >= ep) {
           continue;
