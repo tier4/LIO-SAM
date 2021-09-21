@@ -468,8 +468,6 @@ private:
   bool firstPointFlag;
   Eigen::Affine3d transStartInverse;
 
-  pcl::PointCloud<PointType> fullCloud;
-
   bool odomDeskewFlag;
   Eigen::Vector3d odomInc;
 
@@ -496,8 +494,6 @@ public:
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1);
     pubLaserCloudInfo =
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
-
-    fullCloud.points.resize(N_SCAN * Horizon_SCAN);
 
     firstPointFlag = true;
     odomDeskewFlag = false;
@@ -599,6 +595,10 @@ public:
       imuRot, imuTime, odomInc,
       timeScanCur, timeScanEnd, odomAvailable, odomDeskewFlag
     );
+
+    pcl::PointCloud<PointType> fullCloud;
+
+    fullCloud.points.resize(N_SCAN * Horizon_SCAN);
 
     cv::Mat rangeMat;
     projectPointCloud(
