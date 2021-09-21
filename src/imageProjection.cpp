@@ -514,7 +514,6 @@ public:
       return;
     }
 
-    // convert cloud
     const sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
     cloudQueue.pop_front();
 
@@ -528,31 +527,21 @@ public:
         }
       } ();
 
-    // check dense flag
     if (!laserCloudIn.is_dense) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
       ros::shutdown();
     }
 
-    // check ring channel
     if (!ringIsAvailable(currentCloudMsg)) {
-      ROS_ERROR(
-        "Point cloud ring channel not available, "
-        "please configure your point cloud data!"
-      );
+      ROS_ERROR("Point cloud ring channel could not be found");
       ros::shutdown();
     }
 
-    // check point time
     if (!timeStampIsAvailable(currentCloudMsg)) {
-      ROS_ERROR(
-        "Point cloud timestamp not available, deskew function disabled, "
-        "system will drift significantly!"
-      );
+      ROS_ERROR("Point cloud timestamp not available");
       ros::shutdown();
     }
 
-    // get timestamp
     const std_msgs::Header cloudHeader = currentCloudMsg.header;
     const double timeScanCur = timeInSec(cloudHeader);
     const double timeScanEnd = timeScanCur + laserCloudIn.points.back().time;
