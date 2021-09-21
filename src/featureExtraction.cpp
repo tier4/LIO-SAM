@@ -126,16 +126,19 @@ public:
 
     const std::vector<int> & start_indices = cloudInfo.startRingIndex;
     const std::vector<int> & end_indices = cloudInfo.endRingIndex;
+    const int N_BLOCKS = 6;
+
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new pcl::PointCloud<PointType>());
 
       const int start_index = start_indices[i];
       const int end_index = end_indices[i];
-      for (int j = 0; j < 6; j++) {
+      for (int j = 0; j < N_BLOCKS; j++) {
 
+        const double n = static_cast<double>(N_BLOCKS);
         const int k = j + 1;
-        const int sp = static_cast<int>(start_index * (1. - j / 6.) + end_index * j / 6.);
-        const int ep = static_cast<int>(start_index * (1. - k / 6.) + end_index * k / 6. - 1.);
+        const int sp = static_cast<int>(start_index * (1. - j / n) + end_index * j / n);
+        const int ep = static_cast<int>(start_index * (1. - k / n) + end_index * k / n - 1.);
 
         if (sp >= ep) {
           continue;
