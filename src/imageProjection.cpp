@@ -262,8 +262,7 @@ projectPointCloud(
       continue;
     }
 
-    const PointType point = makePoint(q, p.intensity);
-    const float angle = rad2deg(atan2(point.x, point.y));
+    const float angle = rad2deg(atan2(q.x(), q.y()));
     const int f = static_cast<int>(Horizon_SCAN * (angle - 90.0) / 360.0);
     const int c = Horizon_SCAN / 2 - f;
     const int column_index = c % Horizon_SCAN;
@@ -277,7 +276,7 @@ projectPointCloud(
     const int index = column_index + row_index * Horizon_SCAN;
 
     if (!imuAvailable) {
-      output_points[index] = point;
+      output_points[index] = makePoint(q, p.intensity);
       continue;
     }
 
@@ -290,9 +289,7 @@ projectPointCloud(
 
     // transform points to start
     const Eigen::Affine3d transBt = transStartInverse * transform;
-
-    const Eigen::Vector3d v(point.x, point.y, point.z);
-    output_points[index] = makePoint(transBt * v, point.intensity);
+    output_points[index] = makePoint(transBt * q, p.intensity);
   }
 
   return {rangeMat, output_points};
