@@ -233,8 +233,8 @@ private:
 
 void projectPointCloud(
   const Points<PointXYZIRT>::type & input_points,
-  const float lidarMinRange,
-  const float lidarMaxRange,
+  const float range_min,
+  const float range_max,
   const int downsampleRate,
   const int N_SCAN,
   const int Horizon_SCAN,
@@ -250,7 +250,7 @@ void projectPointCloud(
     const Eigen::Vector3d q(p.x, p.y, p.z);
 
     const float range = q.norm();
-    if (range < lidarMinRange || lidarMaxRange < range) {
+    if (range < range_min || range_max < range) {
       continue;
     }
 
@@ -566,7 +566,7 @@ public:
     cv::Mat rangeMat;
     projectPointCloud(
       input_cloud.points,
-      lidarMinRange, lidarMaxRange,
+      range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable, calc_transform,
       firstPointFlag, rangeMat, output_points, transStartInverse
