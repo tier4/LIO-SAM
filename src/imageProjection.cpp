@@ -472,7 +472,7 @@ private:
   Eigen::Vector3d odomInc;
 
   std::deque<sensor_msgs::Imu> imu_buffer;
-  IMUConverter imu_converter_;
+  const IMUConverter imu_converter_;
 
 public:
   ImageProjection()
