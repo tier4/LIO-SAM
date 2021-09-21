@@ -231,7 +231,8 @@ private:
   const PositionFinder calc_position;
 };
 
-void projectPointCloud(
+std::tuple<cv::Mat, Points<PointType>::type>
+projectPointCloud(
   const Points<PointXYZIRT>::type & input_points,
   const float range_min,
   const float range_max,
@@ -239,14 +240,13 @@ void projectPointCloud(
   const int N_SCAN,
   const int Horizon_SCAN,
   const bool imuAvailable,
-  const AffineFinder & calc_transform,
-  cv::Mat & rangeMat,
-  Points<PointType>::type & output_points)
+  const AffineFinder & calc_transform)
 {
   bool firstPointFlag = true;
   Eigen::Affine3d transStartInverse;
 
-  rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
+  cv::Mat rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
+  Points<PointType>::type output_points(N_SCAN * Horizon_SCAN);
 
   for (const PointXYZIRT & p : input_points) {
     const Eigen::Vector3d q(p.x, p.y, p.z);
@@ -294,6 +294,8 @@ void projectPointCloud(
     const Eigen::Vector3d v(point.x, point.y, point.z);
     output_points[index] = makePoint(transBt * v, point.intensity);
   }
+
+  return {rangeMat, output_points};
 }
 
 void odomDeskewInfo(
@@ -557,15 +559,11 @@ public:
       scan_start_time, scan_end_time, odomAvailable, odomDeskewFlag
     );
 
-    Points<PointType>::type output_points(N_SCAN * Horizon_SCAN);
-
-    cv::Mat rangeMat;
-    projectPointCloud(
+    const auto [rangeMat, output_points] = projectPointCloud(
       input_cloud.points,
       range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
-      cloudInfo.imuAvailable, calc_transform,
-      rangeMat, output_points
+      cloudInfo.imuAvailable, calc_transform
     );
 
     pcl::PointCloud<PointType> extractedCloud;
