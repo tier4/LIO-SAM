@@ -358,19 +358,19 @@ void imuDeskewInfo(
   }
 
   for (int i = 0; i < (int)imu_buffer.size(); ++i) {
-    const double currentImuTime = timeInSec(imu_buffer[i].header);
+    const double imu_time = timeInSec(imu_buffer[i].header);
 
-    if (currentImuTime <= scan_start_time) {
+    if (imu_time <= scan_start_time) {
       initialIMU = eigenToVector3(quaternionToRPY(imu_buffer[i].orientation));
     }
 
-    if (currentImuTime > scan_end_time + 0.01) {
+    if (imu_time > scan_end_time + 0.01) {
       break;
     }
 
     if (imuTime.size() == 0) {
       imuRot.push_back(Eigen::Vector3d::Zero());
-      imuTime.push_back(currentImuTime);
+      imuTime.push_back(imu_time);
       continue;
     }
 
@@ -378,13 +378,12 @@ void imuDeskewInfo(
     const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer[i].angular_velocity);
 
     // integrate rotation
-    double timeDiff = currentImuTime - imuTime.back();
-    const Eigen::Vector3d rot = imuRot.back() + angular * timeDiff;
+    const Eigen::Vector3d rot = imuRot.back() + angular * (imu_time - imuTime.back());
     imuRot.push_back(rot);
-    imuTime.push_back(currentImuTime);
+    imuTime.push_back(imu_time);
   }
 
-  if (imuTime.size() - 1 <= 0) {
+  if (imuTime.size() <= 1) {
     return;
   }
 
