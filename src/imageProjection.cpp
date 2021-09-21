@@ -241,7 +241,7 @@ void projectPointCloud(
   const AffineFinder & calc_transform,
   bool & firstPointFlag,
   cv::Mat & rangeMat,
-  pcl::PointCloud<PointType> & fullCloud,
+  Points<PointType>::type & output_points,
   Eigen::Affine3d & transStartInverse)
 {
   rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
@@ -274,7 +274,7 @@ void projectPointCloud(
     const int index = column_index + row_index * Horizon_SCAN;
 
     if (!imuAvailable) {
-      fullCloud.points[index] = point;
+      output_points[index] = point;
       continue;
     }
 
@@ -289,7 +289,7 @@ void projectPointCloud(
     const Eigen::Affine3d transBt = transStartInverse * transform;
 
     const Eigen::Vector3d v(point.x, point.y, point.z);
-    fullCloud.points[index] = makePoint(transBt * v, point.intensity);
+    output_points[index] = makePoint(transBt * v, point.intensity);
   }
 }
 
@@ -596,9 +596,7 @@ public:
       timeScanCur, timeScanEnd, odomAvailable, odomDeskewFlag
     );
 
-    pcl::PointCloud<PointType> fullCloud;
-
-    fullCloud.points.resize(N_SCAN * Horizon_SCAN);
+    Points<PointType>::type output_points(N_SCAN * Horizon_SCAN);
 
     cv::Mat rangeMat;
     projectPointCloud(
@@ -606,7 +604,7 @@ public:
       lidarMinRange, lidarMaxRange,
       downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable, calc_transform,
-      firstPointFlag, rangeMat, fullCloud, transStartInverse
+      firstPointFlag, rangeMat, output_points, transStartInverse
     );
 
     pcl::PointCloud<PointType> extractedCloud;
@@ -626,7 +624,7 @@ public:
         // save range info
         cloudInfo.pointRange[count] = range;
         // save extracted cloud
-        extractedCloud.push_back(fullCloud.points[j + i * Horizon_SCAN]);
+        extractedCloud.push_back(output_points[j + i * Horizon_SCAN]);
         // size of extracted cloud
         count += 1;
       }
