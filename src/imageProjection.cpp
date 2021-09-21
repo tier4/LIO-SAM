@@ -518,13 +518,15 @@ public:
     const sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
     cloudQueue.pop_front();
 
-    pcl::PointCloud<PointXYZIRT> laserCloudIn;
-    try {
-      laserCloudIn = convert(currentCloudMsg, sensor);
-    } catch (const std::runtime_error & e) {
-      ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
-      ros::shutdown();
-    }
+    const pcl::PointCloud<PointXYZIRT> laserCloudIn = [&] {
+        try {
+          return convert(currentCloudMsg, sensor);
+        } catch (const std::runtime_error & e) {
+          ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
+          ros::shutdown();
+          return pcl::PointCloud<PointXYZIRT>();
+        }
+      } ();
 
     // check dense flag
     if (laserCloudIn.is_dense == false) {
