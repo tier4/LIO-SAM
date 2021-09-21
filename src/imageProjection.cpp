@@ -135,14 +135,14 @@ class RotationFinder
 {
 public:
   RotationFinder(
-    const double timeScanCur,
+    const double scan_start_time,
     const std::vector<Eigen::Vector3d> & imuRot,
     const std::vector<double> & imuTime)
-  : timeScanCur(timeScanCur), imuRot(imuRot), imuTime(imuTime) {}
+  : scan_start_time(scan_start_time), imuRot(imuRot), imuTime(imuTime) {}
 
   Eigen::Vector3d operator()(const double relTime) const
   {
-    const double point_time = timeScanCur + relTime;
+    const double point_time = scan_start_time + relTime;
 
     int index = imuTime.size() - 1;
     for (int i = 0; i < imuTime.size() - 1; i++) {
@@ -164,7 +164,7 @@ public:
   }
 
 private:
-  const double timeScanCur;
+  const double scan_start_time;
   const std::vector<Eigen::Vector3d> imuRot;
   const std::vector<double> imuTime;
 };
@@ -174,13 +174,13 @@ class PositionFinder
 public:
   PositionFinder(
     const Eigen::Vector3d & odomInc,
-    const double timeScanCur,
-    const double timeScanEnd,
+    const double scan_start_time,
+    const double scan_end_time,
     const bool odomAvailable,
     const bool odomDeskewFlag)
   : odomInc(odomInc),
-    timeScanCur(timeScanCur),
-    timeScanEnd(timeScanEnd),
+    scan_start_time(scan_start_time),
+    scan_end_time(scan_end_time),
     odomAvailable(odomAvailable),
     odomDeskewFlag(odomDeskewFlag) {}
 
@@ -190,14 +190,14 @@ public:
       return Eigen::Vector3d::Zero();
     }
 
-    const float ratio = relTime / (timeScanEnd - timeScanCur);
+    const float ratio = relTime / (scan_end_time - scan_start_time);
     return ratio * odomInc;
   }
 
 private:
   const Eigen::Vector3d & odomInc;
-  const double timeScanCur;
-  const double timeScanEnd;
+  const double scan_start_time;
+  const double scan_end_time;
   const bool odomAvailable;
   const bool odomDeskewFlag;
 };
@@ -209,12 +209,13 @@ public:
     const std::vector<Eigen::Vector3d> & imuRot,
     const std::vector<double> & imuTime,
     const Eigen::Vector3d & odomInc,
-    const double timeScanCur,
-    const double timeScanEnd,
+    const double scan_start_time,
+    const double scan_end_time,
     const bool odomAvailable,
     const bool odomDeskewFlag)
-  : calc_rotation(RotationFinder(timeScanCur, imuRot, imuTime)),
-    calc_position(PositionFinder(odomInc, timeScanCur, timeScanEnd, odomAvailable, odomDeskewFlag))
+  : calc_rotation(RotationFinder(scan_start_time, imuRot, imuTime)),
+    calc_position(
+      PositionFinder(odomInc, scan_start_time, scan_end_time, odomAvailable, odomDeskewFlag))
   {
   }
 
@@ -294,26 +295,26 @@ void projectPointCloud(
 }
 
 void odomDeskewInfo(
-  const double timeScanCur,
-  const double timeScanEnd,
+  const double scan_start_time,
+  const double scan_end_time,
   bool & odomAvailable,
   geometry_msgs::Pose & initial_pose,
   std::deque<nav_msgs::Odometry> & odomQueue,
   bool & odomDeskewFlag,
   Eigen::Vector3d & odomInc)
 {
-  dropBefore(timeScanCur - 0.01, odomQueue);
+  dropBefore(scan_start_time - 0.01, odomQueue);
 
   if (odomQueue.empty()) {
     return;
   }
 
-  if (timeInSec(odomQueue.front().header) > timeScanCur) {
+  if (timeInSec(odomQueue.front().header) > scan_start_time) {
     return;
   }
 
   // get start odometry at the beinning of the scan
-  const unsigned int start_index = indexNextTimeOf(odomQueue, timeScanCur);
+  const unsigned int start_index = indexNextTimeOf(odomQueue, scan_start_time);
   const nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
 
   initial_pose = startOdomMsg.pose.pose;
@@ -323,11 +324,11 @@ void odomDeskewInfo(
   // get end odometry at the end of the scan
   odomDeskewFlag = false;
 
-  if (timeInSec(odomQueue.back().header) < timeScanEnd) {
+  if (timeInSec(odomQueue.back().header) < scan_end_time) {
     return;
   }
 
-  const unsigned int end_index = indexNextTimeOf(odomQueue, timeScanEnd);
+  const unsigned int end_index = indexNextTimeOf(odomQueue, scan_end_time);
   const nav_msgs::Odometry endOdomMsg = odomQueue[end_index];
 
   if (int(round(startOdomMsg.pose.covariance[0])) != int(round(endOdomMsg.pose.covariance[0]))) {
@@ -344,15 +345,15 @@ void odomDeskewInfo(
 }
 
 void imuDeskewInfo(
-  const double timeScanCur,
-  const double timeScanEnd,
+  const double scan_start_time,
+  const double scan_end_time,
   std::vector<double> & imuTime,
   std::vector<Eigen::Vector3d> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
   geometry_msgs::Vector3 & initialIMU,
   bool & imuAvailable)
 {
-  dropBefore(timeScanCur - 0.01, imu_buffer);
+  dropBefore(scan_start_time - 0.01, imu_buffer);
 
   if (imu_buffer.empty()) {
     return;
@@ -361,11 +362,11 @@ void imuDeskewInfo(
   for (int i = 0; i < (int)imu_buffer.size(); ++i) {
     const double currentImuTime = timeInSec(imu_buffer[i].header);
 
-    if (currentImuTime <= timeScanCur) {
+    if (currentImuTime <= scan_start_time) {
       initialIMU = eigenToVector3(quaternionToRPY(imu_buffer[i].orientation));
     }
 
-    if (currentImuTime > timeScanEnd + 0.01) {
+    if (currentImuTime > scan_end_time + 0.01) {
       break;
     }
 
@@ -394,8 +395,8 @@ void imuDeskewInfo(
 
 bool checkImuTime(
   const std::deque<sensor_msgs::Imu> & imu_buffer,
-  const double timeScanCur,
-  const double timeScanEnd)
+  const double scan_start_time,
+  const double scan_end_time)
 {
 
   std::lock_guard<std::mutex> lock1(imuLock);
@@ -407,14 +408,14 @@ bool checkImuTime(
     return false;
   }
 
-  if (timeInSec(imu_buffer.front().header) > timeScanCur) {
+  if (timeInSec(imu_buffer.front().header) > scan_start_time) {
     ROS_DEBUG("IMU time = %f", timeInSec(imu_buffer.front().header));
-    ROS_DEBUG("LiDAR time = %f", timeScanCur);
+    ROS_DEBUG("LiDAR time = %f", scan_start_time);
     ROS_DEBUG("Timestamp of IMU data too late");
     return false;
   }
 
-  if (timeInSec(imu_buffer.back().header) < timeScanEnd) {
+  if (timeInSec(imu_buffer.back().header) < scan_end_time) {
     ROS_DEBUG("Timestamp of IMU data too early");
     return false;
   }
@@ -423,8 +424,8 @@ bool checkImuTime(
 }
 
 void deskewInfo(
-  const double timeScanCur,
-  const double timeScanEnd,
+  const double scan_start_time,
+  const double scan_end_time,
   Eigen::Vector3d & odomInc,
   std::vector<double> & imuTime,
   std::vector<Eigen::Vector3d> & imuRot,
@@ -440,11 +441,11 @@ void deskewInfo(
   std::lock_guard<std::mutex> lock2(odoLock);
 
   imuDeskewInfo(
-    timeScanCur, timeScanEnd, imuTime, imuRot, imu_buffer,
+    scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
     initialIMU, imuAvailable);
 
   odomDeskewInfo(
-    timeScanCur, timeScanEnd,
+    scan_start_time, scan_end_time,
     odomAvailable,
     initial_pose,
     odomQueue, odomDeskewFlag, odomInc);
@@ -542,10 +543,10 @@ public:
       ros::shutdown();
     }
 
-    const double timeScanCur = timeInSec(cloud_msg.header);
-    const double timeScanEnd = timeScanCur + input_cloud.points.back().time;
+    const double scan_start_time = timeInSec(cloud_msg.header);
+    const double scan_end_time = scan_start_time + input_cloud.points.back().time;
 
-    if (!checkImuTime(imu_buffer, timeScanCur, timeScanEnd)) {
+    if (!checkImuTime(imu_buffer, scan_start_time, scan_end_time)) {
       return;
     }
 
@@ -567,7 +568,7 @@ public:
     bool firstPointFlag = true;
 
     deskewInfo(
-      timeScanCur, timeScanEnd, odomInc,
+      scan_start_time, scan_end_time, odomInc,
       imuTime, imuRot, imu_buffer, odomQueue,
       cloudInfo.initialIMU, cloudInfo.initial_pose,
       imuAvailable, odomAvailable, odomDeskewFlag);
@@ -577,7 +578,7 @@ public:
 
     const AffineFinder calc_transform(
       imuRot, imuTime, odomInc,
-      timeScanCur, timeScanEnd, odomAvailable, odomDeskewFlag
+      scan_start_time, scan_end_time, odomAvailable, odomDeskewFlag
     );
 
     Points<PointType>::type output_points(N_SCAN * Horizon_SCAN);
