@@ -297,52 +297,32 @@ projectPointCloud(
 
 bool odometryIsAvailable(
   const std::deque<nav_msgs::Odometry> & odomQueue,
-  const double scan_start_time)
+  const double scan_start_time,
+  const double scan_end_time)
 {
-  return !(odomQueue.empty() || timeInSec(odomQueue.front().header) > scan_start_time);
+  return !(
+    odomQueue.empty() ||
+    timeInSec(odomQueue.front().header) > scan_start_time ||
+    timeInSec(odomQueue.back().header) < scan_end_time);
 }
 
-void odomDeskewInfo(
-  const double scan_start_time,
-  const double scan_end_time,
-  bool & odomAvailable,
-  geometry_msgs::Pose & initial_pose,
-  std::deque<nav_msgs::Odometry> & odomQueue,
-  bool & odomDeskewFlag,
-  Eigen::Vector3d & odomInc)
+bool doOdomDeskew(
+  const nav_msgs::Odometry & start_msg,
+  const nav_msgs::Odometry & end_msg)
 {
-  dropBefore(scan_start_time - 0.01, odomQueue);
+  return int(round(start_msg.pose.covariance[0])) == int(round(end_msg.pose.covariance[0]));
+}
 
-  if (!odometryIsAvailable(odomQueue, scan_start_time)) {
-    return;
-  }
-
-  // get start odometry at the beinning of the scan
-  const unsigned int start_index = indexNextTimeOf(odomQueue, scan_start_time);
-  const nav_msgs::Odometry start_msg = odomQueue[start_index];
-
-  initial_pose = start_msg.pose.pose;
-
-  odomAvailable = true;
-
-  if (timeInSec(odomQueue.back().header) < scan_end_time) {
-    return;
-  }
-
-  const unsigned int end_index = indexNextTimeOf(odomQueue, scan_end_time);
-  const nav_msgs::Odometry end_msg = odomQueue[end_index];
-
-  if (int(round(start_msg.pose.covariance[0])) != int(round(end_msg.pose.covariance[0]))) {
-    return;
-  }
-
+Eigen::Vector3d odomDeskewInfo(
+  const nav_msgs::Odometry & start_msg,
+  const nav_msgs::Odometry & end_msg)
+{
   const Eigen::Affine3d begin = poseToAffine(start_msg.pose.pose);
   const Eigen::Affine3d end = poseToAffine(end_msg.pose.pose);
 
   const Eigen::Affine3d odom = begin.inverse() * end;
 
-  odomInc = odom.translation();
-  odomDeskewFlag = true;
+  return odom.translation();
 }
 
 void imuDeskewInfo(
@@ -544,10 +524,23 @@ public:
         scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
         cloudInfo.initialIMU, imuAvailable);
 
-      odomDeskewInfo(
-        scan_start_time, scan_end_time, odomAvailable,
-        cloudInfo.initial_pose,
-        odomQueue, odomDeskewFlag, odomInc);
+      dropBefore(scan_start_time - 0.01, odomQueue);
+      odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
+
+      if (odomAvailable) {
+        const unsigned int start_index = indexNextTimeOf(odomQueue, scan_start_time);
+        const nav_msgs::Odometry start_msg = odomQueue[start_index];
+
+        const unsigned int end_index = indexNextTimeOf(odomQueue, scan_end_time);
+        const nav_msgs::Odometry end_msg = odomQueue[end_index];
+
+        odomDeskewFlag = doOdomDeskew(start_msg, end_msg);
+        cloudInfo.initial_pose = start_msg.pose.pose;
+
+        if (odomDeskewFlag) {
+          odomInc = odomDeskewInfo(start_msg, end_msg);
+        }
+      }
     }
 
     cloudInfo.odomAvailable = odomAvailable;
