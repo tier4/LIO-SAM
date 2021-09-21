@@ -219,10 +219,10 @@ public:
   {
   }
 
-  Eigen::Affine3d operator()(const double relTime) const
+  Eigen::Affine3d operator()(const double rel_time) const
   {
-    const Eigen::Vector3d r = calc_rotation(relTime);
-    const Eigen::Vector3d p = calc_position(relTime);
+    const Eigen::Vector3d r = calc_rotation(rel_time);
+    const Eigen::Vector3d p = calc_position(rel_time);
     return makeAffine(r, p);
   }
 
@@ -315,9 +315,9 @@ void odomDeskewInfo(
 
   // get start odometry at the beinning of the scan
   const unsigned int start_index = indexNextTimeOf(odomQueue, scan_start_time);
-  const nav_msgs::Odometry startOdomMsg = odomQueue[start_index];
+  const nav_msgs::Odometry start_msg = odomQueue[start_index];
 
-  initial_pose = startOdomMsg.pose.pose;
+  initial_pose = start_msg.pose.pose;
 
   odomAvailable = true;
 
@@ -329,18 +329,18 @@ void odomDeskewInfo(
   }
 
   const unsigned int end_index = indexNextTimeOf(odomQueue, scan_end_time);
-  const nav_msgs::Odometry endOdomMsg = odomQueue[end_index];
+  const nav_msgs::Odometry end_msg = odomQueue[end_index];
 
-  if (int(round(startOdomMsg.pose.covariance[0])) != int(round(endOdomMsg.pose.covariance[0]))) {
+  if (int(round(start_msg.pose.covariance[0])) != int(round(end_msg.pose.covariance[0]))) {
     return;
   }
 
-  const Eigen::Affine3d transBegin = poseToAffine(startOdomMsg.pose.pose);
-  const Eigen::Affine3d transEnd = poseToAffine(endOdomMsg.pose.pose);
+  const Eigen::Affine3d begin = poseToAffine(start_msg.pose.pose);
+  const Eigen::Affine3d end = poseToAffine(end_msg.pose.pose);
 
-  const Eigen::Affine3d transBt = transBegin.inverse() * transEnd;
+  const Eigen::Affine3d odom = begin.inverse() * end;
 
-  odomInc = transBt.translation();
+  odomInc = odom.translation();
   odomDeskewFlag = true;
 }
 
