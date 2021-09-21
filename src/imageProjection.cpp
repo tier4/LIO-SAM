@@ -465,11 +465,7 @@ private:
 
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
 
-  bool firstPointFlag;
   Eigen::Affine3d transStartInverse;
-
-  bool odomDeskewFlag;
-  Eigen::Vector3d odomInc;
 
   std::deque<sensor_msgs::Imu> imu_buffer;
   const IMUConverter imu_converter_;
@@ -494,9 +490,6 @@ public:
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1);
     pubLaserCloudInfo =
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1);
-
-    firstPointFlag = true;
-    odomDeskewFlag = false;
 
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
@@ -582,6 +575,10 @@ public:
     bool imuAvailable = false;
     bool odomAvailable = false;
 
+    Eigen::Vector3d odomInc;
+    bool odomDeskewFlag = false;
+    bool firstPointFlag = true;
+
     deskewInfo(
       timeScanCur, timeScanEnd, odomInc,
       imuTime, imuRot, imu_buffer, odomQueue,
@@ -637,9 +634,6 @@ public:
       pubExtractedCloud, extractedCloud,
       cloudHeader.stamp, lidarFrame);
     pubLaserCloudInfo.publish(cloudInfo);
-
-    firstPointFlag = true;
-    odomDeskewFlag = false;
   }
 };
 
