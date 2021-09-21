@@ -92,25 +92,25 @@ float rad2deg(const float rad)
 }
 
 pcl::PointCloud<PointXYZIRT> convert(
-  const sensor_msgs::PointCloud2 & currentCloudMsg,
+  const sensor_msgs::PointCloud2 & cloud_msg,
   const SensorType & sensor)
 {
-  pcl::PointCloud<PointXYZIRT> laserCloudIn;
+  pcl::PointCloud<PointXYZIRT> input_cloud;
   if (sensor == SensorType::VELODYNE) {
-    pcl::fromROSMsg(currentCloudMsg, laserCloudIn);
-    return laserCloudIn;
+    pcl::fromROSMsg(cloud_msg, input_cloud);
+    return input_cloud;
   }
 
   if (sensor == SensorType::OUSTER) {
     // Convert to Velodyne format
     pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
 
-    pcl::fromROSMsg(currentCloudMsg, tmpOusterCloudIn);
-    laserCloudIn.points.resize(tmpOusterCloudIn.size());
-    laserCloudIn.is_dense = tmpOusterCloudIn.is_dense;
+    pcl::fromROSMsg(cloud_msg, tmpOusterCloudIn);
+    input_cloud.points.resize(tmpOusterCloudIn.size());
+    input_cloud.is_dense = tmpOusterCloudIn.is_dense;
     for (size_t i = 0; i < tmpOusterCloudIn.size(); i++) {
       auto & src = tmpOusterCloudIn.points[i];
-      auto & dst = laserCloudIn.points[i];
+      auto & dst = input_cloud.points[i];
       dst.x = src.x;
       dst.y = src.y;
       dst.z = src.z;
@@ -118,7 +118,7 @@ pcl::PointCloud<PointXYZIRT> convert(
       dst.ring = src.ring;
       dst.time = src.t * 1e-9f;
     }
-    return laserCloudIn;
+    return input_cloud;
   }
 
   throw std::runtime_error("Unknown sensor type");
@@ -514,12 +514,12 @@ public:
       return;
     }
 
-    const sensor_msgs::PointCloud2 currentCloudMsg = cloudQueue.front();
+    const sensor_msgs::PointCloud2 cloud_msg = cloudQueue.front();
     cloudQueue.pop_front();
 
-    const pcl::PointCloud<PointXYZIRT> laserCloudIn = [&] {
+    const pcl::PointCloud<PointXYZIRT> input_cloud = [&] {
         try {
-          return convert(currentCloudMsg, sensor);
+          return convert(cloud_msg, sensor);
         } catch (const std::runtime_error & e) {
           ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
           ros::shutdown();
@@ -527,24 +527,23 @@ public:
         }
       } ();
 
-    if (!laserCloudIn.is_dense) {
+    if (!input_cloud.is_dense) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
       ros::shutdown();
     }
 
-    if (!ringIsAvailable(currentCloudMsg)) {
+    if (!ringIsAvailable(cloud_msg)) {
       ROS_ERROR("Point cloud ring channel could not be found");
       ros::shutdown();
     }
 
-    if (!timeStampIsAvailable(currentCloudMsg)) {
+    if (!timeStampIsAvailable(cloud_msg)) {
       ROS_ERROR("Point cloud timestamp not available");
       ros::shutdown();
     }
 
-    const std_msgs::Header cloudHeader = currentCloudMsg.header;
-    const double timeScanCur = timeInSec(cloudHeader);
-    const double timeScanEnd = timeScanCur + laserCloudIn.points.back().time;
+    const double timeScanCur = timeInSec(cloud_msg.header);
+    const double timeScanEnd = timeScanCur + input_cloud.points.back().time;
 
     if (!checkImuTime(imu_buffer, timeScanCur, timeScanEnd)) {
       return;
@@ -585,7 +584,7 @@ public:
 
     cv::Mat rangeMat;
     projectPointCloud(
-      laserCloudIn.points,
+      input_cloud.points,
       lidarMinRange, lidarMaxRange,
       downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable, calc_transform,
@@ -617,10 +616,10 @@ public:
       cloudInfo.endRingIndex[i] = count - 5;
     }
 
-    cloudInfo.header = cloudHeader;
+    cloudInfo.header = cloud_msg.header;
     cloudInfo.cloud_deskewed = publishCloud(
       pubExtractedCloud, extractedCloud,
-      cloudHeader.stamp, lidarFrame);
+      cloud_msg.header.stamp, lidarFrame);
     pubLaserCloudInfo.publish(cloudInfo);
   }
 };
