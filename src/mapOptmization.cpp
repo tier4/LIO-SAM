@@ -779,18 +779,16 @@ public:
 
       Eigen::Matrix<double, 5, 3> matA0;
       Eigen::Matrix<double, 5, 1> matB0;
-      Eigen::Vector3d matX0;
 
       matA0.setZero();
       matB0.fill(-1);
-      matX0.setZero();
 
       if (pointSearchSqDis[4] < 1.0) {
         for (int j = 0; j < 5; j++) {
           matA0.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
         }
 
-        matX0 = matA0.colPivHouseholderQr().solve(matB0);
+        const Eigen::Vector3d matX0 = matA0.colPivHouseholderQr().solve(matB0);
 
         const Eigen::Vector4d x = toHomogeneous(matX0) / matX0.norm();
 
