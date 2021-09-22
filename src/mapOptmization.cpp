@@ -787,11 +787,11 @@ public:
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
       std::vector<int> indices;
-      std::vector<float> pointSearchSqDis;
+      std::vector<float> squared_distances;
 
       const PointType pointOri = laserCloudSurfLastDS->points[i];
       const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
-      kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
+      kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, squared_distances);
 
       Eigen::Matrix<double, 5, 3> matA0;
       Eigen::Matrix<double, 5, 1> matB0;
@@ -799,7 +799,7 @@ public:
       matA0.setZero();
       matB0.fill(-1);
 
-      if (pointSearchSqDis[4] >= 1.0) {
+      if (squared_distances[4] >= 1.0) {
         continue;
       }
 
