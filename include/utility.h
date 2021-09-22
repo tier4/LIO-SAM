@@ -400,6 +400,11 @@ tf::Transform identityTransform()
   return identity;
 }
 
+Eigen::Vector3d getXYZ(const PointType & point)
+{
+  return Eigen::Vector3d(point.x, point.y, point.z);
+}
+
 class IMUConverter {
 public:
   IMUConverter() {

@@ -787,8 +787,7 @@ public:
 
       if (pointSearchSqDis[4] < 1.0) {
         for (int j = 0; j < 5; j++) {
-          matA0.row(j) =
-            laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap().cast<double>();
+          matA0.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
         }
 
         matX0 = matA0.colPivHouseholderQr().solve(matB0);
@@ -797,8 +796,7 @@ public:
 
         bool planeValid = true;
         for (int j = 0; j < 5; j++) {
-          const Eigen::Vector3d p =
-            laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap().cast<double>();
+          const Eigen::Vector3d p = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
           const Eigen::Vector4d q = toHomogeneous(p);
 
           if (fabs(x.transpose() * q) > 0.2) {
