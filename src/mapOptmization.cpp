@@ -613,7 +613,7 @@ public:
     extractCloud(surroundingKeyPosesDS);
   }
 
-  void extractCloud(pcl::PointCloud<PointType>::Ptr cloudToExtract)
+  void extractCloud(const pcl::PointCloud<PointType>::Ptr & cloudToExtract)
   {
     // fuse the map
     pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMap(new pcl::PointCloud<PointType>());
@@ -632,19 +632,16 @@ public:
         // transformed cloud available
         *laserCloudCornerFromMap += laserCloudMapContainer[thisKeyInd].first;
         *laserCloudSurfFromMap += laserCloudMapContainer[thisKeyInd].second;
-      } else {
-        // transformed cloud not available
-        pcl::PointCloud<PointType> laserCloudCornerTemp = transformPointCloud(
-          cornerCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
-        pcl::PointCloud<PointType> laserCloudSurfTemp = transformPointCloud(
-          surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
-        *laserCloudCornerFromMap += laserCloudCornerTemp;
-        *laserCloudSurfFromMap += laserCloudSurfTemp;
-        laserCloudMapContainer[thisKeyInd] = std::make_pair(
-          laserCloudCornerTemp,
-          laserCloudSurfTemp);
+        continue;
       }
-
+      // transformed cloud not available
+      pcl::PointCloud<PointType> laserCloudCornerTemp = transformPointCloud(
+        cornerCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
+      pcl::PointCloud<PointType> laserCloudSurfTemp = transformPointCloud(
+        surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
+      *laserCloudCornerFromMap += laserCloudCornerTemp;
+      *laserCloudSurfFromMap += laserCloudSurfTemp;
+      laserCloudMapContainer[thisKeyInd] = std::make_pair(laserCloudCornerTemp, laserCloudSurfTemp);
     }
 
     // Downsample the surrounding corner key frames (or map)
