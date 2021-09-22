@@ -270,8 +270,6 @@ public:
 
   std::map<int,
     std::pair<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>> laserCloudMapContainer;
-  pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMap;
-  pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMap;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
@@ -380,8 +378,6 @@ public:
     std::fill(laserCloudOriCornerFlag.begin(), laserCloudOriCornerFlag.end(), false);
     std::fill(laserCloudOriSurfFlag.begin(), laserCloudOriSurfFlag.end(), false);
 
-    laserCloudCornerFromMap.reset(new pcl::PointCloud<PointType>());
-    laserCloudSurfFromMap.reset(new pcl::PointCloud<PointType>());
     laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
     laserCloudSurfFromMapDS.reset(new pcl::PointCloud<PointType>());
 
@@ -620,8 +616,9 @@ public:
   void extractCloud(pcl::PointCloud<PointType>::Ptr cloudToExtract)
   {
     // fuse the map
-    laserCloudCornerFromMap->clear();
-    laserCloudSurfFromMap->clear();
+    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMap(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMap(new pcl::PointCloud<PointType>());
+
     for (int i = 0; i < (int)cloudToExtract->size(); ++i) {
       if (pointDistance(
           cloudToExtract->points[i],
