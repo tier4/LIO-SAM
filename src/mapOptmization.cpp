@@ -591,16 +591,16 @@ public:
       pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surroundingKeyPosesDS(new
       pcl::PointCloud<PointType>());
-    std::vector<int> pointSearchInd;
+    std::vector<int> indices;
     std::vector<float> pointSearchSqDis;
 
     // extract all the nearby key poses and downsample them
     kdtreeSurroundingKeyPoses->setInputCloud(cloudKeyPoses3D.makeShared()); // create kd-tree
     kdtreeSurroundingKeyPoses->radiusSearch(
       cloudKeyPoses3D.back(),
-      (double)surroundingKeyframeSearchRadius, pointSearchInd, pointSearchSqDis);
-    for (int i = 0; i < (int)pointSearchInd.size(); ++i) {
-      int id = pointSearchInd[i];
+      (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
+    for (int i = 0; i < (int)indices.size(); ++i) {
+      int id = indices[i];
       surroundingKeyPoses->push_back(cloudKeyPoses3D.points[id]);
     }
 
@@ -608,9 +608,9 @@ public:
     downSizeFilterSurroundingKeyPoses.filter(*surroundingKeyPosesDS);
     for (auto & pt : surroundingKeyPosesDS->points) {
       kdtreeSurroundingKeyPoses->nearestKSearch(
-        pt, 1, pointSearchInd,
+        pt, 1, indices,
         pointSearchSqDis);
-      pt.intensity = cloudKeyPoses3D.points[pointSearchInd[0]].intensity;
+      pt.intensity = cloudKeyPoses3D.points[indices[0]].intensity;
     }
 
     // also extract some latest key frames in case the robot rotates in one position
@@ -703,17 +703,17 @@ public:
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
-      std::vector<int> pointSearchInd;
+      std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
       PointType pointOri = laserCloudCornerLastDS->points[i];
       PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
-      kdtreeCornerFromMap->nearestKSearch(pointSel, 5, pointSearchInd, pointSearchSqDis);
+      kdtreeCornerFromMap->nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
         Eigen::Vector3f c = Eigen::Vector3f::Zero();
         for (int j = 0; j < 5; j++) {
-          c += laserCloudCornerFromMapDS->points[pointSearchInd[j]].getVector3fMap();
+          c += laserCloudCornerFromMapDS->points[indices[j]].getVector3fMap();
         }
         c /= 5.0;
 
@@ -721,7 +721,7 @@ public:
 
         for (int j = 0; j < 5; j++) {
           const Eigen::Vector3f x =
-            laserCloudCornerFromMapDS->points[pointSearchInd[j]].getVector3fMap();
+            laserCloudCornerFromMapDS->points[indices[j]].getVector3fMap();
           const Eigen::Vector3f a = x - c;
           sa += a * a.transpose();
         }
@@ -792,14 +792,12 @@ public:
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
       PointType pointOri, pointSel, coeff;
-      std::vector<int> pointSearchInd;
+      std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
       pointOri = laserCloudSurfLastDS->points[i];
       pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
-      kdtreeSurfFromMap->nearestKSearch(
-        pointSel, 5, pointSearchInd,
-        pointSearchSqDis);
+      kdtreeSurfFromMap->nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
       Eigen::Matrix<float, 5, 3> matA0;
       Eigen::Matrix<float, 5, 1> matB0;
@@ -811,7 +809,7 @@ public:
 
       if (pointSearchSqDis[4] < 1.0) {
         for (int j = 0; j < 5; j++) {
-          matA0.row(j) = laserCloudSurfFromMapDS->points[pointSearchInd[j]].getVector3fMap();
+          matA0.row(j) = laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap();
         }
 
         matX0 = matA0.colPivHouseholderQr().solve(matB0);
@@ -820,8 +818,7 @@ public:
 
         bool planeValid = true;
         for (int j = 0; j < 5; j++) {
-          const Eigen::Vector3f p =
-            laserCloudSurfFromMapDS->points[pointSearchInd[j]].getVector3fMap();
+          const Eigen::Vector3f p = laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap();
           const Eigen::Vector4f q = toHomogeneous(p);
 
           if (fabs(x.transpose() * q) > 0.2) {
