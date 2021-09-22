@@ -303,7 +303,6 @@ public:
 
   nav_msgs::Path globalPath;
 
-  Eigen::Affine3d transPointAssociateToMap;
   Eigen::Affine3d incrementalOdometryAffineFront;
   Eigen::Affine3d incrementalOdometryAffineBack;
 
@@ -684,7 +683,7 @@ public:
 
   void cornerOptimization()
   {
-    transPointAssociateToMap = trans2Affine3d(posevec);
+    Eigen::Affine3d transPointAssociateToMap = trans2Affine3d(posevec);
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
@@ -772,7 +771,7 @@ public:
 
   void surfOptimization()
   {
-    transPointAssociateToMap = trans2Affine3d(posevec);
+    Eigen::Affine3d transPointAssociateToMap = trans2Affine3d(posevec);
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
