@@ -44,6 +44,28 @@ boost::shared_ptr<gtsam::PreintegrationParams> initialIntegrationParams(
   return p;
 }
 
+tf::Transform getLidarToBaseLink(
+  const std::string & lidarFrame,
+  const std::string & baselinkFrame)
+{
+  if (lidarFrame == baselinkFrame) {
+    tf::Transform identity;
+    identity.setIdentity();
+    return identity;
+  }
+
+  tf::StampedTransform transform;
+  try {
+    tf::TransformListener listener;
+    listener.waitForTransform(lidarFrame, baselinkFrame, ros::Time(0), ros::Duration(3.0));
+    listener.lookupTransform(lidarFrame, baselinkFrame, ros::Time(0), transform);
+  } catch (tf::TransformException ex) {
+    ROS_ERROR("%s", ex.what());
+  }
+
+  return transform;
+}
+
 class TransformFusion : public ParamServer
 {
 public:
@@ -57,7 +79,7 @@ public:
 
   Eigen::Affine3d lidarOdomAffine;
 
-  tf::StampedTransform lidar2Baselink;
+  const tf::Transform lidar2Baselink;
 
   double lidarOdomTime = -1;
   std::deque<nav_msgs::Odometry> imuOdomQueue;
@@ -72,21 +94,9 @@ public:
         2000, &TransformFusion::imuOdometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
-    pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1))
+    pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
+    lidar2Baselink(getLidarToBaseLink(lidarFrame, baselinkFrame))
   {
-    if (lidarFrame != baselinkFrame) {
-      tf::TransformListener tfListener;
-      try {
-        tfListener.waitForTransform(
-          lidarFrame, baselinkFrame, ros::Time(0),
-          ros::Duration(3.0));
-        tfListener.lookupTransform(
-          lidarFrame, baselinkFrame, ros::Time(0),
-          lidar2Baselink);
-      } catch (tf::TransformException ex) {
-        ROS_ERROR("%s", ex.what());
-      }
-    }
   }
 
   void lidarOdometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
@@ -136,12 +146,8 @@ public:
     static tf::TransformBroadcaster tfOdom2BaseLink;
     tf::Transform tCur;
     tf::poseMsgToTF(laserOdometry.pose.pose, tCur);
-    if (lidarFrame != baselinkFrame) {
-      tCur = tCur * lidar2Baselink;
-    }
     tf::StampedTransform odom_2_baselink = tf::StampedTransform(
-      tCur,
-      odomMsg->header.stamp, odometryFrame, baselinkFrame);
+      tCur * lidar2Baselink, odomMsg->header.stamp, odometryFrame, baselinkFrame);
     tfOdom2BaseLink.sendTransform(odom_2_baselink);
 
     // publish IMU path
