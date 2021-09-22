@@ -49,25 +49,33 @@ class TransformFusion : public ParamServer
 public:
   std::mutex mtx;
 
-  ros::Subscriber subImuOdometry;
-  ros::Subscriber subLaserOdometry;
+  const ros::Subscriber subImuOdometry;
+  const ros::Subscriber subLaserOdometry;
 
-  ros::Publisher pubImuOdometry;
-  ros::Publisher pubImuPath;
+  const ros::Publisher pubImuOdometry;
+  const ros::Publisher pubImuPath;
 
   Eigen::Affine3d lidarOdomAffine;
-  Eigen::Affine3d imuOdomAffineFront;
-  Eigen::Affine3d imuOdomAffineBack;
 
-  tf::TransformListener tfListener;
   tf::StampedTransform lidar2Baselink;
 
   double lidarOdomTime = -1;
   std::deque<nav_msgs::Odometry> imuOdomQueue;
 
   TransformFusion()
+  : subLaserOdometry(nh.subscribe<nav_msgs::Odometry>(
+        "lio_sam/mapping/odometry",
+        5, &TransformFusion::lidarOdometryHandler, this,
+        ros::TransportHints().tcpNoDelay())),
+    subImuOdometry(nh.subscribe<nav_msgs::Odometry>(
+        odomTopic + "_incremental",
+        2000, &TransformFusion::imuOdometryHandler, this,
+        ros::TransportHints().tcpNoDelay())),
+    pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
+    pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1))
   {
     if (lidarFrame != baselinkFrame) {
+      tf::TransformListener tfListener;
       try {
         tfListener.waitForTransform(
           lidarFrame, baselinkFrame, ros::Time(0),
@@ -79,18 +87,6 @@ public:
         ROS_ERROR("%s", ex.what());
       }
     }
-
-    subLaserOdometry = nh.subscribe<nav_msgs::Odometry>(
-      "lio_sam/mapping/odometry",
-      5, &TransformFusion::lidarOdometryHandler, this,
-      ros::TransportHints().tcpNoDelay());
-    subImuOdometry = nh.subscribe<nav_msgs::Odometry>(
-      odomTopic + "_incremental",
-      2000, &TransformFusion::imuOdometryHandler, this,
-      ros::TransportHints().tcpNoDelay());
-
-    pubImuOdometry = nh.advertise<nav_msgs::Odometry>(odomTopic, 2000);
-    pubImuPath = nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1);
   }
 
   void lidarOdometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
