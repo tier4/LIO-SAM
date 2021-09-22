@@ -262,10 +262,6 @@ public:
   pcl::PointCloud<PointType>::Ptr laserCloudCornerLast;
   // surf feature set from odoOptimization
   pcl::PointCloud<PointType>::Ptr laserCloudSurfLast;
-  // downsampled corner featuer set from odoOptimization
-  pcl::PointCloud<PointType>::Ptr laserCloudCornerLastDS;
-  // downsampled surf featuer set from odoOptimization
-  pcl::PointCloud<PointType>::Ptr laserCloudSurfLastDS;
 
   pcl::PointCloud<PointType>::Ptr laserCloudOri;
   pcl::PointCloud<PointType>::Ptr coeffSel;
@@ -368,12 +364,6 @@ public:
     // surf feature set from odoOptimization
     laserCloudSurfLast.reset(new pcl::PointCloud<PointType>());
 
-    // downsampled corner featuer set from odoOptimization
-    laserCloudCornerLastDS.reset(new pcl::PointCloud<PointType>());
-
-    // downsampled surf featuer set from odoOptimization
-    laserCloudSurfLastDS.reset(new pcl::PointCloud<PointType>());
-
     laserCloudOri.reset(new pcl::PointCloud<PointType>());
     coeffSel.reset(new pcl::PointCloud<PointType>());
 
@@ -416,26 +406,25 @@ public:
 
       extractSurroundingKeyFrames();
 
-      // Downsample cloud from current scan
-      laserCloudCornerLastDS->clear();
+      pcl::PointCloud<PointType> laserCloudCornerLastDS;
       downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
-      downSizeFilterCorner.filter(*laserCloudCornerLastDS);
-      laserCloudCornerLastDSNum = laserCloudCornerLastDS->size();
+      downSizeFilterCorner.filter(laserCloudCornerLastDS);
+      laserCloudCornerLastDSNum = laserCloudCornerLastDS.size();
 
-      laserCloudSurfLastDS->clear();
+      pcl::PointCloud<PointType> laserCloudSurfLastDS;
       downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
-      downSizeFilterSurf.filter(*laserCloudSurfLastDS);
-      laserCloudSurfLastDSNum = laserCloudSurfLastDS->size();
+      downSizeFilterSurf.filter(laserCloudSurfLastDS);
+      laserCloudSurfLastDSNum = laserCloudSurfLastDS.size();
 
-      scan2MapOptimization();
+      scan2MapOptimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
 
-      saveKeyFramesAndFactor();
+      saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS);
 
       correctPoses();
 
       publishOdometry();
 
-      publishFrames();
+      publishFrames(laserCloudCornerLastDS, laserCloudSurfLastDS);
     }
   }
 
@@ -686,7 +675,9 @@ public:
     extractNearby();
   }
 
-  void optimization()
+  void optimization(
+    const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
+    const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
   {
     const Eigen::Affine3d transPointAssociateToMap = trans2Affine3d(posevec);
 
@@ -696,7 +687,7 @@ public:
       std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
-      const PointType pointOri = laserCloudCornerLastDS->points[i];
+      const PointType pointOri = laserCloudCornerLastDS.points[i];
       const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeCornerFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
@@ -780,7 +771,7 @@ public:
       std::vector<int> indices;
       std::vector<float> squared_distances;
 
-      const PointType pointOri = laserCloudSurfLastDS->points[i];
+      const PointType pointOri = laserCloudSurfLastDS.points[i];
       const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, squared_distances);
 
@@ -954,7 +945,9 @@ public:
     return false; // keep optimizing
   }
 
-  void scan2MapOptimization()
+  void scan2MapOptimization(
+    const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
+    const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
@@ -970,7 +963,7 @@ public:
         laserCloudOri->clear();
         coeffSel->clear();
 
-        optimization();
+        optimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
 
         if (LMOptimization(iterCount)) {
           break;
@@ -1140,7 +1133,9 @@ public:
     }
   }
 
-  void saveKeyFramesAndFactor()
+  void saveKeyFramesAndFactor(
+    const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
+    const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
   {
     if (!saveFrame()) {
       return;
@@ -1205,8 +1200,8 @@ public:
     posevec = getPoseVec(latestEstimate);
 
     // save key frame cloud
-    cornerCloudKeyFrames.push_back(*laserCloudCornerLastDS);
-    surfCloudKeyFrames.push_back(*laserCloudSurfLastDS);
+    cornerCloudKeyFrames.push_back(laserCloudCornerLastDS);
+    surfCloudKeyFrames.push_back(laserCloudSurfLastDS);
 
     // save path for visualization
     updatePath(thisPose6D);
@@ -1322,7 +1317,9 @@ public:
     pubLaserOdometryIncremental.publish(laserOdomIncremental);
   }
 
-  void publishFrames()
+  void publishFrames(
+    const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
+    const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
@@ -1337,8 +1334,8 @@ public:
     if (pubRecentKeyFrame.getNumSubscribers() != 0) {
       pcl::PointCloud<PointType> cloudOut;
       PointTypePose thisPose6D = trans2PointTypePose(posevec);
-      cloudOut += transformPointCloud(*laserCloudCornerLastDS, thisPose6D);
-      cloudOut += transformPointCloud(*laserCloudSurfLastDS, thisPose6D);
+      cloudOut += transformPointCloud(laserCloudCornerLastDS, thisPose6D);
+      cloudOut += transformPointCloud(laserCloudSurfLastDS, thisPose6D);
       publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
     }
     // publish registered high-res raw cloud
