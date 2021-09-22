@@ -203,12 +203,7 @@ PointType pointAssociateToMap(
 {
   const Eigen::Vector3d p(pi.x, pi.y, pi.z);
   const Eigen::Vector3d q = transPointAssociateToMap * p;
-  PointType po;
-  po.x = q(0);
-  po.y = q(1);
-  po.z = q(2);
-  po.intensity = pi.intensity;
-  return po;
+  return makePoint(q, pi.intensity);
 }
 
 class mapOptimization : public ParamServer
