@@ -274,8 +274,8 @@ public:
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
-  pcl::KdTreeFLANN<PointType>::Ptr kdtreeCornerFromMap;
-  pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurfFromMap;
+  pcl::KdTreeFLANN<PointType> kdtreeCornerFromMap;
+  pcl::KdTreeFLANN<PointType> kdtreeSurfFromMap;
 
   pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurroundingKeyPoses;
   pcl::KdTreeFLANN<PointType>::Ptr kdtreeHistoryKeyPoses;
@@ -390,9 +390,6 @@ public:
     laserCloudSurfFromMap.reset(new pcl::PointCloud<PointType>());
     laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
     laserCloudSurfFromMapDS.reset(new pcl::PointCloud<PointType>());
-
-    kdtreeCornerFromMap.reset(new pcl::KdTreeFLANN<PointType>());
-    kdtreeSurfFromMap.reset(new pcl::KdTreeFLANN<PointType>());
 
     for (int i = 0; i < 6; ++i) {
       posevec(i) = 0;
@@ -708,7 +705,7 @@ public:
 
       PointType pointOri = laserCloudCornerLastDS->points[i];
       PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
-      kdtreeCornerFromMap->nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
+      kdtreeCornerFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
         Eigen::Vector3f c = Eigen::Vector3f::Zero();
@@ -797,7 +794,7 @@ public:
 
       pointOri = laserCloudSurfLastDS->points[i];
       pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
-      kdtreeSurfFromMap->nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
+      kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
       Eigen::Matrix<float, 5, 3> matA0;
       Eigen::Matrix<float, 5, 1> matB0;
@@ -993,8 +990,8 @@ public:
     if (laserCloudCornerLastDSNum > edgeFeatureMinValidNum &&
       laserCloudSurfLastDSNum > surfFeatureMinValidNum)
     {
-      kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
-      kdtreeSurfFromMap->setInputCloud(laserCloudSurfFromMapDS);
+      kdtreeCornerFromMap.setInputCloud(laserCloudCornerFromMapDS);
+      kdtreeSurfFromMap.setInputCloud(laserCloudSurfFromMapDS);
 
       for (int iterCount = 0; iterCount < 30; iterCount++) {
         laserCloudOri->clear();
