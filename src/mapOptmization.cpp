@@ -692,10 +692,11 @@ public:
     laserCloudSurfLastDSNum = laserCloudSurfLastDS->size();
   }
 
-  void cornerOptimization()
+  void optimization()
   {
-    Eigen::Affine3d transPointAssociateToMap = trans2Affine3d(posevec);
+    const Eigen::Affine3d transPointAssociateToMap = trans2Affine3d(posevec);
 
+    // corner optimization
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
       std::vector<int> indices;
@@ -778,12 +779,8 @@ public:
         }
       }
     }
-  }
 
-  void surfOptimization()
-  {
-    Eigen::Affine3d transPointAssociateToMap = trans2Affine3d(posevec);
-
+    // surface optimization
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
       std::vector<int> indices;
@@ -828,10 +825,7 @@ public:
       coeffSelSurfVec[i] = makePoint(s * x.head(3), s * pd2);
       laserCloudOriSurfFlag[i] = true;
     }
-  }
 
-  void combineOptimizationCoeffs()
-  {
     // combine corner coeffs
     for (int i = 0; i < laserCloudCornerLastDSNum; ++i) {
       if (laserCloudOriCornerFlag[i]) {
@@ -982,10 +976,7 @@ public:
         laserCloudOri->clear();
         coeffSel->clear();
 
-        cornerOptimization();
-        surfOptimization();
-
-        combineOptimizationCoeffs();
+        optimization();
 
         if (LMOptimization(iterCount)) {
           break;
