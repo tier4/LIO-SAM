@@ -77,7 +77,7 @@ public:
 
   Eigen::Affine3d lidarOdomAffine;
 
-  const tf::Transform lidar2Baselink;
+  const tf::Transform lidar_to_baselink;
 
   double lidarOdomTime = -1;
   std::deque<nav_msgs::Odometry> imuOdomQueue;
@@ -93,29 +93,29 @@ public:
         ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
     pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
-    lidar2Baselink(getLidarToBaseLink(lidarFrame, baselinkFrame))
+    lidar_to_baselink(getLidarToBaseLink(lidarFrame, baselinkFrame))
   {
   }
 
-  void lidarOdometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
+  void lidarOdometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    lidarOdomAffine = poseToAffine(odomMsg->pose.pose);
+    lidarOdomAffine = poseToAffine(odom_msg->pose.pose);
 
-    lidarOdomTime = odomMsg->header.stamp.toSec();
+    lidarOdomTime = odom_msg->header.stamp.toSec();
   }
 
-  void imuOdometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
+  void imuOdometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
   {
     // static tf
     static tf::TransformBroadcaster tfMap2Odom;
     tfMap2Odom.sendTransform(
-      tf::StampedTransform(identityTransform(), odomMsg->header.stamp, mapFrame, odometryFrame));
+      tf::StampedTransform(identityTransform(), odom_msg->header.stamp, mapFrame, odometryFrame));
 
     std::lock_guard<std::mutex> lock(mtx);
 
-    imuOdomQueue.push_back(*odomMsg);
+    imuOdomQueue.push_back(*odom_msg);
 
     // get latest odometry (at current IMU stamp)
     if (lidarOdomTime == -1) {
@@ -123,24 +123,24 @@ public:
     }
 
     dropBefore(lidarOdomTime, imuOdomQueue);
-    Eigen::Affine3d imuOdomAffineFront = poseToAffine(imuOdomQueue.front().pose.pose);
-    Eigen::Affine3d imuOdomAffineBack = poseToAffine(imuOdomQueue.back().pose.pose);
-    Eigen::Affine3d imuOdomAffineIncre = imuOdomAffineFront.inverse() *
-      imuOdomAffineBack;
-    Eigen::Affine3d imuOdomAffineLast = lidarOdomAffine * imuOdomAffineIncre;
+    const Eigen::Affine3d front = poseToAffine(imuOdomQueue.front().pose.pose);
+    const Eigen::Affine3d back = poseToAffine(imuOdomQueue.back().pose.pose);
+    const Eigen::Affine3d incre = front.inverse() * back;
+    const Eigen::Affine3d last = lidarOdomAffine * incre;
 
     // publish latest odometry
     nav_msgs::Odometry laserOdometry = imuOdomQueue.back();
-    laserOdometry.pose.pose = affineToPose(imuOdomAffineLast);
+    laserOdometry.pose.pose = affineToPose(last);
     pubImuOdometry.publish(laserOdometry);
 
     // publish tf
-    static tf::TransformBroadcaster tfOdom2BaseLink;
-    tf::Transform tCur;
-    tf::poseMsgToTF(laserOdometry.pose.pose, tCur);
-    tf::StampedTransform odom_2_baselink = tf::StampedTransform(
-      tCur * lidar2Baselink, odomMsg->header.stamp, odometryFrame, baselinkFrame);
-    tfOdom2BaseLink.sendTransform(odom_2_baselink);
+    tf::TransformBroadcaster broadcaster;
+    tf::Transform lidar_odometry;
+    tf::poseMsgToTF(laserOdometry.pose.pose, lidar_odometry);
+    broadcaster.sendTransform(
+      tf::StampedTransform(
+        lidar_odometry * lidar_to_baselink,
+        odom_msg->header.stamp, odometryFrame, baselinkFrame));
 
     // publish IMU path
     static nav_msgs::Path imuPath;
@@ -262,18 +262,18 @@ public:
       2000);
   }
 
-  void odometryHandler(const nav_msgs::Odometry::ConstPtr & odomMsg)
+  void odometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    const double currentCorrectionTime = timeInSec(odomMsg->header);
+    const double currentCorrectionTime = timeInSec(odom_msg->header);
 
     // make sure we have imu data to integrate
     if (imuQueOpt.empty()) {
       return;
     }
 
-    gtsam::Pose3 lidar_pose = makeGtsamPose(odomMsg->pose.pose);
+    gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
 
     // 0. initialize system
     if (!systemInitialized) {
@@ -411,7 +411,7 @@ public:
     );
     const Diagonal::shared_ptr correctionNoise2(Diagonal::Sigmas(Vector6d::Ones()));
 
-    const auto noise = odomMsg->pose.covariance[0] == 1 ? correctionNoise2 : correctionNoise;
+    const auto noise = odom_msg->pose.covariance[0] == 1 ? correctionNoise2 : correctionNoise;
     // add pose factor
     const gtsam::Pose3 curr_imu_pose = lidar_pose.compose(lidar2Imu);
     const gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curr_imu_pose, noise);
@@ -459,7 +459,7 @@ public:
       imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
       // integrate imu message from the beginning of this optimization
       for (int i = 0; i < (int)imuQueImu.size(); ++i) {
-        sensor_msgs::Imu & msg = imuQueImu[i];
+        const sensor_msgs::Imu & msg = imuQueImu[i];
         const double imuTime = timeInSec(msg.header);
         const double dt = (lastImuQT < 0) ? (1.0 / 500.0) : (imuTime - lastImuQT);
         imuIntegratorImu_.integrateMeasurement(
