@@ -57,9 +57,7 @@ public:
 
     pcl::VoxelGrid<PointType> downSizeFilter;
 
-    downSizeFilter.setLeafSize(
-      odometrySurfLeafSize, odometrySurfLeafSize,
-      odometrySurfLeafSize);
+    downSizeFilter.setLeafSize(surface_leaf_size, surface_leaf_size, surface_leaf_size);
 
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
     const ros::Time stamp = msgIn->header.stamp;
