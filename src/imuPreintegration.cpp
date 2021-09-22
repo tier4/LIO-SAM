@@ -400,7 +400,6 @@ public:
       }
     }
 
-    const bool degenerate = odomMsg->pose.covariance[0] == 1;
     // add imu factor to graph
     const gtsam::PreintegratedImuMeasurements & preint_imu =
       dynamic_cast<const gtsam::PreintegratedImuMeasurements &>(imuIntegratorOpt_);
@@ -418,15 +417,15 @@ public:
     );
     const Diagonal::shared_ptr correctionNoise2(Diagonal::Sigmas(Vector6d::Ones()));
 
+    const auto noise = odomMsg->pose.covariance[0] == 1 ? correctionNoise2 : correctionNoise;
     // add pose factor
-    gtsam::Pose3 curr_imu_pose = lidar_pose.compose(lidar2Imu);
-    gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curr_imu_pose,
-      degenerate ? correctionNoise2 : correctionNoise);
+    const gtsam::Pose3 curr_imu_pose = lidar_pose.compose(lidar2Imu);
+    const gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curr_imu_pose, noise);
     graphFactors.add(pose_factor);
     // insert predicted values
-    gtsam::NavState propState_ = imuIntegratorOpt_.predict(prevState_, prevBias_);
-    graphValues.insert(X(key), propState_.pose());
-    graphValues.insert(V(key), propState_.v());
+    const gtsam::NavState state = imuIntegratorOpt_.predict(prevState_, prevBias_);
+    graphValues.insert(X(key), state.pose());
+    graphValues.insert(V(key), state.v());
     graphValues.insert(B(key), prevBias_);
     // optimize
     optimizer.update(graphFactors, graphValues);
@@ -434,7 +433,7 @@ public:
     graphFactors.resize(0);
     graphValues.clear();
     // Overwrite the beginning of the preintegration for the next step.
-    gtsam::Values result = optimizer.calculateEstimate();
+    const gtsam::Values result = optimizer.calculateEstimate();
     prevPose_ = result.at<gtsam::Pose3>(X(key));
     prevVel_ = result.at<gtsam::Vector3>(V(key));
     prevState_ = gtsam::NavState(prevPose_, prevVel_);
