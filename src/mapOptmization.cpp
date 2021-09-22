@@ -685,8 +685,8 @@ public:
       std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
-      PointType pointOri = laserCloudCornerLastDS->points[i];
-      PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
+      const PointType pointOri = laserCloudCornerLastDS->points[i];
+      const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeCornerFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
@@ -770,17 +770,16 @@ public:
 
     #pragma omp parallel for num_threads(numberOfCores)
     for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
-      PointType pointOri, pointSel, coeff;
       std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
-      pointOri = laserCloudSurfLastDS->points[i];
-      pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
+      const PointType pointOri = laserCloudSurfLastDS->points[i];
+      const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
-      Eigen::Matrix<float, 5, 3> matA0;
-      Eigen::Matrix<float, 5, 1> matB0;
-      Eigen::Vector3f matX0;
+      Eigen::Matrix<double, 5, 3> matA0;
+      Eigen::Matrix<double, 5, 1> matB0;
+      Eigen::Vector3d matX0;
 
       matA0.setZero();
       matB0.fill(-1);
@@ -788,17 +787,19 @@ public:
 
       if (pointSearchSqDis[4] < 1.0) {
         for (int j = 0; j < 5; j++) {
-          matA0.row(j) = laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap();
+          matA0.row(j) =
+            laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap().cast<double>();
         }
 
         matX0 = matA0.colPivHouseholderQr().solve(matB0);
 
-        const Eigen::VectorXf x = toHomogeneous(matX0) / matX0.norm();
+        const Eigen::Vector4d x = toHomogeneous(matX0) / matX0.norm();
 
         bool planeValid = true;
         for (int j = 0; j < 5; j++) {
-          const Eigen::Vector3f p = laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap();
-          const Eigen::Vector4f q = toHomogeneous(p);
+          const Eigen::Vector3d p =
+            laserCloudSurfFromMapDS->points[indices[j]].getVector3fMap().cast<double>();
+          const Eigen::Vector4d q = toHomogeneous(p);
 
           if (fabs(x.transpose() * q) > 0.2) {
             planeValid = false;
@@ -807,19 +808,14 @@ public:
         }
 
         if (planeValid) {
-          const Eigen::Vector3f p = pointSel.getVector3fMap();
-          const Eigen::Vector4f q = toHomogeneous(p);
+          const Eigen::Vector3d p = pointSel.getVector3fMap().cast<double>();
+          const Eigen::Vector4d q = toHomogeneous(p);
           float pd2 = x.transpose() * q;
           float s = 1 - 0.9 * fabs(pd2) / sqrt(p.norm());
 
-          coeff.x = s * x(0);
-          coeff.y = s * x(1);
-          coeff.z = s * x(2);
-          coeff.intensity = s * pd2;
-
           if (s > 0.1) {
             laserCloudOriSurfVec[i] = pointOri;
-            coeffSelSurfVec[i] = coeff;
+            coeffSelSurfVec[i] = makePoint(s * x.head(3), s * pd2);
             laserCloudOriSurfFlag[i] = true;
           }
         }
