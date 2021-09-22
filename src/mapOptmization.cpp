@@ -218,7 +218,7 @@ public:
   // gtsam
   NonlinearFactorGraph gtSAMgraph;
   Values initialEstimate;
-  ISAM2 * isam;
+  std::shared_ptr<ISAM2> isam;
   Values isamCurrentEstimate;
   Eigen::MatrixXd poseCovariance;
 
@@ -325,13 +325,9 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     subGPS(nh.subscribe<nav_msgs::Odometry>(
         gpsTopic, 200, &mapOptimization::gpsHandler, this,
-        ros::TransportHints().tcpNoDelay()))
+        ros::TransportHints().tcpNoDelay())),
+    isam(std::make_shared<ISAM2>(gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1)))
   {
-    ISAM2Params parameters;
-    parameters.relinearizeThreshold = 0.1;
-    parameters.relinearizeSkip = 1;
-    isam = new ISAM2(parameters);
-
     downSizeFilterCorner.setLeafSize(
       mappingCornerLeafSize, mappingCornerLeafSize,
       mappingCornerLeafSize);
