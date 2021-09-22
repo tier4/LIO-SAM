@@ -616,8 +616,8 @@ public:
   void extractCloud(const pcl::PointCloud<PointType>::Ptr & cloudToExtract)
   {
     // fuse the map
-    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMap(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMap(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
     for (int i = 0; i < (int)cloudToExtract->size(); ++i) {
       if (pointDistance(
@@ -630,26 +630,26 @@ public:
       int thisKeyInd = (int)cloudToExtract->points[i].intensity;
       if (laserCloudMapContainer.find(thisKeyInd) != laserCloudMapContainer.end()) {
         // transformed cloud available
-        *laserCloudCornerFromMap += laserCloudMapContainer[thisKeyInd].first;
-        *laserCloudSurfFromMap += laserCloudMapContainer[thisKeyInd].second;
+        *corner += laserCloudMapContainer[thisKeyInd].first;
+        *surface += laserCloudMapContainer[thisKeyInd].second;
         continue;
       }
       // transformed cloud not available
-      pcl::PointCloud<PointType> laserCloudCornerTemp = transformPointCloud(
+      pcl::PointCloud<PointType> c = transformPointCloud(
         cornerCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
-      pcl::PointCloud<PointType> laserCloudSurfTemp = transformPointCloud(
+      pcl::PointCloud<PointType> s = transformPointCloud(
         surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
-      *laserCloudCornerFromMap += laserCloudCornerTemp;
-      *laserCloudSurfFromMap += laserCloudSurfTemp;
-      laserCloudMapContainer[thisKeyInd] = std::make_pair(laserCloudCornerTemp, laserCloudSurfTemp);
+      *corner += c;
+      *surface += s;
+      laserCloudMapContainer[thisKeyInd] = std::make_pair(c, s);
     }
 
     // Downsample the surrounding corner key frames (or map)
-    downSizeFilterCorner.setInputCloud(laserCloudCornerFromMap);
+    downSizeFilterCorner.setInputCloud(corner);
     downSizeFilterCorner.filter(*laserCloudCornerFromMapDS);
     laserCloudCornerFromMapDSNum = laserCloudCornerFromMapDS->size();
     // Downsample the surrounding surf key frames (or map)
-    downSizeFilterSurf.setInputCloud(laserCloudSurfFromMap);
+    downSizeFilterSurf.setInputCloud(surface);
     downSizeFilterSurf.filter(*laserCloudSurfFromMapDS);
     laserCloudSurfFromMapDSNum = laserCloudSurfFromMapDS->size();
 
