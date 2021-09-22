@@ -416,7 +416,16 @@ public:
 
       extractSurroundingKeyFrames();
 
-      downsampleCurrentScan();
+      // Downsample cloud from current scan
+      laserCloudCornerLastDS->clear();
+      downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
+      downSizeFilterCorner.filter(*laserCloudCornerLastDS);
+      laserCloudCornerLastDSNum = laserCloudCornerLastDS->size();
+
+      laserCloudSurfLastDS->clear();
+      downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
+      downSizeFilterSurf.filter(*laserCloudSurfLastDS);
+      laserCloudSurfLastDSNum = laserCloudSurfLastDS->size();
 
       scan2MapOptimization();
 
@@ -675,20 +684,6 @@ public:
     }
 
     extractNearby();
-  }
-
-  void downsampleCurrentScan()
-  {
-    // Downsample cloud from current scan
-    laserCloudCornerLastDS->clear();
-    downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
-    downSizeFilterCorner.filter(*laserCloudCornerLastDS);
-    laserCloudCornerLastDSNum = laserCloudCornerLastDS->size();
-
-    laserCloudSurfLastDS->clear();
-    downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
-    downSizeFilterSurf.filter(*laserCloudSurfLastDS);
-    laserCloudSurfLastDSNum = laserCloudSurfLastDS->size();
   }
 
   void optimization()
