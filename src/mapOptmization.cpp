@@ -184,20 +184,15 @@ pcl::PointCloud<PointType> transformPointCloud(
 {
   pcl::PointCloud<PointType> cloudOut;
 
-  int cloudSize = cloudIn.size();
-  cloudOut.resize(cloudSize);
+  cloudOut.resize(cloudIn.size());
 
   const Eigen::Affine3d transCur = pclPointToAffine3d(transformIn);
 
   #pragma omp parallel for num_threads(numberOfCores)
-  for (int i = 0; i < cloudSize; ++i) {
+  for (int i = 0; i < cloudIn.size(); ++i) {
     const auto & pointFrom = cloudIn.points[i];
     const Eigen::Vector3d p(pointFrom.x, pointFrom.y, pointFrom.z);
-    const Eigen::Vector3d q = transCur * p;
-    cloudOut.points[i].x = q(0);
-    cloudOut.points[i].y = q(1);
-    cloudOut.points[i].z = q(2);
-    cloudOut.points[i].intensity = pointFrom.intensity;
+    cloudOut.points[i] = makePoint(transCur * p, pointFrom.intensity);
   }
   return cloudOut;
 }

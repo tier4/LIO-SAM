@@ -262,6 +262,17 @@ Eigen::Vector3d vector3ToEigen(const geometry_msgs::Vector3 & p)
   return Eigen::Vector3d(p.x, p.y, p.z);
 }
 
+PointType makePoint(const Eigen::Vector3d & point, const float intensity)
+{
+  const Eigen::Vector3f q = point.cast < float > ();
+  PointType p;
+  p.x = q(0);
+  p.y = q(1);
+  p.z = q(2);
+  p.intensity = intensity;
+  return p;
+}
+
 Eigen::Affine3d makeAffine(const Eigen::Vector3d & rpy, const Eigen::Vector3d & point)
 {
   Eigen::Affine3d transform;
