@@ -145,7 +145,7 @@ public:
     // publish IMU path
     static nav_msgs::Path imuPath;
     static double last_path_time = -1;
-    double imuTime = imuOdomQueue.back().header.stamp.toSec();
+    const double imuTime = imuOdomQueue.back().header.stamp.toSec();
     if (imuTime - last_path_time > 0.1) {
       last_path_time = imuTime;
       geometry_msgs::PoseStamped pose_stamped;

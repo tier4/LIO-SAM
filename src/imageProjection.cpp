@@ -95,17 +95,16 @@ pcl::PointCloud<PointXYZIRT> convert(
   const sensor_msgs::PointCloud2 & cloud_msg,
   const SensorType & sensor)
 {
-  pcl::PointCloud<PointXYZIRT> input_cloud;
   if (sensor == SensorType::VELODYNE) {
-    pcl::fromROSMsg(cloud_msg, input_cloud);
-    return input_cloud;
+    return getPointCloud<PointXYZIRT>(cloud_msg);
   }
 
   if (sensor == SensorType::OUSTER) {
     // Convert to Velodyne format
-    pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn;
+    pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn =
+      getPointCloud<OusterPointXYZIRT>(cloud_msg);
 
-    pcl::fromROSMsg(cloud_msg, tmpOusterCloudIn);
+    pcl::PointCloud<PointXYZIRT> input_cloud;
     input_cloud.points.resize(tmpOusterCloudIn.size());
     input_cloud.is_dense = tmpOusterCloudIn.is_dense;
     for (size_t i = 0; i < tmpOusterCloudIn.size(); i++) {

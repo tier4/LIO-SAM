@@ -1381,13 +1381,12 @@ public:
     }
     // publish registered high-res raw cloud
     if (pubCloudRegisteredRaw.getNumSubscribers() != 0) {
-      pcl::PointCloud<PointType> cloudOut;
-      pcl::fromROSMsg(cloudInfo.cloud_deskewed, cloudOut);
-      PointTypePose thisPose6D = trans2PointTypePose(posevec);
-      cloudOut = transformPointCloud(cloudOut, thisPose6D);
+      const pcl::PointCloud<PointType> cloudOut =
+        getPointCloud<PointType>(cloudInfo.cloud_deskewed);
+      const PointTypePose thisPose6D = trans2PointTypePose(posevec);
       publishCloud(
-        pubCloudRegisteredRaw, cloudOut, timeLaserInfoStamp,
-        odometryFrame);
+        pubCloudRegisteredRaw, transformPointCloud(cloudOut, thisPose6D),
+        timeLaserInfoStamp, odometryFrame);
     }
     // publish path
     if (pubPath.getNumSubscribers() != 0) {
