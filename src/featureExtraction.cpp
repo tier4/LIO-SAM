@@ -60,7 +60,6 @@ public:
     downSizeFilter.setLeafSize(surface_leaf_size, surface_leaf_size, surface_leaf_size);
 
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
-    const ros::Time stamp = msgIn->header.stamp;
 
     const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
@@ -224,8 +223,10 @@ public:
     }
 
     // save newly extracted features
-    cloudInfo.cloud_corner = publishCloud(pubCornerPoints, corner, stamp, lidarFrame);
-    cloudInfo.cloud_surface = publishCloud(pubSurfacePoints, surface, stamp, lidarFrame);
+    cloudInfo.cloud_corner = publishCloud(
+      pubCornerPoints, corner, msgIn->header.stamp, lidarFrame);
+    cloudInfo.cloud_surface = publishCloud(
+      pubSurfacePoints, surface, msgIn->header.stamp, lidarFrame);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloudInfo);
   }
