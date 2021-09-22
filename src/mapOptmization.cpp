@@ -783,39 +783,45 @@ public:
       matA0.setZero();
       matB0.fill(-1);
 
-      if (pointSearchSqDis[4] < 1.0) {
-        for (int j = 0; j < 5; j++) {
-          matA0.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
-        }
+      if (pointSearchSqDis[4] >= 1.0) {
+        continue;
+      }
 
-        const Eigen::Vector3d matX0 = matA0.colPivHouseholderQr().solve(matB0);
+      for (int j = 0; j < 5; j++) {
+        matA0.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
+      }
 
-        const Eigen::Vector4d x = toHomogeneous(matX0) / matX0.norm();
+      const Eigen::Vector3d matX0 = matA0.colPivHouseholderQr().solve(matB0);
 
-        bool planeValid = true;
-        for (int j = 0; j < 5; j++) {
-          const Eigen::Vector3d p = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
-          const Eigen::Vector4d q = toHomogeneous(p);
+      const Eigen::Vector4d x = toHomogeneous(matX0) / matX0.norm();
 
-          if (fabs(x.transpose() * q) > 0.2) {
-            planeValid = false;
-            break;
-          }
-        }
+      bool planeValid = true;
+      for (int j = 0; j < 5; j++) {
+        const Eigen::Vector3d p = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
+        const Eigen::Vector4d q = toHomogeneous(p);
 
-        if (planeValid) {
-          const Eigen::Vector3d p = pointSel.getVector3fMap().cast<double>();
-          const Eigen::Vector4d q = toHomogeneous(p);
-          float pd2 = x.transpose() * q;
-          float s = 1 - 0.9 * fabs(pd2) / sqrt(p.norm());
-
-          if (s > 0.1) {
-            laserCloudOriSurfVec[i] = pointOri;
-            coeffSelSurfVec[i] = makePoint(s * x.head(3), s * pd2);
-            laserCloudOriSurfFlag[i] = true;
-          }
+        if (fabs(x.transpose() * q) > 0.2) {
+          planeValid = false;
+          break;
         }
       }
+
+      if (!planeValid) {
+        continue;
+      }
+
+      const Eigen::Vector3d p = pointSel.getVector3fMap().cast<double>();
+      const Eigen::Vector4d q = toHomogeneous(p);
+      const float pd2 = x.transpose() * q;
+      const float s = 1 - 0.9 * fabs(pd2) / sqrt(p.norm());
+
+      if (s <= 0.1) {
+        continue;
+      }
+
+      laserCloudOriSurfVec[i] = pointOri;
+      coeffSelSurfVec[i] = makePoint(s * x.head(3), s * pd2);
+      laserCloudOriSurfFlag[i] = true;
     }
   }
 
