@@ -303,8 +303,6 @@ public:
 
   int laserCloudCornerFromMapDSNum = 0;
   int laserCloudSurfFromMapDSNum = 0;
-  int laserCloudCornerLastDSNum = 0;
-  int laserCloudSurfLastDSNum = 0;
 
   bool aLoopIsClosed = false;
 
@@ -409,12 +407,10 @@ public:
       pcl::PointCloud<PointType> laserCloudCornerLastDS;
       downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
       downSizeFilterCorner.filter(laserCloudCornerLastDS);
-      laserCloudCornerLastDSNum = laserCloudCornerLastDS.size();
 
       pcl::PointCloud<PointType> laserCloudSurfLastDS;
       downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
       downSizeFilterSurf.filter(laserCloudSurfLastDS);
-      laserCloudSurfLastDSNum = laserCloudSurfLastDS.size();
 
       scan2MapOptimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
 
@@ -683,7 +679,7 @@ public:
 
     // corner optimization
     #pragma omp parallel for num_threads(numberOfCores)
-    for (int i = 0; i < laserCloudCornerLastDSNum; i++) {
+    for (int i = 0; i < laserCloudCornerLastDS.size(); i++) {
       std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
@@ -767,7 +763,7 @@ public:
 
     // surface optimization
     #pragma omp parallel for num_threads(numberOfCores)
-    for (int i = 0; i < laserCloudSurfLastDSNum; i++) {
+    for (int i = 0; i < laserCloudSurfLastDS.size(); i++) {
       std::vector<int> indices;
       std::vector<float> squared_distances;
 
@@ -812,14 +808,14 @@ public:
     }
 
     // combine corner coeffs
-    for (int i = 0; i < laserCloudCornerLastDSNum; ++i) {
+    for (int i = 0; i < laserCloudCornerLastDS.size(); ++i) {
       if (laserCloudOriCornerFlag[i]) {
         laserCloudOri->push_back(laserCloudOriCornerVec[i]);
         coeffSel->push_back(coeffSelCornerVec[i]);
       }
     }
     // combine surf coeffs
-    for (int i = 0; i < laserCloudSurfLastDSNum; ++i) {
+    for (int i = 0; i < laserCloudSurfLastDS.size(); ++i) {
       if (laserCloudOriSurfFlag[i]) {
         laserCloudOri->push_back(laserCloudOriSurfVec[i]);
         coeffSel->push_back(coeffSelSurfVec[i]);
@@ -953,8 +949,8 @@ public:
       return;
     }
 
-    if (laserCloudCornerLastDSNum > edgeFeatureMinValidNum &&
-      laserCloudSurfLastDSNum > surfFeatureMinValidNum)
+    if (laserCloudCornerLastDS.size() > edgeFeatureMinValidNum &&
+      laserCloudSurfLastDS.size() > surfFeatureMinValidNum)
     {
       kdtreeCornerFromMap.setInputCloud(laserCloudCornerFromMapDS);
       kdtreeSurfFromMap.setInputCloud(laserCloudSurfFromMapDS);
@@ -974,7 +970,7 @@ public:
     } else {
       ROS_WARN(
         "Not enough features! Only %d edge and %d planar features available.",
-        laserCloudCornerLastDSNum, laserCloudSurfLastDSNum);
+        laserCloudCornerLastDS.size(), laserCloudSurfLastDS.size());
     }
   }
 
