@@ -279,7 +279,7 @@ public:
       return;
     }
 
-    gtsam::Pose3 lidarPose = makeGtsamPose(odomMsg->pose.pose);
+    gtsam::Pose3 lidar_pose = makeGtsamPose(odomMsg->pose.pose);
 
     // 0. initialize system
     if (!systemInitialized) {
@@ -309,7 +309,7 @@ public:
       const Diagonal::shared_ptr priorBiasNoise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
 
       // initial pose
-      prevPose_ = lidarPose.compose(lidar2Imu);
+      prevPose_ = lidar_pose.compose(lidar2Imu);
       gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
       graphFactors.add(priorPose);
       // initial velocity
@@ -419,8 +419,8 @@ public:
     const Diagonal::shared_ptr correctionNoise2(Diagonal::Sigmas(Vector6d::Ones()));
 
     // add pose factor
-    gtsam::Pose3 curPose = lidarPose.compose(lidar2Imu);
-    gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curPose,
+    gtsam::Pose3 curr_imu_pose = lidar_pose.compose(lidar2Imu);
+    gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curr_imu_pose,
       degenerate ? correctionNoise2 : correctionNoise);
     graphFactors.add(pose_factor);
     // insert predicted values
