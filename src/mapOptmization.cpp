@@ -1114,7 +1114,7 @@ public:
 
       if (gpsQueue.front().header.stamp.toSec() > timeLaserInfoCur + 0.2) {
         // message too new
-        break;
+        return;
       }
 
       nav_msgs::Odometry thisGPS = gpsQueue.front();
@@ -1160,7 +1160,7 @@ public:
       gtSAMgraph.add(gps_factor);
 
       aLoopIsClosed = true;
-      break;
+      return;
     }
   }
 
