@@ -362,18 +362,17 @@ public:
     kdtreeSurroundingKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
     kdtreeHistoryKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
 
-    laserCloudCornerLast.reset(
-      new
-      pcl::PointCloud<PointType>());                          // corner feature set from odoOptimization
-    laserCloudSurfLast.reset(
-      new
-      pcl::PointCloud<PointType>());                        // surf feature set from odoOptimization
-    laserCloudCornerLastDS.reset(
-      new
-      pcl::PointCloud<PointType>());                            // downsampled corner featuer set from odoOptimization
-    laserCloudSurfLastDS.reset(
-      new
-      pcl::PointCloud<PointType>());                          // downsampled surf featuer set from odoOptimization
+    // corner feature set from odoOptimization
+    laserCloudCornerLast.reset(new pcl::PointCloud<PointType>());
+
+    // surf feature set from odoOptimization
+    laserCloudSurfLast.reset(new pcl::PointCloud<PointType>());
+
+    // downsampled corner featuer set from odoOptimization
+    laserCloudCornerLastDS.reset(new pcl::PointCloud<PointType>());
+
+    // downsampled surf featuer set from odoOptimization
+    laserCloudSurfLastDS.reset(new pcl::PointCloud<PointType>());
 
     laserCloudOri.reset(new pcl::PointCloud<PointType>());
     coeffSel.reset(new pcl::PointCloud<PointType>());
