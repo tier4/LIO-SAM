@@ -49,7 +49,7 @@ public:
   {
   }
 
-  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
+  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn) const
   {
     // used to prevent from labeling a neighbor as surface or edge
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
