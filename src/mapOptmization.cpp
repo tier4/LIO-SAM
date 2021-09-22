@@ -206,6 +206,22 @@ PointType pointAssociateToMap(
   return makePoint(q, pi.intensity);
 }
 
+bool validatePlane(
+  const Points<PointType>::type & points,
+  const std::vector<int> & indices,
+  const Eigen::Vector4d & x)
+{
+  for (int j = 0; j < 5; j++) {
+    const Eigen::Vector3d p = getXYZ(points.at(indices[j]));
+    const Eigen::Vector4d q = toHomogeneous(p);
+
+    if (fabs(x.transpose() * q) > 0.2) {
+      return false;
+    }
+  }
+  return true;
+}
+
 class mapOptimization : public ParamServer
 {
 
@@ -795,18 +811,7 @@ public:
 
       const Eigen::Vector4d x = toHomogeneous(matX0) / matX0.norm();
 
-      bool planeValid = true;
-      for (int j = 0; j < 5; j++) {
-        const Eigen::Vector3d p = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
-        const Eigen::Vector4d q = toHomogeneous(p);
-
-        if (fabs(x.transpose() * q) > 0.2) {
-          planeValid = false;
-          break;
-        }
-      }
-
-      if (!planeValid) {
+      if (!validatePlane(laserCloudSurfFromMapDS->points, indices, x)) {
         continue;
       }
 
