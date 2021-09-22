@@ -382,6 +382,13 @@ void dropBefore(const double time, std::deque < T > & buffer)
   }
 }
 
+tf::Transform identityTransform()
+{
+  tf::Transform identity;
+  identity.setIdentity();
+  return identity;
+}
+
 class IMUConverter {
 public:
   IMUConverter() {

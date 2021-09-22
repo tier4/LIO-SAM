@@ -49,9 +49,7 @@ tf::Transform getLidarToBaseLink(
   const std::string & baselinkFrame)
 {
   if (lidarFrame == baselinkFrame) {
-    tf::Transform identity;
-    identity.setIdentity();
-    return identity;
+    return identityTransform();
   }
 
   tf::StampedTransform transform;
@@ -112,14 +110,8 @@ public:
   {
     // static tf
     static tf::TransformBroadcaster tfMap2Odom;
-    static tf::Transform map_to_odom = tf::Transform(
-      tf::createQuaternionFromRPY(
-        0,
-        0, 0), tf::Vector3(0, 0, 0));
     tfMap2Odom.sendTransform(
-      tf::StampedTransform(
-        map_to_odom,
-        odomMsg->header.stamp, mapFrame, odometryFrame));
+      tf::StampedTransform(identityTransform(), odomMsg->header.stamp, mapFrame, odometryFrame));
 
     std::lock_guard<std::mutex> lock(mtx);
 
