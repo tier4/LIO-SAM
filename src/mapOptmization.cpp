@@ -218,7 +218,6 @@ public:
   // gtsam
   NonlinearFactorGraph gtSAMgraph;
   Values initialEstimate;
-  std::shared_ptr<ISAM2> isam;
   Values isamCurrentEstimate;
   Eigen::MatrixXd poseCovariance;
 
@@ -234,6 +233,8 @@ public:
 
   const ros::Subscriber subCloud;
   const ros::Subscriber subGPS;
+
+  std::shared_ptr<ISAM2> isam;
 
   std::deque<nav_msgs::Odometry> gpsQueue;
   lio_sam::cloud_info cloudInfo;
@@ -1108,55 +1109,58 @@ public:
       if (gpsQueue.front().header.stamp.toSec() < timeLaserInfoCur - 0.2) {
         // message too old
         gpsQueue.pop_front();
-      } else if (gpsQueue.front().header.stamp.toSec() > timeLaserInfoCur + 0.2) {
+        continue;
+      }
+
+      if (gpsQueue.front().header.stamp.toSec() > timeLaserInfoCur + 0.2) {
         // message too new
         break;
-      } else {
-        nav_msgs::Odometry thisGPS = gpsQueue.front();
-        gpsQueue.pop_front();
-
-        // GPS too noisy, skip
-        float noise_x = thisGPS.pose.covariance[0];
-        float noise_y = thisGPS.pose.covariance[7];
-        float noise_z = thisGPS.pose.covariance[14];
-        if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold) {
-          continue;
-        }
-
-        float gps_x = thisGPS.pose.pose.position.x;
-        float gps_y = thisGPS.pose.pose.position.y;
-        float gps_z = thisGPS.pose.pose.position.z;
-        if (!useGpsElevation) {
-          gps_z = posevec(5);
-          noise_z = 0.01;
-        }
-
-        // GPS not properly initialized (0,0,0)
-        if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6) {
-          continue;
-        }
-
-        // Add GPS every a few meters
-        PointType curGPSPoint;
-        curGPSPoint.x = gps_x;
-        curGPSPoint.y = gps_y;
-        curGPSPoint.z = gps_z;
-        if (pointDistance(curGPSPoint, lastGPSPoint) < 5.0) {
-          continue;
-        } else {
-          lastGPSPoint = curGPSPoint;
-        }
-
-        const gtsam::Vector3 Vector(noise_x, noise_y, noise_z);
-        const auto gps_noise = noiseModel::Diagonal::Variances(Vector.cwiseMax(1.0f));
-        gtsam::GPSFactor gps_factor(cloudKeyPoses3D.size(), gtsam::Point3(
-            gps_x, gps_y,
-            gps_z), gps_noise);
-        gtSAMgraph.add(gps_factor);
-
-        aLoopIsClosed = true;
-        break;
       }
+
+      nav_msgs::Odometry thisGPS = gpsQueue.front();
+      gpsQueue.pop_front();
+
+      // GPS too noisy, skip
+      float noise_x = thisGPS.pose.covariance[0];
+      float noise_y = thisGPS.pose.covariance[7];
+      float noise_z = thisGPS.pose.covariance[14];
+      if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold) {
+        continue;
+      }
+
+      float gps_x = thisGPS.pose.pose.position.x;
+      float gps_y = thisGPS.pose.pose.position.y;
+      float gps_z = thisGPS.pose.pose.position.z;
+      if (!useGpsElevation) {
+        gps_z = posevec(5);
+        noise_z = 0.01;
+      }
+
+      // GPS not properly initialized (0,0,0)
+      if (abs(gps_x) < 1e-6 && abs(gps_y) < 1e-6) {
+        continue;
+      }
+
+      // Add GPS every a few meters
+      PointType curGPSPoint;
+      curGPSPoint.x = gps_x;
+      curGPSPoint.y = gps_y;
+      curGPSPoint.z = gps_z;
+      if (pointDistance(curGPSPoint, lastGPSPoint) < 5.0) {
+        continue;
+      } else {
+        lastGPSPoint = curGPSPoint;
+      }
+
+      const gtsam::Vector3 Vector(noise_x, noise_y, noise_z);
+      const auto gps_noise = noiseModel::Diagonal::Variances(Vector.cwiseMax(1.0f));
+      gtsam::GPSFactor gps_factor(cloudKeyPoses3D.size(), gtsam::Point3(
+          gps_x, gps_y,
+          gps_z), gps_noise);
+      gtSAMgraph.add(gps_factor);
+
+      aLoopIsClosed = true;
+      break;
     }
   }
 
