@@ -232,8 +232,8 @@ public:
   const ros::Publisher pubRecentKeyFrame;
   const ros::Publisher pubCloudRegisteredRaw;
 
-  ros::Subscriber subCloud;
-  ros::Subscriber subGPS;
+  const ros::Subscriber subCloud;
+  const ros::Subscriber subGPS;
 
   std::deque<nav_msgs::Odometry> gpsQueue;
   lio_sam::cloud_info cloudInfo;
@@ -319,21 +319,18 @@ public:
     pubRecentKeyFrame(
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1)),
     pubCloudRegisteredRaw(
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered_raw", 1))
+      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered_raw", 1)),
+    subCloud(nh.subscribe<lio_sam::cloud_info>(
+        "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
+        this, ros::TransportHints().tcpNoDelay())),
+    subGPS(nh.subscribe<nav_msgs::Odometry>(
+        gpsTopic, 200, &mapOptimization::gpsHandler, this,
+        ros::TransportHints().tcpNoDelay()))
   {
     ISAM2Params parameters;
     parameters.relinearizeThreshold = 0.1;
     parameters.relinearizeSkip = 1;
     isam = new ISAM2(parameters);
-
-
-    subCloud = nh.subscribe<lio_sam::cloud_info>(
-      "lio_sam/feature/cloud_info", 1,
-      &mapOptimization::laserCloudInfoHandler, this,
-      ros::TransportHints().tcpNoDelay());
-    subGPS = nh.subscribe<nav_msgs::Odometry>(
-      gpsTopic, 200,
-      &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
 
     downSizeFilterCorner.setLeafSize(
       mappingCornerLeafSize, mappingCornerLeafSize,
