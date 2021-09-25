@@ -69,8 +69,8 @@ class TransformFusion : public ParamServer
 public:
   std::mutex mtx;
 
-  const ros::Subscriber subImuOdometry;
   const ros::Subscriber subLaserOdometry;
+  const ros::Subscriber subImuOdometry;
 
   const ros::Publisher pubImuOdometry;
   const ros::Publisher pubImuPath;
@@ -205,8 +205,8 @@ public:
 
   const gtsam::Vector noiseModelBetweenBias;
 
-  gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
   gtsam::PreintegratedImuMeasurements imuIntegratorImu_;
+  gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
 
   std::deque<sensor_msgs::Imu> imuQueOpt;
   std::deque<sensor_msgs::Imu> imuQueImu;
