@@ -63,11 +63,11 @@ public:
 
     const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
 
-    for (int i = 5; i < points.size() - 5; i++) {
+    for (unsigned int i = 5; i < points.size() - 5; i++) {
       label[i] = CurvatureLabel::kDefault;
     }
 
-    for (int i = 5; i < points.size() - 5; i++) {
+    for (unsigned int i = 5; i < points.size() - 5; i++) {
       neighbor_picked[i] = false;
     }
 
@@ -75,7 +75,7 @@ public:
 
     const std::vector<int> & column_index = cloudInfo.pointColInd;
     // mark occluded points and parallel beam points
-    for (int i = 5; i < points.size() - 6; ++i) {
+    for (unsigned int i = 5; i < points.size() - 6; ++i) {
       // occluded points
       const int d = std::abs(int(column_index[i + 1] - column_index[i]));
 
@@ -109,7 +109,7 @@ public:
 
     std::vector<float> curvature(N_SCAN * Horizon_SCAN);
     std::vector<int> curvature_indices(N_SCAN * Horizon_SCAN, 0);
-    for (int i = 5; i < points.size() - 5; i++) {
+    for (unsigned int i = 5; i < points.size() - 5; i++) {
       const float d = range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
         range[i] * 10 +
         range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];

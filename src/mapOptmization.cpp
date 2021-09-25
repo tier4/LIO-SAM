@@ -189,7 +189,7 @@ pcl::PointCloud<PointType> transformPointCloud(
   const Eigen::Affine3d transCur = pclPointToAffine3d(transformIn);
 
   #pragma omp parallel for num_threads(numberOfCores)
-  for (int i = 0; i < cloudIn.size(); ++i) {
+  for (unsigned int i = 0; i < cloudIn.size(); ++i) {
     const auto & pointFrom = cloudIn.points[i];
     const Eigen::Vector3d p(pointFrom.x, pointFrom.y, pointFrom.z);
     cloudOut.points[i] = makePoint(transCur * p, pointFrom.intensity);
@@ -466,7 +466,7 @@ public:
       pointSearchSqDisGlobalMap, 0);
     mtx.unlock();
 
-    for (int i = 0; i < (int)pointSearchIndGlobalMap.size(); ++i) {
+    for (unsigned int i = 0; i < pointSearchIndGlobalMap.size(); ++i) {
       globalMapKeyPoses->push_back(
         cloudKeyPoses3D.points[pointSearchIndGlobalMap[i]]);
     }
@@ -487,7 +487,7 @@ public:
     }
 
     // extract visualized and downsampled key frames
-    for (int i = 0; i < (int)globalMapKeyPosesDS.size(); ++i) {
+    for (unsigned int i = 0; i < globalMapKeyPosesDS.size(); ++i) {
       if (pointDistance(
           globalMapKeyPosesDS.points[i],
           cloudKeyPoses3D.back()) > globalMapVisualizationSearchRadius)
@@ -587,7 +587,7 @@ public:
     kdtreeSurroundingKeyPoses->radiusSearch(
       cloudKeyPoses3D.back(),
       (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
-    for (int i = 0; i < (int)indices.size(); ++i) {
+    for (unsigned int i = 0; i < indices.size(); ++i) {
       int id = indices[i];
       surroundingKeyPoses->push_back(cloudKeyPoses3D.points[id]);
     }
@@ -602,8 +602,7 @@ public:
     }
 
     // also extract some latest key frames in case the robot rotates in one position
-    int numPoses = cloudKeyPoses3D.size();
-    for (int i = numPoses - 1; i >= 0; --i) {
+    for (int i = cloudKeyPoses3D.size() - 1; i >= 0; --i) {
       if (timeLaserInfoCur - cloudKeyPoses6D.points[i].time < 10.0) {
         surroundingKeyPosesDS->push_back(cloudKeyPoses3D.points[i]);
       } else {
@@ -620,7 +619,7 @@ public:
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    for (int i = 0; i < (int)cloudToExtract->size(); ++i) {
+    for (unsigned int i = 0; i < cloudToExtract->size(); ++i) {
       if (pointDistance(
           cloudToExtract->points[i],
           cloudKeyPoses3D.back()) > surroundingKeyframeSearchRadius)
@@ -677,7 +676,7 @@ public:
 
     // corner optimization
     #pragma omp parallel for num_threads(numberOfCores)
-    for (int i = 0; i < laserCloudCornerLastDS.size(); i++) {
+    for (unsigned int i = 0; i < laserCloudCornerLastDS.size(); i++) {
       std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
@@ -761,7 +760,7 @@ public:
 
     // surface optimization
     #pragma omp parallel for num_threads(numberOfCores)
-    for (int i = 0; i < laserCloudSurfLastDS.size(); i++) {
+    for (unsigned int i = 0; i < laserCloudSurfLastDS.size(); i++) {
       std::vector<int> indices;
       std::vector<float> squared_distances;
 
@@ -806,14 +805,14 @@ public:
     }
 
     // combine corner coeffs
-    for (int i = 0; i < laserCloudCornerLastDS.size(); ++i) {
+    for (unsigned int i = 0; i < laserCloudCornerLastDS.size(); ++i) {
       if (laserCloudOriCornerFlag[i]) {
         laserCloudOri->push_back(laserCloudOriCornerVec[i]);
         coeffSel->push_back(coeffSelCornerVec[i]);
       }
     }
     // combine surf coeffs
-    for (int i = 0; i < laserCloudSurfLastDS.size(); ++i) {
+    for (unsigned int i = 0; i < laserCloudSurfLastDS.size(); ++i) {
       if (laserCloudOriSurfFlag[i]) {
         laserCloudOri->push_back(laserCloudOriSurfVec[i]);
         coeffSel->push_back(coeffSelSurfVec[i]);
@@ -1213,8 +1212,7 @@ public:
       // clear path
       globalPath.poses.clear();
       // update key poses
-      int numPoses = isamCurrentEstimate.size();
-      for (int i = 0; i < numPoses; ++i) {
+      for (unsigned int i = 0; i < isamCurrentEstimate.size(); ++i) {
         const auto t = isamCurrentEstimate.at<Pose3>(i).translation();
         cloudKeyPoses3D.points[i].x = t.x();
         cloudKeyPoses3D.points[i].y = t.y();

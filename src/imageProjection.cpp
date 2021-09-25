@@ -133,7 +133,7 @@ public:
     const double point_time = scan_start_time + relTime;
 
     int index = imuTime.size() - 1;
-    for (int i = 0; i < imuTime.size() - 1; i++) {
+    for (unsigned int i = 0; i < imuTime.size() - 1; i++) {
       if (imuTime[i] > point_time) {
         index = i;
         break;
@@ -315,7 +315,7 @@ void imuDeskewInfo(
     return;
   }
 
-  for (int i = 0; i < (int)imu_buffer.size(); ++i) {
+  for (unsigned int i = 0; i < imu_buffer.size(); ++i) {
     const double imu_time = timeInSec(imu_buffer[i].header);
 
     if (imu_time <= scan_start_time) {
