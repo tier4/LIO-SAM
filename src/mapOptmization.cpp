@@ -554,10 +554,8 @@ public:
 
   void extractNearby()
   {
-    pcl::PointCloud<PointType>::Ptr surroundingKeyPoses(new
-      pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr surroundingKeyPosesDS(new
-      pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr downsampled(new pcl::PointCloud<PointType>());
     std::vector<int> indices;
     std::vector<float> pointSearchSqDis;
 
@@ -568,11 +566,11 @@ public:
       (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
     for (unsigned int i = 0; i < indices.size(); ++i) {
       int id = indices[i];
-      surroundingKeyPoses->push_back(cloudKeyPoses3D.points[id]);
+      poses->push_back(cloudKeyPoses3D.points[id]);
     }
 
-    *surroundingKeyPosesDS = downsample(surroundingKeyPoses, surroundingKeyframeDensity);
-    for (auto & pt : surroundingKeyPosesDS->points) {
+    *downsampled = downsample(poses, surroundingKeyframeDensity);
+    for (auto & pt : downsampled->points) {
       kdtreeSurroundingKeyPoses->nearestKSearch(
         pt, 1, indices,
         pointSearchSqDis);
@@ -582,30 +580,29 @@ public:
     // also extract some latest key frames in case the robot rotates in one position
     for (int i = cloudKeyPoses3D.size() - 1; i >= 0; --i) {
       if (timeLaserInfoCur - cloudKeyPoses6D.points[i].time < 10.0) {
-        surroundingKeyPosesDS->push_back(cloudKeyPoses3D.points[i]);
+        downsampled->push_back(cloudKeyPoses3D.points[i]);
       } else {
         break;
       }
     }
 
-    extractCloud(surroundingKeyPosesDS);
+    extractCloud(downsampled);
   }
 
-  void extractCloud(const pcl::PointCloud<PointType>::Ptr & cloudToExtract)
+  void extractCloud(const pcl::PointCloud<PointType>::Ptr & pointcloud)
   {
     // fuse the map
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    for (unsigned int i = 0; i < cloudToExtract->size(); ++i) {
-      if (pointDistance(
-          cloudToExtract->points[i],
-          cloudKeyPoses3D.back()) > surroundingKeyframeSearchRadius)
+    for (unsigned int i = 0; i < pointcloud->size(); ++i) {
+      if (pointDistance(pointcloud->points[i], cloudKeyPoses3D.back()) >
+        surroundingKeyframeSearchRadius)
       {
         continue;
       }
 
-      int index = (int)cloudToExtract->points[i].intensity;
+      int index = (int)pointcloud->points[i].intensity;
       if (laserCloudMapContainer.find(index) != laserCloudMapContainer.end()) {
         // transformed cloud available
         *corner += laserCloudMapContainer[index].first;
