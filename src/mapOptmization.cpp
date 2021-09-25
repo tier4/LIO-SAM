@@ -555,7 +555,6 @@ public:
   void extractNearby()
   {
     pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr downsampled(new pcl::PointCloud<PointType>());
     std::vector<int> indices;
     std::vector<float> pointSearchSqDis;
 
@@ -569,8 +568,8 @@ public:
       poses->push_back(cloudKeyPoses3D.points[id]);
     }
 
-    *downsampled = downsample(poses, surroundingKeyframeDensity);
-    for (auto & pt : downsampled->points) {
+    pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
+    for (auto & pt : downsampled.points) {
       kdtreeSurroundingKeyPoses->nearestKSearch(
         pt, 1, indices,
         pointSearchSqDis);
@@ -580,7 +579,7 @@ public:
     // also extract some latest key frames in case the robot rotates in one position
     for (int i = cloudKeyPoses3D.size() - 1; i >= 0; --i) {
       if (timeLaserInfoCur - cloudKeyPoses6D.points[i].time < 10.0) {
-        downsampled->push_back(cloudKeyPoses3D.points[i]);
+        downsampled.push_back(cloudKeyPoses3D.points[i]);
       } else {
         break;
       }
@@ -589,20 +588,20 @@ public:
     extractCloud(downsampled);
   }
 
-  void extractCloud(const pcl::PointCloud<PointType>::Ptr & pointcloud)
+  void extractCloud(const pcl::PointCloud<PointType> & pointcloud)
   {
     // fuse the map
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    for (unsigned int i = 0; i < pointcloud->size(); ++i) {
-      if (pointDistance(pointcloud->points[i], cloudKeyPoses3D.back()) >
+    for (unsigned int i = 0; i < pointcloud.size(); ++i) {
+      if (pointDistance(pointcloud.points[i], cloudKeyPoses3D.back()) >
         surroundingKeyframeSearchRadius)
       {
         continue;
       }
 
-      int index = (int)pointcloud->points[i].intensity;
+      int index = (int)pointcloud.points[i].intensity;
       if (laserCloudMapContainer.find(index) != laserCloudMapContainer.end()) {
         // transformed cloud available
         *corner += laserCloudMapContainer[index].first;
