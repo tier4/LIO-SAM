@@ -144,18 +144,6 @@ Eigen::Affine3d pclPointToAffine3d(PointXYZIRPYT thisPoint)
   return transform;
 }
 
-PointXYZIRPYT trans2PointXYZIRPYT(const Vector6d & transformIn)
-{
-  PointXYZIRPYT thisPose6D;
-  thisPose6D.x = transformIn(3);
-  thisPose6D.y = transformIn(4);
-  thisPose6D.z = transformIn(5);
-  thisPose6D.roll = transformIn(0);
-  thisPose6D.pitch = transformIn(1);
-  thisPose6D.yaw = transformIn(2);
-  return thisPose6D;
-}
-
 pcl::PointCloud<PointType> transformPointCloud(
   const pcl::PointCloud<PointType> & cloudIn, const Vector6d & posevec,
   const int numberOfCores = 2)
