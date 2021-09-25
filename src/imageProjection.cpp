@@ -307,8 +307,7 @@ void imuDeskewInfo(
   std::vector<double> & imuTime,
   std::vector<Eigen::Vector3d> & imuRot,
   std::deque<sensor_msgs::Imu> & imu_buffer,
-  geometry_msgs::Vector3 & initialIMU,
-  bool & imuAvailable)
+  geometry_msgs::Vector3 & initialIMU)
 {
   dropBefore(scan_start_time - 0.01, imu_buffer);
 
@@ -341,12 +340,6 @@ void imuDeskewInfo(
     imuRot.push_back(rot);
     imuTime.push_back(imu_time);
   }
-
-  if (imuTime.size() <= 1) {
-    return;
-  }
-
-  imuAvailable = true;
 }
 
 bool checkImuTime(
@@ -490,7 +483,6 @@ public:
     bool odomAvailable = false;
 
     Eigen::Vector3d odomInc = Eigen::Vector3d::Zero();
-    bool odomDeskewFlag = false;
 
     {
       std::lock_guard<std::mutex> lock1(imuLock);
@@ -498,7 +490,9 @@ public:
 
       imuDeskewInfo(
         scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
-        cloudInfo.initialIMU, imuAvailable);
+        cloudInfo.initialIMU);
+
+      imuAvailable = imuTime.size() > 1;
 
       dropBefore(scan_start_time - 0.01, odomQueue);
       odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
