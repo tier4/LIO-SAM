@@ -542,17 +542,16 @@ public:
     static bool lastImuPreTransAvailable = false;
     static Eigen::Affine3d lastImuPreTransformation;
     if (cloudInfo.odomAvailable) {
-      Eigen::Affine3d transBack = poseToAffine(cloudInfo.initial_pose);
+      const Eigen::Affine3d back = poseToAffine(cloudInfo.initial_pose);
       if (!lastImuPreTransAvailable) {
-        lastImuPreTransformation = transBack;
+        lastImuPreTransformation = back;
         lastImuPreTransAvailable = true;
       } else {
-        Eigen::Affine3d transIncre = lastImuPreTransformation.inverse() * transBack;
-        Eigen::Affine3d transTobe = trans2Affine3d(posevec);
-        Eigen::Affine3d transFinal = transTobe * transIncre;
-        posevec = getPoseVec(transFinal);
+        const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
+        const Eigen::Affine3d tobe = trans2Affine3d(posevec);
+        posevec = getPoseVec(tobe * incre);
 
-        lastImuPreTransformation = transBack;
+        lastImuPreTransformation = back;
 
         // save imu before return;
         lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
@@ -562,12 +561,11 @@ public:
 
     // use imu incremental estimation for pose guess (only rotation)
     if (cloudInfo.imuAvailable) {
-      Eigen::Affine3d transBack = makeAffine(rpy, Eigen::Vector3d::Zero());
-      Eigen::Affine3d transIncre = lastImuTransformation.inverse() * transBack;
+      const Eigen::Affine3d back = makeAffine(rpy, Eigen::Vector3d::Zero());
+      const Eigen::Affine3d incre = lastImuTransformation.inverse() * back;
 
-      Eigen::Affine3d transTobe = trans2Affine3d(posevec);
-      Eigen::Affine3d transFinal = transTobe * transIncre;
-      posevec = getPoseVec(transFinal);
+      const Eigen::Affine3d tobe = trans2Affine3d(posevec);
+      posevec = getPoseVec(tobe * incre);
 
       // save imu before return;
       lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
