@@ -250,8 +250,8 @@ public:
   std::deque<nav_msgs::Odometry> gpsQueue;
   lio_sam::cloud_info cloudInfo;
 
-  std::vector<pcl::PointCloud<PointType>> cornerCloudKeyFrames;
-  std::vector<pcl::PointCloud<PointType>> surfCloudKeyFrames;
+  std::vector<pcl::PointCloud<PointType>> corner_cloud;
+  std::vector<pcl::PointCloud<PointType>> surface_cloud;
 
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointTypePose> cloudKeyPoses6D;
@@ -451,8 +451,6 @@ public:
     pcl::KdTreeFLANN<PointType> kdtreeGlobalMap;
     pcl::PointCloud<PointType>::Ptr globalMapKeyPoses(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType> globalMapKeyPosesDS;
-    pcl::PointCloud<PointType>::Ptr globalMapKeyFrames(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType> globalMapKeyFramesDS;
 
     // kd-tree to find near key frames to visualize
     std::vector<int> pointSearchIndGlobalMap;
@@ -486,6 +484,9 @@ public:
       pt.intensity = cloudKeyPoses3D.points[pointSearchIndGlobalMap[0]].intensity;
     }
 
+    pcl::PointCloud<PointType>::Ptr global_map(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType> globalMapKeyFramesDS;
+
     // extract visualized and downsampled key frames
     for (unsigned int i = 0; i < globalMapKeyPosesDS.size(); ++i) {
       if (pointDistance(
@@ -494,13 +495,9 @@ public:
       {
         continue;
       }
-      int thisKeyInd = (int)globalMapKeyPosesDS.points[i].intensity;
-      *globalMapKeyFrames += transformPointCloud(
-        cornerCloudKeyFrames[thisKeyInd],
-        cloudKeyPoses6D.points[thisKeyInd]);
-      *globalMapKeyFrames += transformPointCloud(
-        surfCloudKeyFrames[thisKeyInd],
-        cloudKeyPoses6D.points[thisKeyInd]);
+      int index = (int)globalMapKeyPosesDS.points[i].intensity;
+      *global_map += transformPointCloud(corner_cloud[index], cloudKeyPoses6D.points[index]);
+      *global_map += transformPointCloud(surface_cloud[index], cloudKeyPoses6D.points[index]);
     }
     // downsample visualized points
     // for global map visualization
@@ -509,7 +506,7 @@ public:
       globalMapVisualizationLeafSize,
       globalMapVisualizationLeafSize,
       globalMapVisualizationLeafSize);   // for global map visualization
-    downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
+    downSizeFilterGlobalMapKeyFrames.setInputCloud(global_map);
     downSizeFilterGlobalMapKeyFrames.filter(globalMapKeyFramesDS);
     publishCloud(
       pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp,
@@ -627,21 +624,21 @@ public:
         continue;
       }
 
-      int thisKeyInd = (int)cloudToExtract->points[i].intensity;
-      if (laserCloudMapContainer.find(thisKeyInd) != laserCloudMapContainer.end()) {
+      int index = (int)cloudToExtract->points[i].intensity;
+      if (laserCloudMapContainer.find(index) != laserCloudMapContainer.end()) {
         // transformed cloud available
-        *corner += laserCloudMapContainer[thisKeyInd].first;
-        *surface += laserCloudMapContainer[thisKeyInd].second;
+        *corner += laserCloudMapContainer[index].first;
+        *surface += laserCloudMapContainer[index].second;
         continue;
       }
       // transformed cloud not available
       pcl::PointCloud<PointType> c = transformPointCloud(
-        cornerCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
+        corner_cloud[index], cloudKeyPoses6D.points[index]);
       pcl::PointCloud<PointType> s = transformPointCloud(
-        surfCloudKeyFrames[thisKeyInd], cloudKeyPoses6D.points[thisKeyInd]);
+        surface_cloud[index], cloudKeyPoses6D.points[index]);
       *corner += c;
       *surface += s;
-      laserCloudMapContainer[thisKeyInd] = std::make_pair(c, s);
+      laserCloudMapContainer[index] = std::make_pair(c, s);
     }
 
     // Downsample the surrounding corner key frames (or map)
@@ -1193,8 +1190,8 @@ public:
     posevec = getPoseVec(latestEstimate);
 
     // save key frame cloud
-    cornerCloudKeyFrames.push_back(laserCloudCornerLastDS);
-    surfCloudKeyFrames.push_back(laserCloudSurfLastDS);
+    corner_cloud.push_back(laserCloudCornerLastDS);
+    surface_cloud.push_back(laserCloudSurfLastDS);
 
     // save path for visualization
     updatePath(thisPose6D);
