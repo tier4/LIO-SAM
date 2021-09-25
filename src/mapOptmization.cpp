@@ -297,10 +297,6 @@ public:
   pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurroundingKeyPoses;
   pcl::KdTreeFLANN<PointType>::Ptr kdtreeHistoryKeyPoses;
 
-  pcl::VoxelGrid<PointType> downSizeFilterCorner;
-  pcl::VoxelGrid<PointType> downSizeFilterSurf;
-  pcl::VoxelGrid<PointType> downSizeFilterICP;
-
   ros::Time timeLaserInfoStamp;
   double timeLaserInfoCur;
 
@@ -337,16 +333,6 @@ public:
         ros::TransportHints().tcpNoDelay())),
     isam(std::make_shared<ISAM2>(gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1)))
   {
-    downSizeFilterCorner.setLeafSize(
-      mappingCornerLeafSize, mappingCornerLeafSize,
-      mappingCornerLeafSize);
-    downSizeFilterSurf.setLeafSize(
-      mappingSurfLeafSize, mappingSurfLeafSize,
-      mappingSurfLeafSize);
-    downSizeFilterICP.setLeafSize(
-      mappingSurfLeafSize, mappingSurfLeafSize,
-      mappingSurfLeafSize);
-
     allocateMemory();
   }
 
@@ -406,10 +392,20 @@ public:
 
       extractSurroundingKeyFrames();
 
+      pcl::VoxelGrid<PointType> downSizeFilterCorner;
+      downSizeFilterCorner.setLeafSize(
+        mappingCornerLeafSize,
+        mappingCornerLeafSize,
+        mappingCornerLeafSize);
       pcl::PointCloud<PointType> laserCloudCornerLastDS;
       downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
       downSizeFilterCorner.filter(laserCloudCornerLastDS);
 
+      pcl::VoxelGrid<PointType> downSizeFilterSurf;
+      downSizeFilterSurf.setLeafSize(
+        mappingSurfLeafSize,
+        mappingSurfLeafSize,
+        mappingSurfLeafSize);
       pcl::PointCloud<PointType> laserCloudSurfLastDS;
       downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
       downSizeFilterSurf.filter(laserCloudSurfLastDS);
@@ -627,9 +623,19 @@ public:
     }
 
     // Downsample the surrounding corner key frames (or map)
+    pcl::VoxelGrid<PointType> downSizeFilterCorner;
+    downSizeFilterCorner.setLeafSize(
+      mappingCornerLeafSize,
+      mappingCornerLeafSize,
+      mappingCornerLeafSize);
     downSizeFilterCorner.setInputCloud(corner);
     downSizeFilterCorner.filter(*laserCloudCornerFromMapDS);
     // Downsample the surrounding surf key frames (or map)
+    pcl::VoxelGrid<PointType> downSizeFilterSurf;
+    downSizeFilterSurf.setLeafSize(
+      mappingSurfLeafSize,
+      mappingSurfLeafSize,
+      mappingSurfLeafSize);
     downSizeFilterSurf.setInputCloud(surface);
     downSizeFilterSurf.filter(*laserCloudSurfFromMapDS);
 
