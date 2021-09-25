@@ -239,8 +239,6 @@ public:
 
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointXYZIRPYT> cloudKeyPoses6D;
-  pcl::PointCloud<PointType>::Ptr copy_cloudKeyPoses3D;
-  pcl::PointCloud<PointXYZIRPYT>::Ptr copy_cloudKeyPoses6D;
 
   // corner feature set from odoOptimization
   pcl::PointCloud<PointType>::Ptr laserCloudCornerLast;
@@ -268,7 +266,6 @@ public:
   pcl::KdTreeFLANN<PointType> kdtreeSurfFromMap;
 
   pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurroundingKeyPoses;
-  pcl::KdTreeFLANN<PointType>::Ptr kdtreeHistoryKeyPoses;
 
   ros::Time timeLaserInfoStamp;
   double timeLaserInfoCur;
@@ -311,11 +308,8 @@ public:
 
   void allocateMemory()
   {
-    copy_cloudKeyPoses3D.reset(new pcl::PointCloud<PointType>());
-    copy_cloudKeyPoses6D.reset(new pcl::PointCloud<PointXYZIRPYT>());
 
     kdtreeSurroundingKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
-    kdtreeHistoryKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
 
     // corner feature set from odoOptimization
     laserCloudCornerLast.reset(new pcl::PointCloud<PointType>());
