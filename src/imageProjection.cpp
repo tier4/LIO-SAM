@@ -163,21 +163,13 @@ public:
   PositionFinder(
     const Eigen::Vector3d & odomInc,
     const double scan_start_time,
-    const double scan_end_time,
-    const bool odomAvailable,
-    const bool odomDeskewFlag)
+    const double scan_end_time)
   : odomInc(odomInc),
     scan_start_time(scan_start_time),
-    scan_end_time(scan_end_time),
-    odomAvailable(odomAvailable),
-    odomDeskewFlag(odomDeskewFlag) {}
+    scan_end_time(scan_end_time) {}
 
   Eigen::Vector3d operator()(const double relTime) const
   {
-    if (!odomAvailable || !odomDeskewFlag) {
-      return Eigen::Vector3d::Zero();
-    }
-
     const float ratio = relTime / (scan_end_time - scan_start_time);
     return ratio * odomInc;
   }
@@ -186,8 +178,6 @@ private:
   const Eigen::Vector3d & odomInc;
   const double scan_start_time;
   const double scan_end_time;
-  const bool odomAvailable;
-  const bool odomDeskewFlag;
 };
 
 class AffineFinder
@@ -198,12 +188,10 @@ public:
     const std::vector<double> & imuTime,
     const Eigen::Vector3d & odomInc,
     const double scan_start_time,
-    const double scan_end_time,
-    const bool odomAvailable,
-    const bool odomDeskewFlag)
+    const double scan_end_time)
   : calc_rotation(RotationFinder(scan_start_time, imuRot, imuTime)),
     calc_position(
-      PositionFinder(odomInc, scan_start_time, scan_end_time, odomAvailable, odomDeskewFlag))
+      PositionFinder(odomInc, scan_start_time, scan_end_time))
   {
   }
 
@@ -501,7 +489,7 @@ public:
     bool imuAvailable = false;
     bool odomAvailable = false;
 
-    Eigen::Vector3d odomInc;
+    Eigen::Vector3d odomInc = Eigen::Vector3d::Zero();
     bool odomDeskewFlag = false;
 
     {
@@ -522,10 +510,9 @@ public:
         const unsigned int end_index = indexNextTimeOf(odomQueue, scan_end_time);
         const nav_msgs::Odometry end_msg = odomQueue[end_index];
 
-        odomDeskewFlag = doOdomDeskew(start_msg, end_msg);
         cloudInfo.initial_pose = start_msg.pose.pose;
 
-        if (odomDeskewFlag) {
+        if (doOdomDeskew(start_msg, end_msg)) {
           odomInc = odomDeskewInfo(start_msg, end_msg);
         }
       }
@@ -534,10 +521,7 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
 
-    const AffineFinder calc_transform(
-      imuRot, imuTime, odomInc,
-      scan_start_time, scan_end_time, odomAvailable, odomDeskewFlag
-    );
+    const AffineFinder calc_transform(imuRot, imuTime, odomInc, scan_start_time, scan_end_time);
 
     const auto [rangeMat, output_points] = projectPointCloud(
       input_cloud.points,
