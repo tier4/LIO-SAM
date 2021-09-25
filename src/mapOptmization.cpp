@@ -97,18 +97,6 @@ tf::Transform makeTransform(const Vector6d & posevec)
   );
 }
 
-geometry_msgs::Pose makePose(const Vector6d & posevec)
-{
-  geometry_msgs::Pose pose;
-  pose.position.x = posevec(3);
-  pose.position.y = posevec(4);
-  pose.position.z = posevec(5);
-  pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(
-    posevec(0), posevec(1), posevec(2)
-  );
-  return pose;
-}
-
 Vector6d getPoseVec(const gtsam::Pose3 & pose)
 {
   const gtsam::Rot3 r = pose.rotation();
