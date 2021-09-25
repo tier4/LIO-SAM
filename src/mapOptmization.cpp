@@ -50,8 +50,6 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     float,
     pitch, pitch) (float, yaw, yaw)(double, time, time))
 
-typedef PointXYZIRPYT PointTypePose;
-
 Eigen::Vector3f getRPY(const tf::Quaternion & q)
 {
   double roll, pitch, yaw;
@@ -126,7 +124,7 @@ Eigen::Affine3d getTransformation(const Vector6d & posevec)
   return transform;
 }
 
-gtsam::Pose3 pclPointTogtsamPose3(PointTypePose thisPoint)
+gtsam::Pose3 pclPointTogtsamPose3(PointXYZIRPYT thisPoint)
 {
   return gtsam::Pose3(
     gtsam::Rot3::RzRyRx(
@@ -146,7 +144,7 @@ gtsam::Pose3 trans2gtsamPose(const Vector6d & transformIn)
     gtsam::Point3(transformIn(3), transformIn(4), transformIn(5)));
 }
 
-Eigen::Affine3d pclPointToAffine3d(PointTypePose thisPoint)
+Eigen::Affine3d pclPointToAffine3d(PointXYZIRPYT thisPoint)
 {
   Eigen::Affine3d transform;
   pcl::getTransformation(
@@ -166,9 +164,9 @@ Eigen::Affine3d trans2Affine3d(const Vector6d & transformIn)
   return transform;
 }
 
-PointTypePose trans2PointTypePose(const Vector6d & transformIn)
+PointXYZIRPYT trans2PointXYZIRPYT(const Vector6d & transformIn)
 {
-  PointTypePose thisPose6D;
+  PointXYZIRPYT thisPose6D;
   thisPose6D.x = transformIn(3);
   thisPose6D.y = transformIn(4);
   thisPose6D.z = transformIn(5);
@@ -179,7 +177,7 @@ PointTypePose trans2PointTypePose(const Vector6d & transformIn)
 }
 
 pcl::PointCloud<PointType> transformPointCloud(
-  const pcl::PointCloud<PointType> & cloudIn, const PointTypePose & transformIn,
+  const pcl::PointCloud<PointType> & cloudIn, const PointXYZIRPYT & transformIn,
   const int numberOfCores = 2)
 {
   pcl::PointCloud<PointType> cloudOut;
@@ -254,9 +252,9 @@ public:
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
 
   pcl::PointCloud<PointType> cloudKeyPoses3D;
-  pcl::PointCloud<PointTypePose> cloudKeyPoses6D;
+  pcl::PointCloud<PointXYZIRPYT> cloudKeyPoses6D;
   pcl::PointCloud<PointType>::Ptr copy_cloudKeyPoses3D;
-  pcl::PointCloud<PointTypePose>::Ptr copy_cloudKeyPoses6D;
+  pcl::PointCloud<PointXYZIRPYT>::Ptr copy_cloudKeyPoses6D;
 
   // corner feature set from odoOptimization
   pcl::PointCloud<PointType>::Ptr laserCloudCornerLast;
@@ -351,7 +349,7 @@ public:
   void allocateMemory()
   {
     copy_cloudKeyPoses3D.reset(new pcl::PointCloud<PointType>());
-    copy_cloudKeyPoses6D.reset(new pcl::PointCloud<PointTypePose>());
+    copy_cloudKeyPoses6D.reset(new pcl::PointCloud<PointXYZIRPYT>());
 
     kdtreeSurroundingKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
     kdtreeHistoryKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
@@ -1157,7 +1155,7 @@ public:
 
     //save key poses
     PointType thisPose3D;
-    PointTypePose thisPose6D;
+    PointXYZIRPYT thisPose6D;
     Pose3 latestEstimate;
 
     isamCurrentEstimate = isam->calculateEstimate();
@@ -1231,7 +1229,7 @@ public:
     }
   }
 
-  void updatePath(const PointTypePose & pose_in)
+  void updatePath(const PointXYZIRPYT & pose_in)
   {
     geometry_msgs::PoseStamped pose_stamped;
     pose_stamped.header.stamp = ros::Time().fromSec(pose_in.time);
@@ -1322,7 +1320,7 @@ public:
     // publish registered key frame
     if (pubRecentKeyFrame.getNumSubscribers() != 0) {
       pcl::PointCloud<PointType> cloudOut;
-      PointTypePose thisPose6D = trans2PointTypePose(posevec);
+      PointXYZIRPYT thisPose6D = trans2PointXYZIRPYT(posevec);
       cloudOut += transformPointCloud(laserCloudCornerLastDS, thisPose6D);
       cloudOut += transformPointCloud(laserCloudSurfLastDS, thisPose6D);
       publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
@@ -1331,7 +1329,7 @@ public:
     if (pubCloudRegisteredRaw.getNumSubscribers() != 0) {
       const pcl::PointCloud<PointType> cloudOut =
         getPointCloud<PointType>(cloudInfo.cloud_deskewed);
-      const PointTypePose thisPose6D = trans2PointTypePose(posevec);
+      const PointXYZIRPYT thisPose6D = trans2PointXYZIRPYT(posevec);
       publishCloud(
         pubCloudRegisteredRaw, transformPointCloud(cloudOut, thisPose6D),
         timeLaserInfoStamp, odometryFrame);
