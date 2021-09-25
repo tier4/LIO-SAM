@@ -187,7 +187,6 @@ bool failureDetection(
 }
 
 using Diagonal = gtsam::noiseModel::Diagonal;
-using Vector6d = Eigen::Matrix<double, 1, 6>;
 
 class IMUPreintegration : public ParamServer
 {

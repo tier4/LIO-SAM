@@ -58,6 +58,8 @@
 
 typedef pcl::PointXYZI PointType;
 typedef Eigen::Matrix < double, -1, -1, Eigen::RowMajor > RowMajorMatrixXd;
+typedef Eigen::Matrix < double, 6, 1 > Vector6d;
+
 enum class SensorType {VELODYNE, OUSTER};
 
 class ParamServer {

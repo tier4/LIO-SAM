@@ -28,8 +28,6 @@ using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using symbol_shorthand::G; // GPS pose
 
-typedef Eigen::Matrix<double, 6, 1> Vector6d;
-
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
     */
@@ -1164,7 +1162,17 @@ public:
     surface_cloud.push_back(laserCloudSurfLastDS);
 
     // save path for visualization
-    updatePath(thisPose6D);
+    const PointXYZIRPYT & pose_in = thisPose6D;
+    geometry_msgs::PoseStamped pose_stamped;
+    pose_stamped.header.stamp = ros::Time().fromSec(pose_in.time);
+    pose_stamped.header.frame_id = odometryFrame;
+    pose_stamped.pose.position.x = pose_in.x;
+    pose_stamped.pose.position.y = pose_in.y;
+    pose_stamped.pose.position.z = pose_in.z;
+    pose_stamped.pose.orientation = \
+      tf::createQuaternionMsgFromRollPitchYaw(pose_in.roll, pose_in.pitch, pose_in.yaw);
+
+    globalPath.poses.push_back(pose_stamped);
   }
 
   void correctPoses()
@@ -1194,25 +1202,21 @@ public:
         cloudKeyPoses6D.points[i].pitch = r.pitch();
         cloudKeyPoses6D.points[i].yaw = r.yaw();
 
-        updatePath(cloudKeyPoses6D.points[i]);
+        const PointXYZIRPYT & pose_in = cloudKeyPoses6D.points[i];
+        geometry_msgs::PoseStamped pose_stamped;
+        pose_stamped.header.stamp = ros::Time().fromSec(pose_in.time);
+        pose_stamped.header.frame_id = odometryFrame;
+        pose_stamped.pose.position.x = pose_in.x;
+        pose_stamped.pose.position.y = pose_in.y;
+        pose_stamped.pose.position.z = pose_in.z;
+        pose_stamped.pose.orientation = \
+          tf::createQuaternionMsgFromRollPitchYaw(pose_in.roll, pose_in.pitch, pose_in.yaw);
+
+        globalPath.poses.push_back(pose_stamped);
       }
 
       aLoopIsClosed = false;
     }
-  }
-
-  void updatePath(const PointXYZIRPYT & pose_in)
-  {
-    geometry_msgs::PoseStamped pose_stamped;
-    pose_stamped.header.stamp = ros::Time().fromSec(pose_in.time);
-    pose_stamped.header.frame_id = odometryFrame;
-    pose_stamped.pose.position.x = pose_in.x;
-    pose_stamped.pose.position.y = pose_in.y;
-    pose_stamped.pose.position.z = pose_in.z;
-    pose_stamped.pose.orientation = \
-      tf::createQuaternionMsgFromRollPitchYaw(pose_in.roll, pose_in.pitch, pose_in.yaw);
-
-    globalPath.poses.push_back(pose_stamped);
   }
 
   void publishOdometry()
