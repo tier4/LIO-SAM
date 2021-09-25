@@ -76,6 +76,19 @@ float constraintTransformation(const float value, const float limit)
   return value;
 }
 
+pcl::PointCloud<PointType> downsample(
+  const pcl::PointCloud<PointType>::Ptr input_cloud, const int leaf_size)
+{
+  pcl::VoxelGrid<PointType> filter;
+  filter.setLeafSize(leaf_size, leaf_size, leaf_size);
+
+  pcl::PointCloud<PointType> downsampled;
+  filter.setInputCloud(input_cloud);
+  filter.filter(downsampled);
+
+  return downsampled;
+}
+
 tf::Transform makeTransform(const Vector6d & posevec)
 {
   return tf::Transform(
@@ -287,8 +300,6 @@ public:
   pcl::VoxelGrid<PointType> downSizeFilterCorner;
   pcl::VoxelGrid<PointType> downSizeFilterSurf;
   pcl::VoxelGrid<PointType> downSizeFilterICP;
-  // for surrounding key poses of scan-to-map optimization
-  pcl::VoxelGrid<PointType> downSizeFilterSurroundingKeyPoses;
 
   ros::Time timeLaserInfoStamp;
   double timeLaserInfoCur;
@@ -298,9 +309,6 @@ public:
   std::mutex mtx;
 
   bool isDegenerate = false;
-
-  int laserCloudCornerFromMapDSNum = 0;
-  int laserCloudSurfFromMapDSNum = 0;
 
   bool aLoopIsClosed = false;
 
@@ -338,10 +346,6 @@ public:
     downSizeFilterICP.setLeafSize(
       mappingSurfLeafSize, mappingSurfLeafSize,
       mappingSurfLeafSize);
-    downSizeFilterSurroundingKeyPoses.setLeafSize(
-      surroundingKeyframeDensity,
-      surroundingKeyframeDensity,
-      surroundingKeyframeDensity);   // for surrounding key poses of scan-to-map optimization
 
     allocateMemory();
   }
@@ -447,8 +451,6 @@ public:
     }
 
     pcl::KdTreeFLANN<PointType> kdtreeGlobalMap;
-    pcl::PointCloud<PointType>::Ptr globalMapKeyPoses(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType> globalMapKeyPosesDS;
 
     // kd-tree to find near key frames to visualize
     std::vector<int> pointSearchIndGlobalMap;
@@ -462,19 +464,13 @@ public:
       pointSearchSqDisGlobalMap, 0);
     mtx.unlock();
 
+    pcl::PointCloud<PointType>::Ptr globalMapKeyPoses(new pcl::PointCloud<PointType>());
     for (unsigned int i = 0; i < pointSearchIndGlobalMap.size(); ++i) {
-      globalMapKeyPoses->push_back(
-        cloudKeyPoses3D.points[pointSearchIndGlobalMap[i]]);
+      globalMapKeyPoses->push_back(cloudKeyPoses3D.points[pointSearchIndGlobalMap[i]]);
     }
     // downsample near selected key frames
-    pcl::VoxelGrid<PointType>
-    downSizeFilterGlobalMapKeyPoses; // for global map visualization
-    downSizeFilterGlobalMapKeyPoses.setLeafSize(
-      globalMapVisualizationPoseDensity,
-      globalMapVisualizationPoseDensity,
-      globalMapVisualizationPoseDensity);   // for global map visualization
-    downSizeFilterGlobalMapKeyPoses.setInputCloud(globalMapKeyPoses);
-    downSizeFilterGlobalMapKeyPoses.filter(globalMapKeyPosesDS);
+    pcl::PointCloud<PointType> globalMapKeyPosesDS =
+      downsample(globalMapKeyPoses, globalMapVisualizationPoseDensity);
     for (auto & pt : globalMapKeyPosesDS.points) {
       kdtreeGlobalMap.nearestKSearch(
         pt, 1, pointSearchIndGlobalMap,
@@ -483,7 +479,6 @@ public:
     }
 
     pcl::PointCloud<PointType>::Ptr global_map(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType> globalMapKeyFramesDS;
 
     // extract visualized and downsampled key frames
     for (unsigned int i = 0; i < globalMapKeyPosesDS.size(); ++i) {
@@ -499,16 +494,9 @@ public:
     }
     // downsample visualized points
     // for global map visualization
-    pcl::VoxelGrid<PointType> downSizeFilterGlobalMapKeyFrames;
-    downSizeFilterGlobalMapKeyFrames.setLeafSize(
-      globalMapVisualizationLeafSize,
-      globalMapVisualizationLeafSize,
-      globalMapVisualizationLeafSize);   // for global map visualization
-    downSizeFilterGlobalMapKeyFrames.setInputCloud(global_map);
-    downSizeFilterGlobalMapKeyFrames.filter(globalMapKeyFramesDS);
-    publishCloud(
-      pubLaserCloudSurround, globalMapKeyFramesDS, timeLaserInfoStamp,
-      odometryFrame);
+    const pcl::PointCloud<PointType> downsampled =
+      downsample(global_map, globalMapVisualizationLeafSize);
+    publishCloud(pubLaserCloudSurround, downsampled, timeLaserInfoStamp, odometryFrame);
   }
 
   void updateInitialGuess()
@@ -587,8 +575,7 @@ public:
       surroundingKeyPoses->push_back(cloudKeyPoses3D.points[id]);
     }
 
-    downSizeFilterSurroundingKeyPoses.setInputCloud(surroundingKeyPoses);
-    downSizeFilterSurroundingKeyPoses.filter(*surroundingKeyPosesDS);
+    *surroundingKeyPosesDS = downsample(surroundingKeyPoses, surroundingKeyframeDensity);
     for (auto & pt : surroundingKeyPosesDS->points) {
       kdtreeSurroundingKeyPoses->nearestKSearch(
         pt, 1, indices,
@@ -642,11 +629,9 @@ public:
     // Downsample the surrounding corner key frames (or map)
     downSizeFilterCorner.setInputCloud(corner);
     downSizeFilterCorner.filter(*laserCloudCornerFromMapDS);
-    laserCloudCornerFromMapDSNum = laserCloudCornerFromMapDS->size();
     // Downsample the surrounding surf key frames (or map)
     downSizeFilterSurf.setInputCloud(surface);
     downSizeFilterSurf.filter(*laserCloudSurfFromMapDS);
-    laserCloudSurfFromMapDSNum = laserCloudSurfFromMapDS->size();
 
     // clear map cache if too large
     if (laserCloudMapContainer.size() > 1000) {
