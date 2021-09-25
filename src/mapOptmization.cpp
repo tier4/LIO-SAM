@@ -144,16 +144,6 @@ Eigen::Affine3d pclPointToAffine3d(PointXYZIRPYT thisPoint)
   return transform;
 }
 
-Eigen::Affine3d trans2Affine3d(const Vector6d & transformIn)
-{
-  Eigen::Affine3d transform;
-  pcl::getTransformation(
-    transformIn(3), transformIn(4), transformIn(5),
-    transformIn(0), transformIn(1), transformIn(2),
-    transform);
-  return transform;
-}
-
 PointXYZIRPYT trans2PointXYZIRPYT(const Vector6d & transformIn)
 {
   PointXYZIRPYT thisPose6D;
@@ -493,7 +483,7 @@ public:
   void updateInitialGuess()
   {
     // save current transformation before any processing
-    incrementalOdometryAffineFront = trans2Affine3d(posevec);
+    incrementalOdometryAffineFront = getTransformation(posevec);
 
     static Eigen::Affine3d lastImuTransformation;
 
@@ -522,7 +512,7 @@ public:
         lastImuPreTransAvailable = true;
       } else {
         const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
-        const Eigen::Affine3d tobe = trans2Affine3d(posevec);
+        const Eigen::Affine3d tobe = getTransformation(posevec);
         posevec = getPoseVec(tobe * incre);
 
         lastImuPreTransformation = back;
@@ -538,7 +528,7 @@ public:
       const Eigen::Affine3d back = makeAffine(rpy, Eigen::Vector3d::Zero());
       const Eigen::Affine3d incre = lastImuTransformation.inverse() * back;
 
-      const Eigen::Affine3d tobe = trans2Affine3d(posevec);
+      const Eigen::Affine3d tobe = getTransformation(posevec);
       posevec = getPoseVec(tobe * incre);
 
       // save imu before return;
@@ -646,7 +636,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
   {
-    const Eigen::Affine3d transPointAssociateToMap = trans2Affine3d(posevec);
+    const Eigen::Affine3d transPointAssociateToMap = getTransformation(posevec);
 
     // corner optimization
     #pragma omp parallel for num_threads(numberOfCores)
@@ -969,7 +959,7 @@ public:
     posevec(1) = constraintTransformation(posevec(1), rotation_tolerance);
     posevec(5) = constraintTransformation(posevec(5), z_tolerance);
 
-    incrementalOdometryAffineBack = trans2Affine3d(posevec);
+    incrementalOdometryAffineBack = getTransformation(posevec);
   }
 
   bool saveFrame()
@@ -1253,7 +1243,7 @@ public:
     if (!lastIncreOdomPubFlag) {
       lastIncreOdomPubFlag = true;
       laserOdomIncremental = laserOdometryROS;
-      increOdomAffine = trans2Affine3d(posevec);
+      increOdomAffine = getTransformation(posevec);
     } else {
       Eigen::Affine3d affineIncre = incrementalOdometryAffineFront.inverse() *
         incrementalOdometryAffineBack;
