@@ -563,16 +563,13 @@ public:
     kdtreeSurroundingKeyPoses->radiusSearch(
       cloudKeyPoses3D.back(),
       (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
-    for (unsigned int i = 0; i < indices.size(); ++i) {
-      int id = indices[i];
-      poses->push_back(cloudKeyPoses3D.points[id]);
+    for (unsigned int index : indices) {
+      poses->push_back(cloudKeyPoses3D.points[index]);
     }
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled.points) {
-      kdtreeSurroundingKeyPoses->nearestKSearch(
-        pt, 1, indices,
-        pointSearchSqDis);
+      kdtreeSurroundingKeyPoses->nearestKSearch(pt, 1, indices, pointSearchSqDis);
       pt.intensity = cloudKeyPoses3D.points[indices[0]].intensity;
     }
 
