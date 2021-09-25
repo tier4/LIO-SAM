@@ -167,6 +167,24 @@ PointXYZIRPYT trans2PointXYZIRPYT(const Vector6d & transformIn)
 }
 
 pcl::PointCloud<PointType> transformPointCloud(
+  const pcl::PointCloud<PointType> & cloudIn, const Vector6d & posevec,
+  const int numberOfCores = 2)
+{
+  pcl::PointCloud<PointType> cloudOut;
+
+  cloudOut.resize(cloudIn.size());
+  const Eigen::Affine3d transCur = getTransformation(posevec);
+
+  #pragma omp parallel for num_threads(numberOfCores)
+  for (unsigned int i = 0; i < cloudIn.size(); ++i) {
+    const auto & pointFrom = cloudIn.points[i];
+    const Eigen::Vector3d p(pointFrom.x, pointFrom.y, pointFrom.z);
+    cloudOut.points[i] = makePoint(transCur * p, pointFrom.intensity);
+  }
+  return cloudOut;
+}
+
+pcl::PointCloud<PointType> transformPointCloud(
   const pcl::PointCloud<PointType> & cloudIn, const PointXYZIRPYT & transformIn,
   const int numberOfCores = 2)
 {
@@ -1287,18 +1305,16 @@ public:
     // publish registered key frame
     if (pubRecentKeyFrame.getNumSubscribers() != 0) {
       pcl::PointCloud<PointType> cloudOut;
-      PointXYZIRPYT thisPose6D = trans2PointXYZIRPYT(posevec);
-      cloudOut += transformPointCloud(laserCloudCornerLastDS, thisPose6D);
-      cloudOut += transformPointCloud(laserCloudSurfLastDS, thisPose6D);
+      cloudOut += transformPointCloud(laserCloudCornerLastDS, posevec);
+      cloudOut += transformPointCloud(laserCloudSurfLastDS, posevec);
       publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
     }
     // publish registered high-res raw cloud
     if (pubCloudRegisteredRaw.getNumSubscribers() != 0) {
       const pcl::PointCloud<PointType> cloudOut =
         getPointCloud<PointType>(cloudInfo.cloud_deskewed);
-      const PointXYZIRPYT thisPose6D = trans2PointXYZIRPYT(posevec);
       publishCloud(
-        pubCloudRegisteredRaw, transformPointCloud(cloudOut, thisPose6D),
+        pubCloudRegisteredRaw, transformPointCloud(cloudOut, posevec),
         timeLaserInfoStamp, odometryFrame);
     }
     // publish path
