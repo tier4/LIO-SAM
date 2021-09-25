@@ -282,6 +282,7 @@ public:
 
   Eigen::Affine3d incrementalOdometryAffineFront;
   Eigen::Affine3d incrementalOdometryAffineBack;
+  Eigen::Affine3d lastImuTransformation;
 
   mapOptimization()
   : pubLaserCloudSurround(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1)),
@@ -466,8 +467,6 @@ public:
   {
     // save current transformation before any processing
     incrementalOdometryAffineFront = getTransformation(posevec);
-
-    static Eigen::Affine3d lastImuTransformation;
 
     const Eigen::Vector3d rpy = vector3ToEigen(cloudInfo.initialIMU);
 
