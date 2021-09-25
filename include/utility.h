@@ -360,6 +360,15 @@ geometry_msgs::Pose makePose(const Vector6d & posevec)
   return pose;
 }
 
+Eigen::Affine3d getTransformation(const Vector6d & posevec)
+{
+  Eigen::Affine3d transform;
+  pcl::getTransformation(
+    posevec(3), posevec(4), posevec(5),
+    posevec(0), posevec(1), posevec(2), transform);
+  return transform;
+}
+
 geometry_msgs::Pose affineToPose(const Eigen::Affine3d & affine)
 {
   geometry_msgs::Pose pose;

@@ -114,15 +114,6 @@ Vector6d getPoseVec(const Eigen::Affine3d & transform)
   return posevec;
 }
 
-Eigen::Affine3d getTransformation(const Vector6d & posevec)
-{
-  Eigen::Affine3d transform;
-  pcl::getTransformation(
-    posevec(3), posevec(4), posevec(5),
-    posevec(0), posevec(1), posevec(2));
-  return transform;
-}
-
 gtsam::Pose3 pclPointTogtsamPose3(PointXYZIRPYT thisPoint)
 {
   return gtsam::Pose3(
