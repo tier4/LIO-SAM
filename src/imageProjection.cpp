@@ -375,13 +375,12 @@ bool checkImuTime(
 class ImageProjection : public ParamServer
 {
 private:
+  const ros::Subscriber subImu;
+  const ros::Subscriber subOdom;
   const ros::Subscriber subLaserCloud;
 
   const ros::Publisher pubExtractedCloud;
   const ros::Publisher pubLaserCloudInfo;
-
-  const ros::Subscriber subImu;
-  const ros::Subscriber subOdom;
 
   std::deque<nav_msgs::Odometry> odomQueue;
 

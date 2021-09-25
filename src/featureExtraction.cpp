@@ -32,11 +32,11 @@ class FeatureExtraction : public ParamServer
 {
 
 public:
-  const ros::Subscriber subLaserCloudInfo;
-
   const ros::Publisher pubLaserCloudInfo;
   const ros::Publisher pubCornerPoints;
   const ros::Publisher pubSurfacePoints;
+  const ros::Subscriber subLaserCloudInfo;
+
   FeatureExtraction()
   : pubLaserCloudInfo(nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1)),
     pubCornerPoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1)),
