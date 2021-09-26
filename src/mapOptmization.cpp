@@ -122,7 +122,7 @@ Vector6d makePosevec(const PointXYZIRPYT & p)
   return v;
 }
 
-pcl::PointCloud<PointType> transformPointCloud(
+pcl::PointCloud<PointType> transform(
   const pcl::PointCloud<PointType> & input, const Vector6d & posevec,
   const int numberOfCores = 2)
 {
@@ -413,9 +413,9 @@ public:
       }
       int index = (int)globalMapKeyPosesDS.points[i].intensity;
       *global_map +=
-        transformPointCloud(corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
+        transform(corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
       *global_map +=
-        transformPointCloud(surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
+        transform(surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
     }
     // downsample visualized points
     // for global map visualization
@@ -533,9 +533,9 @@ public:
         continue;
       }
       // transformed cloud not available
-      pcl::PointCloud<PointType> c = transformPointCloud(
+      pcl::PointCloud<PointType> c = transform(
         corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
-      pcl::PointCloud<PointType> s = transformPointCloud(
+      pcl::PointCloud<PointType> s = transform(
         surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
       *corner += c;
       *surface += s;
@@ -1237,8 +1237,8 @@ public:
     // publish registered key frame
     if (pubRecentKeyFrame.getNumSubscribers() != 0) {
       pcl::PointCloud<PointType> cloudOut;
-      cloudOut += transformPointCloud(laserCloudCornerLastDS, posevec);
-      cloudOut += transformPointCloud(laserCloudSurfLastDS, posevec);
+      cloudOut += transform(laserCloudCornerLastDS, posevec);
+      cloudOut += transform(laserCloudSurfLastDS, posevec);
       publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
     }
     // publish registered high-res raw cloud
@@ -1246,7 +1246,7 @@ public:
       const pcl::PointCloud<PointType> cloudOut =
         getPointCloud<PointType>(cloudInfo.cloud_deskewed);
       publishCloud(
-        pubCloudRegisteredRaw, transformPointCloud(cloudOut, posevec),
+        pubCloudRegisteredRaw, transform(cloudOut, posevec),
         timeLaserInfoStamp, odometryFrame);
     }
     // publish path
