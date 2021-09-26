@@ -101,17 +101,11 @@ Vector6d getPoseVec(const Eigen::Affine3d & transform)
   return posevec;
 }
 
-gtsam::Pose3 pclPointTogtsamPose3(PointXYZIRPYT thisPoint)
+gtsam::Pose3 pclPointTogtsamPose3(const PointXYZIRPYT & p)
 {
   return gtsam::Pose3(
-    gtsam::Rot3::RzRyRx(
-      double(thisPoint.roll),
-      double(thisPoint.pitch),
-      double(thisPoint.yaw)),
-    gtsam::Point3(
-      double(thisPoint.x),
-      double(thisPoint.y),
-      double(thisPoint.z)));
+    gtsam::Rot3::RzRyRx(p.roll, p.pitch, p.yaw),
+    gtsam::Point3(p.x, p.y, p.z));
 }
 
 gtsam::Pose3 trans2gtsamPose(const Vector6d & transformIn)
