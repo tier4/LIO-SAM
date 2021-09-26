@@ -264,7 +264,7 @@ Eigen::Vector3d vector3ToEigen(const geometry_msgs::Vector3 & p)
   return Eigen::Vector3d(p.x, p.y, p.z);
 }
 
-PointType makePoint(const Eigen::Vector3d & point, const float intensity)
+PointType makePoint(const Eigen::Vector3d & point, const float intensity = 0.0)
 {
   const Eigen::Vector3f q = point.cast < float > ();
   PointType p;
