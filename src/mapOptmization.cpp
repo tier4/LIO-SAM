@@ -1020,7 +1020,6 @@ public:
     initialEstimate.clear();
 
     //save key poses
-    PointType thisPose3D;
     PointXYZIRPYT thisPose6D;
     Pose3 latestEstimate;
 
@@ -1029,16 +1028,14 @@ public:
     // std::cout << "****************************************************" << std::endl;
     // isamCurrentEstimate.print("Current estimate: ");
 
-    thisPose3D.x = latestEstimate.translation().x();
-    thisPose3D.y = latestEstimate.translation().y();
-    thisPose3D.z = latestEstimate.translation().z();
-    thisPose3D.intensity = cloudKeyPoses3D.size(); // this can be used as index
-    cloudKeyPoses3D.push_back(thisPose3D);
+    // size can be used as index
+    const PointType position = makePoint(latestEstimate.translation(), cloudKeyPoses3D.size());
+    cloudKeyPoses3D.push_back(position);
 
-    thisPose6D.x = thisPose3D.x;
-    thisPose6D.y = thisPose3D.y;
-    thisPose6D.z = thisPose3D.z;
-    thisPose6D.intensity = thisPose3D.intensity;  // this can be used as index
+    thisPose6D.x = position.x;
+    thisPose6D.y = position.y;
+    thisPose6D.z = position.z;
+    thisPose6D.intensity = position.intensity;  // this can be used as index
     thisPose6D.roll = latestEstimate.rotation().roll();
     thisPose6D.pitch = latestEstimate.rotation().pitch();
     thisPose6D.yaw = latestEstimate.rotation().yaw();
