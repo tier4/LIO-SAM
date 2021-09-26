@@ -134,14 +134,11 @@ gtsam::Pose3 trans2gtsamPose(const Vector6d & transformIn)
     gtsam::Point3(transformIn(3), transformIn(4), transformIn(5)));
 }
 
-Eigen::Affine3d pclPointToAffine3d(PointXYZIRPYT thisPoint)
+Vector6d makePosevec(const PointXYZIRPYT & p)
 {
-  Eigen::Affine3d transform;
-  pcl::getTransformation(
-    thisPoint.x, thisPoint.y, thisPoint.z,
-    thisPoint.roll, thisPoint.pitch, thisPoint.yaw,
-    transform);
-  return transform;
+  Vector6d v;
+  v << p.roll, p.pitch, p.yaw, p.x, p.y, p.z;
+  return v;
 }
 
 pcl::PointCloud<PointType> transformPointCloud(
@@ -152,25 +149,6 @@ pcl::PointCloud<PointType> transformPointCloud(
 
   cloudOut.resize(cloudIn.size());
   const Eigen::Affine3d transCur = getTransformation(posevec);
-
-  #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < cloudIn.size(); ++i) {
-    const auto & pointFrom = cloudIn.points[i];
-    const Eigen::Vector3d p(pointFrom.x, pointFrom.y, pointFrom.z);
-    cloudOut.points[i] = makePoint(transCur * p, pointFrom.intensity);
-  }
-  return cloudOut;
-}
-
-pcl::PointCloud<PointType> transformPointCloud(
-  const pcl::PointCloud<PointType> & cloudIn, const PointXYZIRPYT & transformIn,
-  const int numberOfCores = 2)
-{
-  pcl::PointCloud<PointType> cloudOut;
-
-  cloudOut.resize(cloudIn.size());
-
-  const Eigen::Affine3d transCur = pclPointToAffine3d(transformIn);
 
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < cloudIn.size(); ++i) {
@@ -453,8 +431,10 @@ public:
         continue;
       }
       int index = (int)globalMapKeyPosesDS.points[i].intensity;
-      *global_map += transformPointCloud(corner_cloud[index], cloudKeyPoses6D.points[index]);
-      *global_map += transformPointCloud(surface_cloud[index], cloudKeyPoses6D.points[index]);
+      *global_map +=
+        transformPointCloud(corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
+      *global_map +=
+        transformPointCloud(surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
     }
     // downsample visualized points
     // for global map visualization
@@ -573,9 +553,9 @@ public:
       }
       // transformed cloud not available
       pcl::PointCloud<PointType> c = transformPointCloud(
-        corner_cloud[index], cloudKeyPoses6D.points[index]);
+        corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
       pcl::PointCloud<PointType> s = transformPointCloud(
-        surface_cloud[index], cloudKeyPoses6D.points[index]);
+        surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
       *corner += c;
       *surface += s;
       laserCloudMapContainer[index] = std::make_pair(c, s);
@@ -949,7 +929,7 @@ public:
       return true;
     }
 
-    Eigen::Affine3d transStart = pclPointToAffine3d(cloudKeyPoses6D.back());
+    Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
     Eigen::Affine3d transFinal = getTransformation(posevec);
     Eigen::Affine3d transBetween = transStart.inverse() * transFinal;
     double x, y, z, roll, pitch, yaw;
