@@ -101,18 +101,11 @@ Vector6d getPoseVec(const Eigen::Affine3d & transform)
   return posevec;
 }
 
-gtsam::Pose3 pclPointTogtsamPose3(const PointXYZIRPYT & p)
+gtsam::Pose3 posevecToGtsamPose(const Vector6d & posevec)
 {
   return gtsam::Pose3(
-    gtsam::Rot3::RzRyRx(p.roll, p.pitch, p.yaw),
-    gtsam::Point3(p.x, p.y, p.z));
-}
-
-gtsam::Pose3 trans2gtsamPose(const Vector6d & transformIn)
-{
-  return gtsam::Pose3(
-    gtsam::Rot3::RzRyRx(transformIn(0), transformIn(1), transformIn(2)),
-    gtsam::Point3(transformIn(3), transformIn(4), transformIn(5)));
+    gtsam::Rot3::RzRyRx(posevec(0), posevec(1), posevec(2)),
+    gtsam::Point3(posevec(3), posevec(4), posevec(5)));
 }
 
 Vector6d makePosevec(const PointXYZIRPYT & p)
@@ -933,13 +926,13 @@ public:
       // rad*rad, meter*meter
       const Eigen::MatrixXd v = (Vector(6) << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
       const noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Variances(v);
-      gtSAMgraph.add(PriorFactor<Pose3>(0, trans2gtsamPose(posevec), priorNoise));
-      initialEstimate.insert(0, trans2gtsamPose(posevec));
+      gtSAMgraph.add(PriorFactor<Pose3>(0, posevecToGtsamPose(posevec), priorNoise));
+      initialEstimate.insert(0, posevecToGtsamPose(posevec));
     } else {
       const Eigen::MatrixXd v = (Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
       const noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances(v);
-      gtsam::Pose3 poseFrom = pclPointTogtsamPose3(cloudKeyPoses6D.points.back());
-      gtsam::Pose3 poseTo = trans2gtsamPose(posevec);
+      gtsam::Pose3 poseFrom = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
+      gtsam::Pose3 poseTo = posevecToGtsamPose(posevec);
       gtSAMgraph.add(
         BetweenFactor<Pose3>(
           cloudKeyPoses3D.size() - 1,
