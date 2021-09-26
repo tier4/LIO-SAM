@@ -234,6 +234,7 @@ public:
   Eigen::Affine3d incrementalOdometryAffineFront;
   Eigen::Affine3d incrementalOdometryAffineBack;
   Eigen::Affine3d lastImuTransformation;
+  PointType lastGPSPoint;
 
   mapOptimization()
   : pubLaserCloudSurround(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1)),
@@ -961,9 +962,6 @@ public:
     {
       return;
     }
-
-    // last gps position
-    static PointType lastGPSPoint;
 
     while (!gpsQueue.empty()) {
       if (gpsQueue.front().header.stamp.toSec() < timeLaserInfoCur - 0.2) {
