@@ -129,21 +129,21 @@ Vector6d makePosevec(const PointXYZIRPYT & p)
 }
 
 pcl::PointCloud<PointType> transformPointCloud(
-  const pcl::PointCloud<PointType> & cloudIn, const Vector6d & posevec,
+  const pcl::PointCloud<PointType> & input, const Vector6d & posevec,
   const int numberOfCores = 2)
 {
-  pcl::PointCloud<PointType> cloudOut;
+  pcl::PointCloud<PointType> output;
 
-  cloudOut.resize(cloudIn.size());
-  const Eigen::Affine3d transCur = getTransformation(posevec);
+  output.resize(input.size());
+  const Eigen::Affine3d transform = getTransformation(posevec);
 
   #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < cloudIn.size(); ++i) {
-    const auto & pointFrom = cloudIn.points[i];
-    const Eigen::Vector3d p(pointFrom.x, pointFrom.y, pointFrom.z);
-    cloudOut.points[i] = makePoint(transCur * p, pointFrom.intensity);
+  for (unsigned int i = 0; i < input.size(); ++i) {
+    const auto & point = input.points[i];
+    const Eigen::Vector3d p = getXYZ(point);
+    output.points[i] = makePoint(transform * p, point.intensity);
   }
-  return cloudOut;
+  return output;
 }
 
 PointType pointAssociateToMap(
