@@ -766,34 +766,25 @@ public:
     cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
     cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
 
-    cv::Mat matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
     if (iterCount == 0) {
 
       cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
       cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-      cv::Mat matV2(6, 6, CV_32F, cv::Scalar::all(0));
 
       cv::eigen(matAtA, matE, matV);
 
       isDegenerate = false;
-      float eignThre[6] = {100, 100, 100, 100, 100, 100};
       for (int i = 5; i >= 0; i--) {
-        if (matE.at<float>(0, i) < eignThre[i]) {
-          for (int j = 0; j < 6; j++) {
-            matV2.at<float>(i, j) = 0;
-          }
+        if (matE.at<float>(0, i) < 100.0) {
           isDegenerate = true;
         } else {
           break;
         }
       }
-      matP = matV.inv() * matV2;
     }
 
     if (isDegenerate) {
-      cv::Mat matX2(6, 1, CV_32F, cv::Scalar::all(0));
-      matX.copyTo(matX2);
-      matX = matP * matX2;
+      matX = cv::Scalar::all(0);
     }
 
     posevec(0) += matX.at<float>(0, 0);
