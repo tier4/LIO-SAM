@@ -74,19 +74,6 @@ float constraintTransformation(const float value, const float limit)
   return value;
 }
 
-pcl::PointCloud<PointType> downsample(
-  const pcl::PointCloud<PointType>::Ptr input_cloud, const int leaf_size)
-{
-  pcl::VoxelGrid<PointType> filter;
-  filter.setLeafSize(leaf_size, leaf_size, leaf_size);
-
-  pcl::PointCloud<PointType> downsampled;
-  filter.setInputCloud(input_cloud);
-  filter.filter(downsampled);
-
-  return downsampled;
-}
-
 tf::Transform makeTransform(const Vector6d & posevec)
 {
   return tf::Transform(
