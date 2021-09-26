@@ -47,11 +47,11 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     float, pitch, pitch)(float, yaw, yaw)(double, time, time)
 )
 
-Eigen::Vector3f getRPY(const tf::Quaternion & q)
+Eigen::Vector3d getRPY(const tf::Quaternion & q)
 {
   double roll, pitch, yaw;
   tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-  return Eigen::Vector3f((float)roll, (float)pitch, (float)yaw);
+  return Eigen::Vector3d(roll, pitch, yaw);
 }
 
 tf::Quaternion interpolate(
@@ -584,63 +584,62 @@ public:
       kdtreeCornerFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
-        Eigen::Vector3f c = Eigen::Vector3f::Zero();
+        Eigen::Vector3d c = Eigen::Vector3d::Zero();
         for (int j = 0; j < 5; j++) {
-          c += laserCloudCornerFromMapDS->points[indices[j]].getVector3fMap();
+          c += getXYZ(laserCloudCornerFromMapDS->points[indices[j]]);
         }
         c /= 5.0;
 
-        Eigen::Matrix3f sa = Eigen::Matrix3f::Zero();
+        Eigen::Matrix3d sa = Eigen::Matrix3d::Zero();
 
         for (int j = 0; j < 5; j++) {
-          const Eigen::Vector3f x =
-            laserCloudCornerFromMapDS->points[indices[j]].getVector3fMap();
-          const Eigen::Vector3f a = x - c;
+          const Eigen::Vector3d x = getXYZ(laserCloudCornerFromMapDS->points[indices[j]]);
+          const Eigen::Vector3d a = x - c;
           sa += a * a.transpose();
         }
 
         sa = sa / 5.0;
 
-        cv::Mat matA1(3, 3, CV_32F, cv::Scalar::all(0));
+        cv::Mat matA1(3, 3, CV_64F, cv::Scalar::all(0));
         cv::eigen2cv(sa, matA1);
-        cv::Mat matD1(1, 3, CV_32F, cv::Scalar::all(0));
-        cv::Mat matV1(3, 3, CV_32F, cv::Scalar::all(0));
+        cv::Mat matD1(1, 3, CV_64F, cv::Scalar::all(0));
+        cv::Mat matV1(3, 3, CV_64F, cv::Scalar::all(0));
         cv::eigen(matA1, matD1, matV1);
-        Eigen::Matrix3f v1;
+        Eigen::Matrix3d v1;
         cv::cv2eigen(matV1, v1);
 
         if (matD1.at<float>(0, 0) > 3 * matD1.at<float>(0, 1)) {
-          const Eigen::Vector3f p0 = pointSel.getVector3fMap();
-          const Eigen::Vector3f p1 = c + 0.1 * v1.row(0).transpose();
-          const Eigen::Vector3f p2 = c - 0.1 * v1.row(0).transpose();
+          const Eigen::Vector3d p0 = getXYZ(pointSel);
+          const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
+          const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
 
-          const Eigen::Vector3f d01 = p0 - p1;
-          const Eigen::Vector3f d02 = p0 - p2;
-          const Eigen::Vector3f d12 = p1 - p2;
+          const Eigen::Vector3d d01 = p0 - p1;
+          const Eigen::Vector3d d02 = p0 - p2;
+          const Eigen::Vector3d d12 = p1 - p2;
 
-          // const Eigen::Vector3f d012(d01(0) * d02(1) - d02(0) * d01(1),
+          // const Eigen::Vector3d d012(d01(0) * d02(1) - d02(0) * d01(1),
           //                            d01(0) * d02(2) - d02(0) * d01(2),
           //                            d01(1) * d02(2) - d02(1) * d01(2));
-          const Eigen::Vector3f cross(d01(1) * d02(2) - d01(2) * d02(1),
+          const Eigen::Vector3d cross(d01(1) * d02(2) - d01(2) * d02(1),
             d01(2) * d02(0) - d01(0) * d02(2),
             d01(0) * d02(1) - d01(1) * d02(0));
 
-          const float a012 = cross.norm();
+          const double a012 = cross.norm();
 
-          const float l12 = d12.norm();
+          const double l12 = d12.norm();
 
           // possible bag. maybe the commented one is correct
-          // float la = (d12(1) * cross(2) - cross(2) * d12(1)) / a012 / l12;
-          // float lb = (d12(2) * cross(0) - cross(0) * d12(2)) / a012 / l12;
-          // float lc = (d12(0) * cross(1) - cross(1) * d12(0)) / a012 / l12;
+          // double la = (d12(1) * cross(2) - cross(2) * d12(1)) / a012 / l12;
+          // double lb = (d12(2) * cross(0) - cross(0) * d12(2)) / a012 / l12;
+          // double lc = (d12(0) * cross(1) - cross(1) * d12(0)) / a012 / l12;
 
-          float la = (d12(1) * cross(2) - d12(2) * cross(1)) / a012 / l12;
-          float lb = (d12(2) * cross(0) - d12(0) * cross(2)) / a012 / l12;
-          float lc = (d12(0) * cross(1) - d12(1) * cross(0)) / a012 / l12;
+          const double la = (d12(1) * cross(2) - d12(2) * cross(1)) / a012 / l12;
+          const double lb = (d12(2) * cross(0) - d12(0) * cross(2)) / a012 / l12;
+          const double lc = (d12(0) * cross(1) - d12(1) * cross(0)) / a012 / l12;
 
-          float ld2 = a012 / l12;
+          const double ld2 = a012 / l12;
 
-          float s = 1 - 0.9 * fabs(ld2);
+          const double s = 1 - 0.9 * fabs(ld2);
 
           PointType coeff;
           coeff.x = s * la;
@@ -689,7 +688,7 @@ public:
         continue;
       }
 
-      const Eigen::Vector3d p = pointSel.getVector3fMap().cast<double>();
+      const Eigen::Vector3d p = getXYZ(pointSel);
       const Eigen::Vector4d q = toHomogeneous(p);
       const float pd2 = x.transpose() * q;
       const float s = 1 - 0.9 * fabs(pd2) / sqrt(p.norm());
@@ -750,21 +749,21 @@ public:
 
       // in camera
 
-      const Eigen::Vector3f point_ori(laserCloudOri->points[i].y,
+      const Eigen::Vector3d point_ori(laserCloudOri->points[i].y,
         laserCloudOri->points[i].z,
         laserCloudOri->points[i].x);
 
-      const Eigen::Vector3f coeff_vec(coeffSel->points[i].y,
+      const Eigen::Vector3d coeff_vec(coeffSel->points[i].y,
         coeffSel->points[i].z,
         coeffSel->points[i].x);
 
-      const Eigen::Matrix3f MX = dRdx(posevec(0), posevec(2), posevec(1));
+      const Eigen::Matrix3d MX = dRdx(posevec(0), posevec(2), posevec(1));
       const float arx = (MX * point_ori).dot(coeff_vec);
 
-      const Eigen::Matrix3f MY = dRdy(posevec(0), posevec(2), posevec(1));
+      const Eigen::Matrix3d MY = dRdy(posevec(0), posevec(2), posevec(1));
       const float ary = (MY * point_ori).dot(coeff_vec);
 
-      const Eigen::Matrix3f MZ = dRdz(posevec(0), posevec(2), posevec(1));
+      const Eigen::Matrix3d MZ = dRdz(posevec(0), posevec(2), posevec(1));
       const float arz = (MZ * point_ori).dot(coeff_vec);
 
       // lidar -> camera
