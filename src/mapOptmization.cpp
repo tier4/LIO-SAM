@@ -629,27 +629,23 @@ public:
           const double l12 = d12.norm();
 
           // possible bag. maybe the commented one is correct
-          // double la = (d12(1) * cross(2) - cross(2) * d12(1)) / a012 / l12;
-          // double lb = (d12(2) * cross(0) - cross(0) * d12(2)) / a012 / l12;
-          // double lc = (d12(0) * cross(1) - cross(1) * d12(0)) / a012 / l12;
+          // const Eigen::Vector3d v(
+          //   (d12(1) * cross(2) - cross(2) * d12(1)),
+          //   (d12(2) * cross(0) - cross(0) * d12(2)),
+          //   (d12(0) * cross(1) - cross(1) * d12(0)));
 
-          const double la = (d12(1) * cross(2) - d12(2) * cross(1)) / a012 / l12;
-          const double lb = (d12(2) * cross(0) - d12(0) * cross(2)) / a012 / l12;
-          const double lc = (d12(0) * cross(1) - d12(1) * cross(0)) / a012 / l12;
+          const Eigen::Vector3d v(
+            (d12(1) * cross(2) - d12(2) * cross(1)),
+            (d12(2) * cross(0) - d12(0) * cross(2)),
+            (d12(0) * cross(1) - d12(1) * cross(0)));
 
           const double ld2 = a012 / l12;
 
           const double s = 1 - 0.9 * fabs(ld2);
 
-          PointType coeff;
-          coeff.x = s * la;
-          coeff.y = s * lb;
-          coeff.z = s * lc;
-          coeff.intensity = s * ld2;
-
           if (s > 0.1) {
             laserCloudOriCornerVec[i] = pointOri;
-            coeffSelCornerVec[i] = coeff;
+            coeffSelCornerVec[i] = makePoint(s * v / (a012 * l12), s * ld2);
             laserCloudOriCornerFlag[i] = true;
           }
         }
