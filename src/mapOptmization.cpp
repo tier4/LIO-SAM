@@ -33,8 +33,7 @@ using symbol_shorthand::G; // GPS pose
     */
 struct PointXYZIRPYT
 {
-  PCL_ADD_POINT4D
-    PCL_ADD_INTENSITY;                // preferred way of adding a XYZ+padding
+  PCL_ADD_POINT4D PCL_ADD_INTENSITY;  // preferred way of adding a XYZ+padding
   float roll;
   float pitch;
   float yaw;
@@ -44,9 +43,9 @@ struct PointXYZIRPYT
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(
   PointXYZIRPYT,
-  (float, x, x)(float, y, y)(float, z, z) (float, intensity, intensity)(float, roll, roll) (
-    float,
-    pitch, pitch) (float, yaw, yaw)(double, time, time))
+  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(float, roll, roll)(
+    float, pitch, pitch)(float, yaw, yaw)(double, time, time)
+)
 
 Eigen::Vector3f getRPY(const tf::Quaternion & q)
 {
