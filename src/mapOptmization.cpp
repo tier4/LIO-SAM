@@ -199,15 +199,6 @@ public:
   pcl::PointCloud<PointType>::Ptr laserCloudOri;
   pcl::PointCloud<PointType>::Ptr coeffSel;
 
-  // corner point holder for parallel computation
-  std::vector<PointType> laserCloudOriCornerVec;
-  std::vector<PointType> coeffSelCornerVec;
-  std::vector<bool> laserCloudOriCornerFlag;
-  // surf point holder for parallel computation
-  std::vector<PointType> laserCloudOriSurfVec;
-  std::vector<PointType> coeffSelSurfVec;
-  std::vector<bool> laserCloudOriSurfFlag;
-
   std::map<int,
     std::pair<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>> laserCloudMapContainer;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
@@ -272,16 +263,6 @@ public:
 
     laserCloudOri.reset(new pcl::PointCloud<PointType>());
     coeffSel.reset(new pcl::PointCloud<PointType>());
-
-    laserCloudOriCornerVec.resize(N_SCAN * Horizon_SCAN);
-    coeffSelCornerVec.resize(N_SCAN * Horizon_SCAN);
-    laserCloudOriCornerFlag.resize(N_SCAN * Horizon_SCAN);
-    laserCloudOriSurfVec.resize(N_SCAN * Horizon_SCAN);
-    coeffSelSurfVec.resize(N_SCAN * Horizon_SCAN);
-    laserCloudOriSurfFlag.resize(N_SCAN * Horizon_SCAN);
-
-    std::fill(laserCloudOriCornerFlag.begin(), laserCloudOriCornerFlag.end(), false);
-    std::fill(laserCloudOriSurfFlag.begin(), laserCloudOriSurfFlag.end(), false);
 
     laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
     laserCloudSurfFromMapDS.reset(new pcl::PointCloud<PointType>());
@@ -569,9 +550,13 @@ public:
 
   void optimization(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
-    const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
+    const pcl::PointCloud<PointType> & laserCloudSurfLastDS) const
   {
     const Eigen::Affine3d transPointAssociateToMap = getTransformation(posevec);
+    std::vector<PointType> laserCloudOriCornerVec(N_SCAN * Horizon_SCAN);
+    std::vector<PointType> coeffSelCornerVec(N_SCAN * Horizon_SCAN);
+    // corner point holder for parallel computation
+    std::vector<bool> laserCloudOriCornerFlag(N_SCAN * Horizon_SCAN, false);
 
     // corner optimization
     #pragma omp parallel for num_threads(numberOfCores)
@@ -652,6 +637,12 @@ public:
       }
     }
 
+    std::vector<PointType> laserCloudOriSurfVec(N_SCAN * Horizon_SCAN);
+    std::vector<PointType> coeffSelSurfVec(N_SCAN * Horizon_SCAN);
+
+    // surf point holder for parallel computation
+    std::vector<bool> laserCloudOriSurfFlag(N_SCAN * Horizon_SCAN, false);
+
     // surface optimization
     #pragma omp parallel for num_threads(numberOfCores)
     for (unsigned int i = 0; i < laserCloudSurfLastDS.size(); i++) {
@@ -712,11 +703,6 @@ public:
         coeffSel->push_back(coeffSelSurfVec[i]);
       }
     }
-    // reset flag for next iteration
-    std::fill(
-      laserCloudOriCornerFlag.begin(), laserCloudOriCornerFlag.end(),
-      false);
-    std::fill(laserCloudOriSurfFlag.begin(), laserCloudOriSurfFlag.end(), false);
   }
 
   bool LMOptimization(int iterCount)
