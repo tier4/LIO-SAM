@@ -55,10 +55,6 @@ public:
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
 
-    pcl::VoxelGrid<PointType> downSizeFilter;
-
-    downSizeFilter.setLeafSize(surface_leaf_size, surface_leaf_size, surface_leaf_size);
-
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
 
     const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
@@ -214,10 +210,14 @@ public:
         }
       }
 
-      downSizeFilter.setInputCloud(surfaceCloudScan);
-
       pcl::PointCloud<PointType> downsampled;
-      downSizeFilter.filter(downsampled);
+
+      {
+        pcl::VoxelGrid<PointType> filter;
+        filter.setLeafSize(surface_leaf_size, surface_leaf_size, surface_leaf_size);
+        filter.setInputCloud(surfaceCloudScan);
+        filter.filter(downsampled);
+      }
 
       surface += downsampled;
     }
