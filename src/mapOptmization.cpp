@@ -860,21 +860,15 @@ public:
   {
     if (cloudInfo.imuAvailable) {
       if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
-        const double weight = imuRPYWeight;
-
         // slerp roll
-        const tf::Quaternion q0 = interpolate(
-          tfQuaternionFromRPY(posevec(0), 0, 0),
-          tfQuaternionFromRPY(cloudInfo.initialIMU.x, 0, 0),
-          weight);
-        posevec(0) = getRPY(q0)(0);
+        const tf::Quaternion qr0 = tfQuaternionFromRPY(posevec(0), 0, 0);
+        const tf::Quaternion qr1 = tfQuaternionFromRPY(cloudInfo.initialIMU.x, 0, 0);
+        posevec(0) = getRPY(interpolate(qr0, qr1, imuRPYWeight))(0);
 
         // slerp pitch
-        const tf::Quaternion q1 = interpolate(
-          tfQuaternionFromRPY(0, posevec(1), 0),
-          tfQuaternionFromRPY(0, cloudInfo.initialIMU.y, 0),
-          weight);
-        posevec(1) = getRPY(q1)(1);
+        const tf::Quaternion qp0 = tfQuaternionFromRPY(0, posevec(1), 0);
+        const tf::Quaternion qp1 = tfQuaternionFromRPY(0, cloudInfo.initialIMU.y, 0);
+        posevec(1) = getRPY(interpolate(qp0, qp1, imuRPYWeight))(1);
       }
     }
 
