@@ -267,6 +267,7 @@ public:
     subGPS(nh.subscribe<nav_msgs::Odometry>(
         gpsTopic, 200, &mapOptimization::gpsHandler, this,
         ros::TransportHints().tcpNoDelay())),
+    posevec(Vector6d::Zero()),
     isam(std::make_shared<ISAM2>(gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false)
@@ -277,10 +278,6 @@ public:
 
     laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
     laserCloudSurfFromMapDS.reset(new pcl::PointCloud<PointType>());
-
-    for (int i = 0; i < 6; ++i) {
-      posevec(i) = 0;
-    }
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
