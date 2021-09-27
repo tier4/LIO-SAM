@@ -232,8 +232,7 @@ public:
 
   pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurroundingKeyPoses;
 
-  ros::Time timeLaserInfoStamp;
-  double timeLaserInfoCur;
+  ros::Time timestamp;
 
   Vector6d posevec;
 
@@ -307,8 +306,7 @@ public:
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
     // extract time stamp
-    timeLaserInfoStamp = msgIn->header.stamp;
-    timeLaserInfoCur = msgIn->header.stamp.toSec();
+    timestamp = msgIn->header.stamp;
 
     // extract info and feature cloud
     cloudInfo = *msgIn;
@@ -318,8 +316,8 @@ public:
     std::lock_guard<std::mutex> lock(mtx);
 
     static double timeLastProcessing = -1;
-    if (timeLaserInfoCur - timeLastProcessing >= mappingProcessInterval) {
-      timeLastProcessing = timeLaserInfoCur;
+    if (timestamp.toSec() - timeLastProcessing >= mappingProcessInterval) {
+      timeLastProcessing = timestamp.toSec();
 
       updateInitialGuess();
 
@@ -427,7 +425,7 @@ public:
     // for global map visualization
     const pcl::PointCloud<PointType> downsampled =
       downsample(global_map, globalMapVisualizationLeafSize);
-    publishCloud(pubLaserCloudSurround, downsampled, timeLaserInfoStamp, odometryFrame);
+    publishCloud(pubLaserCloudSurround, downsampled, timestamp, odometryFrame);
   }
 
   void updateInitialGuess()
@@ -506,7 +504,7 @@ public:
 
     // also extract some latest key frames in case the robot rotates in one position
     for (int i = cloudKeyPoses3D.size() - 1; i >= 0; --i) {
-      if (timeLaserInfoCur - cloudKeyPoses6D.points[i].time < 10.0) {
+      if (timestamp.toSec() - cloudKeyPoses6D.points[i].time < 10.0) {
         downsampled.push_back(cloudKeyPoses3D.points[i]);
       } else {
         break;
@@ -968,13 +966,13 @@ public:
     }
 
     while (!gpsQueue.empty()) {
-      if (gpsQueue.front().header.stamp.toSec() < timeLaserInfoCur - 0.2) {
+      if (gpsQueue.front().header.stamp.toSec() < timestamp.toSec() - 0.2) {
         // message too old
         gpsQueue.pop_front();
         continue;
       }
 
-      if (gpsQueue.front().header.stamp.toSec() > timeLaserInfoCur + 0.2) {
+      if (gpsQueue.front().header.stamp.toSec() > timestamp.toSec() + 0.2) {
         // message too new
         return;
       }
@@ -1065,12 +1063,8 @@ public:
 
     const Eigen::Vector3d xyz = latestEstimate.translation();
     const Eigen::Vector3d rpy = latestEstimate.rotation().rpy();
-    const PointXYZIRPYT pose6dof = make6DofPose(
-      latestEstimate.translation(),
-      latestEstimate.rotation().rpy(),
-      position.intensity,  // this can be used as index
-      timeLaserInfoCur
-    );
+    // intensity can be used as index
+    const PointXYZIRPYT pose6dof = make6DofPose(xyz, rpy, position.intensity, timestamp.toSec());
     cloudKeyPoses6D.push_back(pose6dof);
 
     // std::cout << "****************************************************" << std::endl;
@@ -1131,7 +1125,7 @@ public:
   {
     // Publish odometry for ROS (global)
     nav_msgs::Odometry laserOdometryROS;
-    laserOdometryROS.header.stamp = timeLaserInfoStamp;
+    laserOdometryROS.header.stamp = timestamp;
     laserOdometryROS.header.frame_id = odometryFrame;
     laserOdometryROS.child_frame_id = "odom_mapping";
     laserOdometryROS.pose.pose = makePose(posevec);
@@ -1142,7 +1136,7 @@ public:
     tf::TransformBroadcaster br;
     tf::Transform t_odom_to_lidar = makeTransform(posevec);
     tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(
-      t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
+      t_odom_to_lidar, timestamp, odometryFrame, "lidar_link");
     br.sendTransform(trans_odom_to_lidar);
 
     // Publish odometry for ROS (incremental)
@@ -1172,7 +1166,7 @@ public:
           odometry(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
         }
       }
-      laserOdomIncremental.header.stamp = timeLaserInfoStamp;
+      laserOdomIncremental.header.stamp = timestamp;
       laserOdomIncremental.header.frame_id = odometryFrame;
       laserOdomIncremental.child_frame_id = "odom_mapping";
       laserOdomIncremental.pose.pose = makePose(odometry);
@@ -1193,17 +1187,17 @@ public:
       return;
     }
     // publish key poses
-    publishCloud(pubKeyPoses, cloudKeyPoses3D, timeLaserInfoStamp, odometryFrame);
+    publishCloud(pubKeyPoses, cloudKeyPoses3D, timestamp, odometryFrame);
     // Publish surrounding key frames
     publishCloud(
-      pubRecentKeyFrames, *laserCloudSurfFromMapDS, timeLaserInfoStamp,
+      pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp,
       odometryFrame);
     // publish registered key frame
     if (pubRecentKeyFrame.getNumSubscribers() != 0) {
       pcl::PointCloud<PointType> cloudOut;
       cloudOut += transform(laserCloudCornerLastDS, posevec);
       cloudOut += transform(laserCloudSurfLastDS, posevec);
-      publishCloud(pubRecentKeyFrame, cloudOut, timeLaserInfoStamp, odometryFrame);
+      publishCloud(pubRecentKeyFrame, cloudOut, timestamp, odometryFrame);
     }
     // publish registered high-res raw cloud
     if (pubCloudRegisteredRaw.getNumSubscribers() != 0) {
@@ -1211,11 +1205,11 @@ public:
         getPointCloud<PointType>(cloudInfo.cloud_deskewed);
       publishCloud(
         pubCloudRegisteredRaw, transform(cloudOut, posevec),
-        timeLaserInfoStamp, odometryFrame);
+        timestamp, odometryFrame);
     }
     // publish path
     if (pubPath.getNumSubscribers() != 0) {
-      globalPath.header.stamp = timeLaserInfoStamp;
+      globalPath.header.stamp = timestamp;
       globalPath.header.frame_id = odometryFrame;
       pubPath.publish(globalPath);
     }
