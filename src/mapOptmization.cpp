@@ -831,47 +831,49 @@ public:
       return;
     }
 
-    if (laserCloudCornerLastDS.size() > edgeFeatureMinValidNum &&
-      laserCloudSurfLastDS.size() > surfFeatureMinValidNum)
+    if (
+      edgeFeatureMinValidNum >= laserCloudCornerLastDS.size() ||
+      surfFeatureMinValidNum >= laserCloudSurfLastDS.size())
     {
-      kdtreeCornerFromMap.setInputCloud(laserCloudCornerFromMapDS);
-      kdtreeSurfFromMap.setInputCloud(laserCloudSurfFromMapDS);
-
-      for (int iterCount = 0; iterCount < 30; iterCount++) {
-        laserCloudOri->clear();
-        coeffSel->clear();
-
-        optimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
-
-        if (LMOptimization(iterCount)) {
-          break;
-        }
-      }
-
-      if (cloudInfo.imuAvailable) {
-        if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
-          // slerp roll
-          const tf::Quaternion qr0 = tfQuaternionFromRPY(posevec(0), 0, 0);
-          const tf::Quaternion qr1 = tfQuaternionFromRPY(cloudInfo.initialIMU.x, 0, 0);
-          posevec(0) = getRPY(interpolate(qr0, qr1, imuRPYWeight))(0);
-
-          // slerp pitch
-          const tf::Quaternion qp0 = tfQuaternionFromRPY(0, posevec(1), 0);
-          const tf::Quaternion qp1 = tfQuaternionFromRPY(0, cloudInfo.initialIMU.y, 0);
-          posevec(1) = getRPY(interpolate(qp0, qp1, imuRPYWeight))(1);
-        }
-      }
-
-      posevec(0) = constraintTransformation(posevec(0), rotation_tolerance);
-      posevec(1) = constraintTransformation(posevec(1), rotation_tolerance);
-      posevec(5) = constraintTransformation(posevec(5), z_tolerance);
-
-      incrementalOdometryAffineBack = getTransformation(posevec);
-    } else {
       ROS_WARN(
         "Not enough features! Only %d edge and %d planar features available.",
         laserCloudCornerLastDS.size(), laserCloudSurfLastDS.size());
+      return;
     }
+
+    kdtreeCornerFromMap.setInputCloud(laserCloudCornerFromMapDS);
+    kdtreeSurfFromMap.setInputCloud(laserCloudSurfFromMapDS);
+
+    for (int iterCount = 0; iterCount < 30; iterCount++) {
+      laserCloudOri->clear();
+      coeffSel->clear();
+
+      optimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
+
+      if (LMOptimization(iterCount)) {
+        break;
+      }
+    }
+
+    if (cloudInfo.imuAvailable) {
+      if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
+        // slerp roll
+        const tf::Quaternion qr0 = tfQuaternionFromRPY(posevec(0), 0, 0);
+        const tf::Quaternion qr1 = tfQuaternionFromRPY(cloudInfo.initialIMU.x, 0, 0);
+        posevec(0) = getRPY(interpolate(qr0, qr1, imuRPYWeight))(0);
+
+        // slerp pitch
+        const tf::Quaternion qp0 = tfQuaternionFromRPY(0, posevec(1), 0);
+        const tf::Quaternion qp1 = tfQuaternionFromRPY(0, cloudInfo.initialIMU.y, 0);
+        posevec(1) = getRPY(interpolate(qp0, qp1, imuRPYWeight))(1);
+      }
+    }
+
+    posevec(0) = constraintTransformation(posevec(0), rotation_tolerance);
+    posevec(1) = constraintTransformation(posevec(1), rotation_tolerance);
+    posevec(5) = constraintTransformation(posevec(5), z_tolerance);
+
+    incrementalOdometryAffineBack = getTransformation(posevec);
   }
 
   bool saveFrame()
