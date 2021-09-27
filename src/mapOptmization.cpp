@@ -886,13 +886,11 @@ public:
     } else {
       const Eigen::MatrixXd v = (Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
       const noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances(v);
-      gtsam::Pose3 poseFrom = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
-      gtsam::Pose3 poseTo = posevecToGtsamPose(posevec);
-      gtSAMgraph.add(
-        BetweenFactor<Pose3>(
-          cloudKeyPoses3D.size() - 1,
-          cloudKeyPoses3D.size(), poseFrom.between(poseTo), odometryNoise));
-      initialEstimate.insert(cloudKeyPoses3D.size(), poseTo);
+      gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
+      gtsam::Pose3 dst = posevecToGtsamPose(posevec);
+      const unsigned int size = cloudKeyPoses3D.size();
+      gtSAMgraph.add(BetweenFactor<Pose3>(size - 1, size, src.between(dst), odometryNoise));
+      initialEstimate.insert(size, dst);
     }
   }
 
