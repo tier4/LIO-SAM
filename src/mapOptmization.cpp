@@ -180,6 +180,30 @@ bool validatePlane(
   return true;
 }
 
+void addOdomFactor(
+  const pcl::PointCloud<PointXYZIRPYT> & cloudKeyPoses6D,
+  const Vector6d & posevec,
+  NonlinearFactorGraph & gtSAMgraph,
+  Values & initialEstimate)
+{
+  if (cloudKeyPoses6D.empty()) {
+    // rad*rad, meter*meter
+    const Eigen::MatrixXd v = (Vector(6) << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
+    const noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Variances(v);
+    gtSAMgraph.add(PriorFactor<Pose3>(0, posevecToGtsamPose(posevec), priorNoise));
+    initialEstimate.insert(0, posevecToGtsamPose(posevec));
+    return;
+  }
+
+  const Eigen::MatrixXd v = (Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
+  const noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances(v);
+  gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
+  gtsam::Pose3 dst = posevecToGtsamPose(posevec);
+  const unsigned int size = cloudKeyPoses6D.size();
+  gtSAMgraph.add(BetweenFactor<Pose3>(size - 1, size, src.between(dst), odometryNoise));
+  initialEstimate.insert(size, dst);
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -875,25 +899,6 @@ public:
     incrementalOdometryAffineBack = getTransformation(posevec);
   }
 
-  void addOdomFactor()
-  {
-    if (cloudKeyPoses3D.points.empty()) {
-      // rad*rad, meter*meter
-      const Eigen::MatrixXd v = (Vector(6) << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
-      const noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Variances(v);
-      gtSAMgraph.add(PriorFactor<Pose3>(0, posevecToGtsamPose(posevec), priorNoise));
-      initialEstimate.insert(0, posevecToGtsamPose(posevec));
-    } else {
-      const Eigen::MatrixXd v = (Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
-      const noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances(v);
-      gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
-      gtsam::Pose3 dst = posevecToGtsamPose(posevec);
-      const unsigned int size = cloudKeyPoses3D.size();
-      gtSAMgraph.add(BetweenFactor<Pose3>(size - 1, size, src.between(dst), odometryNoise));
-      initialEstimate.insert(size, dst);
-    }
-  }
-
   void addGPSFactor()
   {
     if (gpsQueue.empty()) {
@@ -989,7 +994,7 @@ public:
     }
 
     // odom factor
-    addOdomFactor();
+    addOdomFactor(cloudKeyPoses6D, posevec, gtSAMgraph, initialEstimate);
 
     // gps factor
     addGPSFactor();
