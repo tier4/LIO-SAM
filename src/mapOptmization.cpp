@@ -47,6 +47,13 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     float, pitch, pitch)(float, yaw, yaw)(double, time, time)
 )
 
+tf::Quaternion tfQuaternionFromRPY(const double roll, const double pitch, const double yaw)
+{
+  tf::Quaternion q;
+  q.setRPY(roll, pitch, yaw);
+  return q;
+}
+
 Eigen::Vector3d getRPY(const tf::Quaternion & q)
 {
   double roll, pitch, yaw;
@@ -846,19 +853,21 @@ public:
   {
     if (cloudInfo.imuAvailable) {
       if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
-        double imuWeight = imuRPYWeight;
-        tf::Quaternion imuQuaternion;
-        tf::Quaternion transformQuaternion;
+        const double weight = imuRPYWeight;
 
         // slerp roll
-        transformQuaternion.setRPY(posevec(0), 0, 0);
-        imuQuaternion.setRPY(cloudInfo.initialIMU.x, 0, 0);
-        posevec(0) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
+        const tf::Quaternion q0 = interpolate(
+          tfQuaternionFromRPY(posevec(0), 0, 0),
+          tfQuaternionFromRPY(cloudInfo.initialIMU.x, 0, 0),
+          weight);
+        posevec(0) = getRPY(q0)(0);
 
         // slerp pitch
-        transformQuaternion.setRPY(0, posevec(1), 0);
-        imuQuaternion.setRPY(0, cloudInfo.initialIMU.y, 0);
-        posevec(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
+        const tf::Quaternion q1 = interpolate(
+          tfQuaternionFromRPY(0, posevec(1), 0),
+          tfQuaternionFromRPY(0, cloudInfo.initialIMU.y, 0),
+          weight);
+        posevec(1) = getRPY(q1)(1);
       }
     }
 
