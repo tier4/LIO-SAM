@@ -47,6 +47,22 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     float, pitch, pitch)(float, yaw, yaw)(double, time, time)
 )
 
+PointXYZIRPYT make6DofPose(
+  const Eigen::Vector3d & xyz, const Eigen::Vector3d & rpy,
+  const double intensity, const double time)
+{
+  PointXYZIRPYT pose6dof;
+  pose6dof.x = xyz(0);
+  pose6dof.y = xyz(1);
+  pose6dof.z = xyz(2);
+  pose6dof.intensity = intensity;  // this can be used as index
+  pose6dof.roll = rpy(0);
+  pose6dof.pitch = rpy(1);
+  pose6dof.yaw = rpy(2);
+  pose6dof.time = time;
+  return pose6dof;
+}
+
 tf::Quaternion tfQuaternionFromRPY(const double roll, const double pitch, const double yaw)
 {
   tf::Quaternion q;
@@ -1029,7 +1045,6 @@ public:
     initialEstimate.clear();
 
     //save key poses
-    PointXYZIRPYT thisPose6D;
     Pose3 latestEstimate;
 
     isamCurrentEstimate = isam->calculateEstimate();
@@ -1041,15 +1056,13 @@ public:
     const PointType position = makePoint(latestEstimate.translation(), cloudKeyPoses3D.size());
     cloudKeyPoses3D.push_back(position);
 
-    thisPose6D.x = position.x;
-    thisPose6D.y = position.y;
-    thisPose6D.z = position.z;
-    thisPose6D.intensity = position.intensity;  // this can be used as index
-    thisPose6D.roll = latestEstimate.rotation().roll();
-    thisPose6D.pitch = latestEstimate.rotation().pitch();
-    thisPose6D.yaw = latestEstimate.rotation().yaw();
-    thisPose6D.time = timeLaserInfoCur;
-    cloudKeyPoses6D.push_back(thisPose6D);
+    const PointXYZIRPYT pose6dof = make6DofPose(
+      latestEstimate.translation(),
+      latestEstimate.rotation().rpy(),
+      position.intensity,  // this can be used as index
+      timeLaserInfoCur
+    );
+    cloudKeyPoses6D.push_back(pose6dof);
 
     // std::cout << "****************************************************" << std::endl;
     // std::cout << "Pose covariance:" << std::endl;
@@ -1064,7 +1077,7 @@ public:
     surface_cloud.push_back(laserCloudSurfLastDS);
 
     // save path for visualization
-    const PointXYZIRPYT & pose_in = thisPose6D;
+    const PointXYZIRPYT & pose_in = pose6dof;
     geometry_msgs::PoseStamped pose_stamped;
     pose_stamped.header.stamp = ros::Time().fromSec(pose_in.time);
     pose_stamped.header.frame_id = odometryFrame;
