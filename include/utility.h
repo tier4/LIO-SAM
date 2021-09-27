@@ -341,6 +341,13 @@ geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v)
   return p;
 }
 
+std::tuple < Eigen::Vector3d, Eigen::Vector3d > getXYZRPY(const Eigen::Affine3d & affine)
+{
+  double x, y, z, roll, pitch, yaw;
+  pcl::getTranslationAndEulerAngles(affine, x, y, z, roll, pitch, yaw);
+  return {Eigen::Vector3d(x, y, z), Eigen::Vector3d(roll, pitch, yaw)};
+}
+
 geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v)
 {
   geometry_msgs::Point p;

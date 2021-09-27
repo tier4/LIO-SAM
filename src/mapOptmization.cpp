@@ -883,14 +883,13 @@ public:
 
     Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
     Eigen::Affine3d transFinal = getTransformation(posevec);
-    Eigen::Affine3d transBetween = transStart.inverse() * transFinal;
-    double x, y, z, roll, pitch, yaw;
-    pcl::getTranslationAndEulerAngles(transBetween, x, y, z, roll, pitch, yaw);
+    const auto [xyz, rpy] = getXYZRPY(transStart.inverse() * transFinal);
 
-    if (abs(roll) < surroundingkeyframeAddingAngleThreshold &&
-      abs(pitch) < surroundingkeyframeAddingAngleThreshold &&
-      abs(yaw) < surroundingkeyframeAddingAngleThreshold &&
-      sqrt(x * x + y * y + z * z) < surroundingkeyframeAddingDistThreshold)
+    if (
+      abs(rpy(0)) < surroundingkeyframeAddingAngleThreshold &&
+      abs(rpy(1)) < surroundingkeyframeAddingAngleThreshold &&
+      abs(rpy(2)) < surroundingkeyframeAddingAngleThreshold &&
+      xyz.norm() < surroundingkeyframeAddingDistThreshold)
     {
       return false;
     }
