@@ -214,11 +214,6 @@ public:
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointXYZIRPYT> cloudKeyPoses6D;
 
-  // corner feature set from odoOptimization
-  pcl::PointCloud<PointType>::Ptr laserCloudCornerLast;
-  // surf feature set from odoOptimization
-  pcl::PointCloud<PointType>::Ptr laserCloudSurfLast;
-
   pcl::PointCloud<PointType>::Ptr laserCloudOri;
   pcl::PointCloud<PointType>::Ptr coeffSel;
 
@@ -276,11 +271,6 @@ public:
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false)
   {
-    // corner feature set from odoOptimization
-    laserCloudCornerLast.reset(new pcl::PointCloud<PointType>());
-
-    // surf feature set from odoOptimization
-    laserCloudSurfLast.reset(new pcl::PointCloud<PointType>());
 
     laserCloudOri.reset(new pcl::PointCloud<PointType>());
     coeffSel.reset(new pcl::PointCloud<PointType>());
@@ -300,6 +290,13 @@ public:
 
     // extract info and feature cloud
     cloudInfo = *msgIn;
+
+    // corner feature set from odoOptimization
+    pcl::PointCloud<PointType>::Ptr laserCloudCornerLast(new pcl::PointCloud<PointType>());
+
+    // surf feature set from odoOptimization
+    pcl::PointCloud<PointType>::Ptr laserCloudSurfLast(new pcl::PointCloud<PointType>());
+
     pcl::fromROSMsg(msgIn->cloud_corner, *laserCloudCornerLast);
     pcl::fromROSMsg(msgIn->cloud_surface, *laserCloudSurfLast);
 
