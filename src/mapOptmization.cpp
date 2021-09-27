@@ -214,9 +214,6 @@ public:
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointXYZIRPYT> cloudKeyPoses6D;
 
-  pcl::PointCloud<PointType>::Ptr laserCloudOri;
-  pcl::PointCloud<PointType>::Ptr coeffSel;
-
   std::map<int,
     std::pair<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>> laserCloudMapContainer;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
@@ -272,9 +269,6 @@ public:
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false)
   {
-
-    laserCloudOri.reset(new pcl::PointCloud<PointType>());
-    coeffSel.reset(new pcl::PointCloud<PointType>());
 
     laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
     laserCloudSurfFromMapDS.reset(new pcl::PointCloud<PointType>());
@@ -562,7 +556,8 @@ public:
     extractNearby();
   }
 
-  void optimization(
+  std::tuple<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>
+  optimization(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS) const
   {
@@ -703,25 +698,34 @@ public:
       laserCloudOriSurfFlag[i] = true;
     }
 
+    pcl::PointCloud<PointType> laserCloudOri;
+    pcl::PointCloud<PointType> coeffSel;
+
     // combine corner coeffs
     for (unsigned int i = 0; i < laserCloudCornerLastDS.size(); ++i) {
       if (laserCloudOriCornerFlag[i]) {
-        laserCloudOri->push_back(laserCloudOriCornerVec[i]);
-        coeffSel->push_back(coeffSelCornerVec[i]);
+        laserCloudOri.push_back(laserCloudOriCornerVec[i]);
+        coeffSel.push_back(coeffSelCornerVec[i]);
       }
     }
     // combine surf coeffs
     for (unsigned int i = 0; i < laserCloudSurfLastDS.size(); ++i) {
       if (laserCloudOriSurfFlag[i]) {
-        laserCloudOri->push_back(laserCloudOriSurfVec[i]);
-        coeffSel->push_back(coeffSelSurfVec[i]);
+        laserCloudOri.push_back(laserCloudOriSurfVec[i]);
+        coeffSel.push_back(coeffSelSurfVec[i]);
       }
     }
+
+    return {laserCloudOri, coeffSel};
   }
 
-  bool LMOptimization(int iterCount)
+  bool LMOptimization(
+    const pcl::PointCloud<PointType> & laserCloudOri,
+    const pcl::PointCloud<PointType> & coeffSel,
+    const int iterCount)
   {
-    // This optimization is from the original loam_velodyne by Ji Zhang, need to cope with coordinate transformation
+    // This optimization is from the original loam_velodyne by Ji Zhang,
+    // need to cope with coordinate transformation
     // lidar <- camera      ---     camera <- lidar
     // x = z                ---     x = y
     // y = x                ---     y = z
@@ -731,7 +735,7 @@ public:
     // yaw = pitch          ---     yaw = roll
 
     // lidar -> camera
-    int laserCloudSelNum = laserCloudOri->size();
+    int laserCloudSelNum = laserCloudOri.size();
     if (laserCloudSelNum < 50) {
       return false;
     }
@@ -741,17 +745,19 @@ public:
 
     for (int i = 0; i < laserCloudSelNum; i++) {
       // lidar -> camera
-      const float intensity = coeffSel->points[i].intensity;
+      const float intensity = coeffSel.points[i].intensity;
 
       // in camera
 
-      const Eigen::Vector3d point_ori(laserCloudOri->points[i].y,
-        laserCloudOri->points[i].z,
-        laserCloudOri->points[i].x);
+      const Eigen::Vector3d point_ori(
+        laserCloudOri.points[i].y,
+        laserCloudOri.points[i].z,
+        laserCloudOri.points[i].x);
 
-      const Eigen::Vector3d coeff_vec(coeffSel->points[i].y,
-        coeffSel->points[i].z,
-        coeffSel->points[i].x);
+      const Eigen::Vector3d coeff_vec(
+        coeffSel.points[i].y,
+        coeffSel.points[i].z,
+        coeffSel.points[i].x);
 
       const Eigen::Matrix3d MX = dRdx(posevec(0), posevec(2), posevec(1));
       const float arx = (MX * point_ori).dot(coeff_vec);
@@ -766,9 +772,9 @@ public:
       matA.at<float>(i, 0) = arz;
       matA.at<float>(i, 1) = arx;
       matA.at<float>(i, 2) = ary;
-      matA.at<float>(i, 3) = coeffSel->points[i].x;
-      matA.at<float>(i, 4) = coeffSel->points[i].y;
-      matA.at<float>(i, 5) = coeffSel->points[i].z;
+      matA.at<float>(i, 3) = coeffSel.points[i].x;
+      matA.at<float>(i, 4) = coeffSel.points[i].y;
+      matA.at<float>(i, 5) = coeffSel.points[i].z;
       matB.at<float>(i, 0) = -intensity;
     }
 
@@ -845,12 +851,11 @@ public:
     kdtreeSurfFromMap.setInputCloud(laserCloudSurfFromMapDS);
 
     for (int iterCount = 0; iterCount < 30; iterCount++) {
-      laserCloudOri->clear();
-      coeffSel->clear();
+      const auto [laserCloudOri, coeffSel] = optimization(
+        laserCloudCornerLastDS, laserCloudSurfLastDS
+      );
 
-      optimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
-
-      if (LMOptimization(iterCount)) {
+      if (LMOptimization(laserCloudOri, coeffSel, iterCount)) {
         break;
       }
     }
