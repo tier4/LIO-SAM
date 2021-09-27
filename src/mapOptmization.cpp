@@ -1106,29 +1106,19 @@ public:
       globalPath.poses.clear();
       // update key poses
       for (unsigned int i = 0; i < isamCurrentEstimate.size(); ++i) {
-        const auto t = isamCurrentEstimate.at<Pose3>(i).translation();
-        cloudKeyPoses3D.points[i].x = t.x();
-        cloudKeyPoses3D.points[i].y = t.y();
-        cloudKeyPoses3D.points[i].z = t.z();
+        const Eigen::Vector3d xyz = isamCurrentEstimate.at<Pose3>(i).translation();
+        const Eigen::Vector3d rpy = isamCurrentEstimate.at<Pose3>(i).rotation().rpy();
 
-        const auto p = cloudKeyPoses3D.points[i];
-        cloudKeyPoses6D.points[i].x = p.x;
-        cloudKeyPoses6D.points[i].y = p.y;
-        cloudKeyPoses6D.points[i].z = p.z;
-        const auto r = isamCurrentEstimate.at<Pose3>(i).rotation();
-        cloudKeyPoses6D.points[i].roll = r.roll();
-        cloudKeyPoses6D.points[i].pitch = r.pitch();
-        cloudKeyPoses6D.points[i].yaw = r.yaw();
+        const auto point3d = cloudKeyPoses3D.points[i];
+        cloudKeyPoses3D.points[i] = makePoint(xyz, point3d.intensity);
 
-        const PointXYZIRPYT & pose_in = cloudKeyPoses6D.points[i];
+        const auto point6d = cloudKeyPoses6D.points[i];
+        cloudKeyPoses6D.points[i] = make6DofPose(xyz, rpy, point6d.intensity, point6d.time);
+
         geometry_msgs::PoseStamped pose_stamped;
-        pose_stamped.header.stamp = ros::Time().fromSec(pose_in.time);
+        pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
         pose_stamped.header.frame_id = odometryFrame;
-        pose_stamped.pose.position.x = pose_in.x;
-        pose_stamped.pose.position.y = pose_in.y;
-        pose_stamped.pose.position.z = pose_in.z;
-        pose_stamped.pose.orientation = \
-          tf::createQuaternionMsgFromRollPitchYaw(pose_in.roll, pose_in.pitch, pose_in.yaw);
+        pose_stamped.pose = makePose(xyz, rpy);
 
         globalPath.poses.push_back(pose_stamped);
       }
