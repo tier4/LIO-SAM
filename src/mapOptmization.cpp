@@ -219,7 +219,7 @@ public:
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointXYZIRPYT> cloudKeyPoses6D;
 
-  CornerSurfaceDict laserCloudMapContainer;
+  CornerSurfaceDict corner_surface_dict;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
@@ -303,7 +303,7 @@ public:
 
       updateInitialGuess();
 
-      extractSurroundingKeyFrames();
+      extractSurroundingKeyFrames(corner_surface_dict);
 
       pcl::VoxelGrid<PointType> downSizeFilterCorner;
       downSizeFilterCorner.setLeafSize(
@@ -327,7 +327,7 @@ public:
 
       saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS);
 
-      correctPoses();
+      correctPoses(corner_surface_dict);
 
       publishOdometry();
 
@@ -463,7 +463,7 @@ public:
     }
   }
 
-  void extractSurroundingKeyFrames()
+  void extractSurroundingKeyFrames(CornerSurfaceDict & corner_surface_dict)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
@@ -511,10 +511,10 @@ public:
       }
 
       int index = (int)downsampled.points[i].intensity;
-      if (laserCloudMapContainer.find(index) != laserCloudMapContainer.end()) {
+      if (corner_surface_dict.find(index) != corner_surface_dict.end()) {
         // transformed cloud available
-        *corner += laserCloudMapContainer[index].first;
-        *surface += laserCloudMapContainer[index].second;
+        *corner += corner_surface_dict[index].first;
+        *surface += corner_surface_dict[index].second;
         continue;
       }
       // transformed cloud not available
@@ -524,7 +524,7 @@ public:
         surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
       *corner += c;
       *surface += s;
-      laserCloudMapContainer[index] = std::make_pair(c, s);
+      corner_surface_dict[index] = std::make_pair(c, s);
     }
 
     // Downsample the surrounding corner key frames (or map)
@@ -545,8 +545,8 @@ public:
     downSizeFilterSurf.filter(*laserCloudSurfFromMapDS);
 
     // clear map cache if too large
-    if (laserCloudMapContainer.size() > 1000) {
-      laserCloudMapContainer.clear();
+    if (corner_surface_dict.size() > 1000) {
+      corner_surface_dict.clear();
     }
   }
 
@@ -1063,7 +1063,7 @@ public:
     globalPath.poses.push_back(pose_stamped);
   }
 
-  void correctPoses()
+  void correctPoses(CornerSurfaceDict & corner_surface_dict)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
@@ -1071,7 +1071,7 @@ public:
 
     if (aLoopIsClosed) {
       // clear map cache
-      laserCloudMapContainer.clear();
+      corner_surface_dict.clear();
       // clear path
       globalPath.poses.clear();
       // update key poses
