@@ -230,8 +230,6 @@ public:
   pcl::KdTreeFLANN<PointType> kdtreeCornerFromMap;
   pcl::KdTreeFLANN<PointType> kdtreeSurfFromMap;
 
-  pcl::KdTreeFLANN<PointType>::Ptr kdtreeSurroundingKeyPoses;
-
   ros::Time timestamp;
 
   Vector6d posevec;
@@ -278,8 +276,6 @@ public:
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false)
   {
-    kdtreeSurroundingKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
-
     // corner feature set from odoOptimization
     laserCloudCornerLast.reset(new pcl::PointCloud<PointType>());
 
@@ -481,9 +477,11 @@ public:
     std::vector<int> indices;
     std::vector<float> pointSearchSqDis;
 
+    pcl::KdTreeFLANN<PointType> kdtree;
+
     // extract all the nearby key poses and downsample them
-    kdtreeSurroundingKeyPoses->setInputCloud(cloudKeyPoses3D.makeShared()); // create kd-tree
-    kdtreeSurroundingKeyPoses->radiusSearch(
+    kdtree.setInputCloud(cloudKeyPoses3D.makeShared()); // create kd-tree
+    kdtree.radiusSearch(
       cloudKeyPoses3D.back(),
       (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
     for (unsigned int index : indices) {
@@ -492,7 +490,7 @@ public:
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled.points) {
-      kdtreeSurroundingKeyPoses->nearestKSearch(pt, 1, indices, pointSearchSqDis);
+      kdtree.nearestKSearch(pt, 1, indices, pointSearchSqDis);
       pt.intensity = cloudKeyPoses3D.points[indices[0]].intensity;
     }
 
