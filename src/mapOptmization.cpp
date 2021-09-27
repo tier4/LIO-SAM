@@ -459,8 +459,12 @@ public:
     }
   }
 
-  void extractNearby()
+  void extractSurroundingKeyFrames()
   {
+    if (cloudKeyPoses3D.points.empty()) {
+      return;
+    }
+
     pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
     std::vector<int> indices;
     std::vector<float> pointSearchSqDis;
@@ -540,15 +544,6 @@ public:
     if (laserCloudMapContainer.size() > 1000) {
       laserCloudMapContainer.clear();
     }
-  }
-
-  void extractSurroundingKeyFrames()
-  {
-    if (cloudKeyPoses3D.points.empty()) {
-      return;
-    }
-
-    extractNearby();
   }
 
   std::tuple<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>
