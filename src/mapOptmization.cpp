@@ -278,12 +278,6 @@ public:
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false)
   {
-    allocateMemory();
-  }
-
-  void allocateMemory()
-  {
-
     kdtreeSurroundingKeyPoses.reset(new pcl::KdTreeFLANN<PointType>());
 
     // corner feature set from odoOptimization
