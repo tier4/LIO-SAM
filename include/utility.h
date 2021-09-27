@@ -350,13 +350,18 @@ geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v)
   return p;
 }
 
+geometry_msgs::Pose makePose(const Eigen::Vector3d & xyz, const Eigen::Vector3d & rpy)
+{
+  geometry_msgs::Pose pose;
+  pose.position = eigenToPoint(xyz);
+  pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(rpy(0), rpy(1), rpy(2));
+  return pose;
+}
+
 geometry_msgs::Pose makePose(const Vector6d & posevec)
 {
   geometry_msgs::Pose pose;
-  pose.position.x = posevec(3);
-  pose.position.y = posevec(4);
-  pose.position.z = posevec(5);
-  pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(posevec(0), posevec(1), posevec(2));
+  return makePose(posevec.tail(3), posevec.head(3));
   return pose;
 }
 

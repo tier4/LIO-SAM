@@ -1056,6 +1056,8 @@ public:
     const PointType position = makePoint(latestEstimate.translation(), cloudKeyPoses3D.size());
     cloudKeyPoses3D.push_back(position);
 
+    const Eigen::Vector3d xyz = latestEstimate.translation();
+    const Eigen::Vector3d rpy = latestEstimate.rotation().rpy();
     const PointXYZIRPYT pose6dof = make6DofPose(
       latestEstimate.translation(),
       latestEstimate.rotation().rpy(),
@@ -1077,16 +1079,10 @@ public:
     surface_cloud.push_back(laserCloudSurfLastDS);
 
     // save path for visualization
-    const PointXYZIRPYT & pose_in = pose6dof;
     geometry_msgs::PoseStamped pose_stamped;
-    pose_stamped.header.stamp = ros::Time().fromSec(pose_in.time);
+    pose_stamped.header.stamp = ros::Time().fromSec(pose6dof.time);
     pose_stamped.header.frame_id = odometryFrame;
-    pose_stamped.pose.position.x = pose_in.x;
-    pose_stamped.pose.position.y = pose_in.y;
-    pose_stamped.pose.position.z = pose_in.z;
-    pose_stamped.pose.orientation = \
-      tf::createQuaternionMsgFromRollPitchYaw(pose_in.roll, pose_in.pitch, pose_in.yaw);
-
+    pose_stamped.pose = makePose(xyz, rpy);
     globalPath.poses.push_back(pose_stamped);
   }
 
