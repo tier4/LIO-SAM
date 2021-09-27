@@ -491,23 +491,18 @@ public:
       }
     }
 
-    extractCloud(downsampled);
-  }
-
-  void extractCloud(const pcl::PointCloud<PointType> & pointcloud)
-  {
     // fuse the map
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    for (unsigned int i = 0; i < pointcloud.size(); ++i) {
-      if (pointDistance(pointcloud.points[i], cloudKeyPoses3D.back()) >
+    for (unsigned int i = 0; i < downsampled.size(); ++i) {
+      if (pointDistance(downsampled.points[i], cloudKeyPoses3D.back()) >
         surroundingKeyframeSearchRadius)
       {
         continue;
       }
 
-      int index = (int)pointcloud.points[i].intensity;
+      int index = (int)downsampled.points[i].intensity;
       if (laserCloudMapContainer.find(index) != laserCloudMapContainer.end()) {
         // transformed cloud available
         *corner += laserCloudMapContainer[index].first;
