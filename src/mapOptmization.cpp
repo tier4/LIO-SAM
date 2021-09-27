@@ -875,28 +875,6 @@ public:
     incrementalOdometryAffineBack = getTransformation(posevec);
   }
 
-  bool saveFrame()
-  {
-    if (cloudKeyPoses3D.points.empty()) {
-      return true;
-    }
-
-    Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
-    Eigen::Affine3d transFinal = getTransformation(posevec);
-    const auto [xyz, rpy] = getXYZRPY(transStart.inverse() * transFinal);
-
-    if (
-      abs(rpy(0)) < surroundingkeyframeAddingAngleThreshold &&
-      abs(rpy(1)) < surroundingkeyframeAddingAngleThreshold &&
-      abs(rpy(2)) < surroundingkeyframeAddingAngleThreshold &&
-      xyz.norm() < surroundingkeyframeAddingDistThreshold)
-    {
-      return false;
-    }
-
-    return true;
-  }
-
   void addOdomFactor()
   {
     if (cloudKeyPoses3D.points.empty()) {
@@ -997,8 +975,19 @@ public:
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
   {
-    if (!saveFrame()) {
-      return;
+    if (!cloudKeyPoses3D.points.empty()) {
+      Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
+      Eigen::Affine3d transFinal = getTransformation(posevec);
+      const auto [xyz, rpy] = getXYZRPY(transStart.inverse() * transFinal);
+
+      if (
+        abs(rpy(0)) < surroundingkeyframeAddingAngleThreshold &&
+        abs(rpy(1)) < surroundingkeyframeAddingAngleThreshold &&
+        abs(rpy(2)) < surroundingkeyframeAddingAngleThreshold &&
+        xyz.norm() < surroundingkeyframeAddingDistThreshold)
+      {
+        return;
+      }
     }
 
     // odom factor
