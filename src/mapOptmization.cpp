@@ -250,6 +250,13 @@ public:
   Eigen::Affine3d lastImuTransformation;
   PointType lastGPSPoint;
 
+  bool lastImuPreTransAvailable;
+  Eigen::Affine3d lastImuPreTransformation;
+
+  bool lastIncreOdomPubFlag;
+  nav_msgs::Odometry laserOdomIncremental; // incremental odometry msg
+  Eigen::Affine3d increOdomAffine; // incremental odometry in affine
+
   mapOptimization()
   : pubLaserCloudSurround(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1)),
     pubLaserOdometryGlobal(nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry", 1)),
@@ -268,7 +275,9 @@ public:
     subGPS(nh.subscribe<nav_msgs::Odometry>(
         gpsTopic, 200, &mapOptimization::gpsHandler, this,
         ros::TransportHints().tcpNoDelay())),
-    isam(std::make_shared<ISAM2>(gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1)))
+    isam(std::make_shared<ISAM2>(gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
+    lastImuPreTransAvailable(false),
+    lastIncreOdomPubFlag(false)
   {
     allocateMemory();
   }
@@ -442,8 +451,6 @@ public:
     }
 
     // use imu pre-integration estimation for pose guess
-    static bool lastImuPreTransAvailable = false;
-    static Eigen::Affine3d lastImuPreTransformation;
     if (cloudInfo.odomAvailable) {
       const Eigen::Affine3d back = poseToAffine(cloudInfo.initial_pose);
       if (!lastImuPreTransAvailable) {
@@ -1142,16 +1149,13 @@ public:
     pubLaserOdometryGlobal.publish(laserOdometryROS);
 
     // Publish TF
-    static tf::TransformBroadcaster br;
+    tf::TransformBroadcaster br;
     tf::Transform t_odom_to_lidar = makeTransform(posevec);
     tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(
       t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
     br.sendTransform(trans_odom_to_lidar);
 
     // Publish odometry for ROS (incremental)
-    static bool lastIncreOdomPubFlag = false;
-    static nav_msgs::Odometry laserOdomIncremental; // incremental odometry msg
-    static Eigen::Affine3d increOdomAffine; // incremental odometry in affine
     if (!lastIncreOdomPubFlag) {
       lastIncreOdomPubFlag = true;
       laserOdomIncremental = laserOdometryROS;
