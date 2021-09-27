@@ -182,6 +182,11 @@ bool validatePlane(
 
 class mapOptimization : public ParamServer
 {
+  using CornerSurfaceDict = std::map<
+    int,
+    std::pair<pcl::PointCloud<PointType>,
+    pcl::PointCloud<PointType>>
+  >;
 
 public:
   // gtsam
@@ -214,8 +219,7 @@ public:
   pcl::PointCloud<PointType> cloudKeyPoses3D;
   pcl::PointCloud<PointXYZIRPYT> cloudKeyPoses6D;
 
-  std::map<int,
-    std::pair<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>> laserCloudMapContainer;
+  CornerSurfaceDict laserCloudMapContainer;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
