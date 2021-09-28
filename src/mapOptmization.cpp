@@ -215,7 +215,6 @@ class mapOptimization : public ParamServer
 public:
   // gtsam
   NonlinearFactorGraph gtSAMgraph;
-  Values initialEstimate;
   Values isamCurrentEstimate;
   Eigen::MatrixXd poseCovariance;
 
@@ -993,6 +992,8 @@ public:
       }
     }
 
+    Values initialEstimate;
+
     // odom factor
     addOdomFactor(cloudKeyPoses6D, posevec, gtSAMgraph, initialEstimate);
 
@@ -1015,7 +1016,6 @@ public:
     }
 
     gtSAMgraph.resize(0);
-    initialEstimate.clear();
 
     //save key poses
     Pose3 latestEstimate;
