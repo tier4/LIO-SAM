@@ -188,6 +188,50 @@ bool failureDetection(
 
 using Diagonal = gtsam::noiseModel::Diagonal;
 
+void resetOptimizer(
+  const gtsam::Pose3 & prevPose_,
+  const gtsam::Vector3 & prevVel_,
+  const gtsam::imuBias::ConstantBias & prevBias_,
+  const int key,
+  gtsam::ISAM2 & optimizer)
+{
+  // get updated noise before reset
+  const auto updatedPoseNoise =
+    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(X(key - 1)));
+  const auto updatedVelNoise =
+    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(V(key - 1)));
+  const auto updatedBiasNoise =
+    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(B(key - 1)));
+
+  // reset graph
+  const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
+  optimizer = gtsam::ISAM2(params);
+
+  gtsam::NonlinearFactorGraph newGraphFactors;
+  gtsam::NonlinearFactorGraph graphFactors = newGraphFactors;
+
+  gtsam::Values NewGraphValues;
+  gtsam::Values graphValues = NewGraphValues;
+
+  // add pose
+  gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, updatedPoseNoise);
+  graphFactors.add(priorPose);
+  // add velocity
+  gtsam::PriorFactor<gtsam::Vector3> priorVel(V(0), prevVel_, updatedVelNoise);
+  graphFactors.add(priorVel);
+  // add bias
+  gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, updatedBiasNoise);
+  graphFactors.add(priorBias);
+  // add values
+  graphValues.insert(X(0), prevPose_);
+  graphValues.insert(V(0), prevVel_);
+  graphValues.insert(B(0), prevBias_);
+  // optimize once
+  optimizer.update(graphFactors, graphValues);
+  graphFactors.resize(0);
+  graphValues.clear();
+}
+
 gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & lidar_pose)
 {
   const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
@@ -336,42 +380,7 @@ public:
 
     // reset graph for speed
     if (key == 100) {
-      // get updated noise before reset
-      const auto updatedPoseNoise =
-        gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(X(key - 1)));
-      const auto updatedVelNoise =
-        gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(V(key - 1)));
-      const auto updatedBiasNoise =
-        gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(B(key - 1)));
-
-      // reset graph
-      const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
-      optimizer = gtsam::ISAM2(params);
-
-      gtsam::NonlinearFactorGraph newGraphFactors;
-      graphFactors = newGraphFactors;
-
-      gtsam::Values NewGraphValues;
-      graphValues = NewGraphValues;
-
-      // add pose
-      gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, updatedPoseNoise);
-      graphFactors.add(priorPose);
-      // add velocity
-      gtsam::PriorFactor<gtsam::Vector3> priorVel(V(0), prevVel_, updatedVelNoise);
-      graphFactors.add(priorVel);
-      // add bias
-      gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_,
-        updatedBiasNoise);
-      graphFactors.add(priorBias);
-      // add values
-      graphValues.insert(X(0), prevPose_);
-      graphValues.insert(V(0), prevVel_);
-      graphValues.insert(B(0), prevBias_);
-      // optimize once
-      optimizer.update(graphFactors, graphValues);
-      graphFactors.resize(0);
-      graphValues.clear();
+      resetOptimizer(prevPose_, prevVel_, prevBias_, key, optimizer);
 
       key = 1;
     }
