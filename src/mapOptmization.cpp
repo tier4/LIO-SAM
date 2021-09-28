@@ -929,11 +929,11 @@ public:
     }
 
     while (!gpsQueue.empty()) {
-      nav_msgs::Odometry thisGPS = gpsQueue.front();
+      const geometry_msgs::PoseWithCovariance pose = gpsQueue.front().pose;
       gpsQueue.pop_front();
 
       // GPS too noisy, skip
-      const Eigen::Map<const RowMajorMatrixXd> covariance(thisGPS.pose.covariance.data(), 6, 6);
+      const Eigen::Map<const RowMajorMatrixXd> covariance(pose.covariance.data(), 6, 6);
       float noise_x = covariance(0, 0);
       float noise_y = covariance(1, 1);
       float noise_z = covariance(2, 2);
@@ -941,7 +941,7 @@ public:
         continue;
       }
 
-      Eigen::Vector3d gps_position = pointToEigen(thisGPS.pose.pose.position);
+      Eigen::Vector3d gps_position = pointToEigen(pose.pose.position);
       if (!useGpsElevation) {
         gps_position(2) = posevec(5);
         noise_z = 0.01;
