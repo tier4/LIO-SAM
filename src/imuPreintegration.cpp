@@ -193,9 +193,9 @@ class IMUPreintegration : public ParamServer
 public:
   std::mutex mtx;
 
-  ros::Subscriber subImu;
-  ros::Subscriber subOdometry;
-  ros::Publisher pubImuOdometry;
+  const ros::Subscriber subImu;
+  const ros::Subscriber subOdometry;
+  const ros::Publisher pubImuOdometry;
 
   bool systemInitialized = false;
 
@@ -240,7 +240,14 @@ public:
   IMUConverter imu_converter_;
 
   IMUPreintegration()
-  : integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
+  : subImu(nh.subscribe<sensor_msgs::Imu>(
+        imuTopic, 2000, &IMUPreintegration::imuHandler,
+        this, ros::TransportHints().tcpNoDelay())),
+    subOdometry(nh.subscribe<nav_msgs::Odometry>(
+        "lio_sam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler,
+        this, ros::TransportHints().tcpNoDelay())),
+    pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic + "_incremental", 2000)),
+    integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
     prior_imu_bias_(Eigen::Matrix<double, 1, 6>::Zero()),
     noiseModelBetweenBias(
       (Vector6d() <<
@@ -249,16 +256,6 @@ public:
     imuIntegratorImu_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     imuIntegratorOpt_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_))
   {
-    subImu = nh.subscribe<sensor_msgs::Imu>(
-      imuTopic, 2000, &IMUPreintegration::imuHandler,
-      this, ros::TransportHints().tcpNoDelay());
-    subOdometry = nh.subscribe<nav_msgs::Odometry>(
-      "lio_sam/mapping/odometry_incremental", 5,
-      &IMUPreintegration::odometryHandler,
-      this, ros::TransportHints().tcpNoDelay());
-    pubImuOdometry = nh.advertise<nav_msgs::Odometry>(
-      odomTopic + "_incremental",
-      2000);
   }
 
   void odometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
