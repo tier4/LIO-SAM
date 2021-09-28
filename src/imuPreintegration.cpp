@@ -210,9 +210,6 @@ void resetOptimizer(
   gtsam::NonlinearFactorGraph newGraphFactors;
   gtsam::NonlinearFactorGraph graphFactors = newGraphFactors;
 
-  gtsam::Values NewGraphValues;
-  gtsam::Values graphValues = NewGraphValues;
-
   // add pose
   gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, updatedPoseNoise);
   graphFactors.add(priorPose);
@@ -223,24 +220,19 @@ void resetOptimizer(
   gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, updatedBiasNoise);
   graphFactors.add(priorBias);
   // add values
+  gtsam::Values graphValues;
   graphValues.insert(X(0), prevPose_);
   graphValues.insert(V(0), prevVel_);
   graphValues.insert(B(0), prevBias_);
   // optimize once
   optimizer.update(graphFactors, graphValues);
-  graphFactors.resize(0);
-  graphValues.clear();
 }
 
 gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & lidar_pose)
 {
   const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
 
-  gtsam::NonlinearFactorGraph newGraphFactors;
-  gtsam::NonlinearFactorGraph graphFactors = newGraphFactors;
-
-  gtsam::Values NewGraphValues;
-  gtsam::Values graphValues = NewGraphValues;
+  gtsam::NonlinearFactorGraph graphFactors;
 
   const Diagonal::shared_ptr priorPoseNoise(Diagonal::Sigmas(1e-2 * Vector6d::Ones()));
   // rad,rad,rad, m, m, m (m/s)
@@ -261,14 +253,13 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & 
   gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, priorBiasNoise);
   graphFactors.add(priorBias);
   // add values
+  gtsam::Values graphValues;
   graphValues.insert(X(0), prevPose_);
   graphValues.insert(V(0), prevVel_);
   graphValues.insert(B(0), prevBias_);
   // optimize once
   gtsam::ISAM2 optimizer = gtsam::ISAM2(params);
   optimizer.update(graphFactors, graphValues);
-  graphFactors.resize(0);
-  graphValues.clear();
   return optimizer;
 }
 
@@ -437,8 +428,6 @@ public:
     // optimize
     optimizer.update(graphFactors, graphValues);
     optimizer.update();
-    graphFactors.resize(0);
-    graphValues.clear();
     // Overwrite the beginning of the preintegration for the next step.
     const gtsam::Values result = optimizer.calculateEstimate();
     prevPose_ = result.at<gtsam::Pose3>(X(key));
