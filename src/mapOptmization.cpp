@@ -921,18 +921,14 @@ public:
       return;
     }
 
+    dropBefore(timestamp.toSec() - 0.2, gpsQueue);
+
+    if (timeInSec(gpsQueue.front().header) > timestamp.toSec() + 0.2) {
+      // message too new
+      return;
+    }
+
     while (!gpsQueue.empty()) {
-      if (gpsQueue.front().header.stamp.toSec() < timestamp.toSec() - 0.2) {
-        // message too old
-        gpsQueue.pop_front();
-        continue;
-      }
-
-      if (gpsQueue.front().header.stamp.toSec() > timestamp.toSec() + 0.2) {
-        // message too new
-        return;
-      }
-
       nav_msgs::Odometry thisGPS = gpsQueue.front();
       gpsQueue.pop_front();
 
@@ -959,9 +955,9 @@ public:
       const PointType curGPSPoint = makePoint(gps_position);
       if (pointDistance(curGPSPoint, lastGPSPoint) < 5.0) {
         continue;
-      } else {
-        lastGPSPoint = curGPSPoint;
       }
+
+      lastGPSPoint = curGPSPoint;
 
       const gtsam::Vector3 Vector(noise_x, noise_y, noise_z);
       const auto gps_noise = noiseModel::Diagonal::Variances(Vector.cwiseMax(1.0f));

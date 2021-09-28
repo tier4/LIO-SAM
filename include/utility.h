@@ -415,10 +415,10 @@ double timeInSec(const std_msgs::Header & header)
 }
 
 template < typename T >
-void dropBefore(const double time, std::deque < T > & buffer)
+void dropBefore(const double time_second, std::deque < T > & buffer)
 {
   while (!buffer.empty()) {
-    if (timeInSec(buffer.front().header) < time) {
+    if (timeInSec(buffer.front().header) < time_second) {
       buffer.pop_front();
     } else {
       break;
