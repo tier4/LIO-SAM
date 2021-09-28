@@ -933,9 +933,10 @@ public:
       gpsQueue.pop_front();
 
       // GPS too noisy, skip
-      float noise_x = thisGPS.pose.covariance[0];
-      float noise_y = thisGPS.pose.covariance[7];
-      float noise_z = thisGPS.pose.covariance[14];
+      const Eigen::Map<const RowMajorMatrixXd> covariance(thisGPS.pose.covariance.data(), 6, 6);
+      float noise_x = covariance(0, 0);
+      float noise_y = covariance(1, 1);
+      float noise_z = covariance(2, 2);
       if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold) {
         continue;
       }
