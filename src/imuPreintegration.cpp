@@ -188,6 +188,46 @@ bool failureDetection(
 
 using Diagonal = gtsam::noiseModel::Diagonal;
 
+gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & lidar_pose)
+{
+  const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
+
+  gtsam::NonlinearFactorGraph newGraphFactors;
+  gtsam::NonlinearFactorGraph graphFactors = newGraphFactors;
+
+  gtsam::Values NewGraphValues;
+  gtsam::Values graphValues = NewGraphValues;
+
+  const Diagonal::shared_ptr priorPoseNoise(Diagonal::Sigmas(1e-2 * Vector6d::Ones()));
+  // rad,rad,rad, m, m, m (m/s)
+  const Diagonal::shared_ptr priorVelNoise(gtsam::noiseModel::Isotropic::Sigma(3, 1e4));
+  // 1e-2 ~ 1e-3 seems to be good
+  const Diagonal::shared_ptr priorBiasNoise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+
+  // initial pose
+  gtsam::Pose3 prevPose_ = lidar_pose.compose(lidar2Imu);
+  gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
+  graphFactors.add(priorPose);
+  // initial velocity
+  gtsam::Vector3 prevVel_ = gtsam::Vector3(0, 0, 0);
+  gtsam::PriorFactor<gtsam::Vector3> priorVel(V(0), prevVel_, priorVelNoise);
+  graphFactors.add(priorVel);
+  // initial bias
+  gtsam::imuBias::ConstantBias prevBias_ = gtsam::imuBias::ConstantBias();
+  gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, priorBiasNoise);
+  graphFactors.add(priorBias);
+  // add values
+  graphValues.insert(X(0), prevPose_);
+  graphValues.insert(V(0), prevVel_);
+  graphValues.insert(B(0), prevBias_);
+  // optimize once
+  gtsam::ISAM2 optimizer = gtsam::ISAM2(params);
+  optimizer.update(graphFactors, graphValues);
+  graphFactors.resize(0);
+  graphValues.clear();
+  return optimizer;
+}
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -197,7 +237,7 @@ public:
   const ros::Subscriber subOdometry;
   const ros::Publisher pubImuOdometry;
 
-  bool systemInitialized = false;
+  bool systemInitialized;
 
   const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
@@ -254,7 +294,8 @@ public:
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
     imuIntegratorImu_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
-    imuIntegratorOpt_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_))
+    imuIntegratorOpt_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
+    systemInitialized(false)
   {
   }
 
@@ -273,15 +314,6 @@ public:
 
     // 0. initialize system
     if (!systemInitialized) {
-      const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
-      optimizer = gtsam::ISAM2(params);
-
-      gtsam::NonlinearFactorGraph newGraphFactors;
-      graphFactors = newGraphFactors;
-
-      gtsam::Values NewGraphValues;
-      graphValues = NewGraphValues;
-
       // pop old IMU message
       while (!imuQueOpt.empty()) {
         if (timeInSec(imuQueOpt.front().header) < currentCorrectionTime - delta_t) {
@@ -292,32 +324,7 @@ public:
         }
       }
 
-      const Diagonal::shared_ptr priorPoseNoise(Diagonal::Sigmas(1e-2 * Vector6d::Ones()));
-      // rad,rad,rad, m, m, m (m/s)
-      const Diagonal::shared_ptr priorVelNoise(gtsam::noiseModel::Isotropic::Sigma(3, 1e4));
-      // 1e-2 ~ 1e-3 seems to be good
-      const Diagonal::shared_ptr priorBiasNoise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
-
-      // initial pose
-      prevPose_ = lidar_pose.compose(lidar2Imu);
-      gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
-      graphFactors.add(priorPose);
-      // initial velocity
-      prevVel_ = gtsam::Vector3(0, 0, 0);
-      gtsam::PriorFactor<gtsam::Vector3> priorVel(V(0), prevVel_, priorVelNoise);
-      graphFactors.add(priorVel);
-      // initial bias
-      prevBias_ = gtsam::imuBias::ConstantBias();
-      gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, priorBiasNoise);
-      graphFactors.add(priorBias);
-      // add values
-      graphValues.insert(X(0), prevPose_);
-      graphValues.insert(V(0), prevVel_);
-      graphValues.insert(B(0), prevBias_);
-      // optimize once
-      optimizer.update(graphFactors, graphValues);
-      graphFactors.resize(0);
-      graphValues.clear();
+      optimizer = initOptimizer(lidar2Imu, lidar_pose);
 
       imuIntegratorImu_.resetIntegrationAndSetBias(prevBias_);
       imuIntegratorOpt_.resetIntegrationAndSetBias(prevBias_);
