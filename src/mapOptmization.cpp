@@ -215,7 +215,6 @@ class mapOptimization : public ParamServer
 public:
   // gtsam
   NonlinearFactorGraph gtSAMgraph;
-  Values isamCurrentEstimate;
   Eigen::MatrixXd poseCovariance;
 
   const ros::Publisher pubLaserCloudSurround;
@@ -348,9 +347,10 @@ public:
 
       scan2MapOptimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
 
-      saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS);
+      Values isamCurrentEstimate;
+      saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, isamCurrentEstimate);
 
-      correctPoses(corner_surface_dict);
+      correctPoses(isamCurrentEstimate, corner_surface_dict);
 
       publishOdometry();
 
@@ -975,7 +975,8 @@ public:
 
   void saveKeyFramesAndFactor(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
-    const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
+    const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
+    Values & isamCurrentEstimate)
   {
     if (!cloudKeyPoses3D.points.empty()) {
       Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
@@ -1055,7 +1056,8 @@ public:
     globalPath.poses.push_back(pose_stamped);
   }
 
-  void correctPoses(CornerSurfaceDict & corner_surface_dict)
+  void correctPoses(
+    const Values & isamCurrentEstimate, CornerSurfaceDict & corner_surface_dict)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
