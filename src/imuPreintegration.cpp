@@ -307,8 +307,6 @@ public:
   double lastImuT_opt = -1;
 
   gtsam::ISAM2 optimizer;
-  gtsam::NonlinearFactorGraph graphFactors;
-  gtsam::Values graphValues;
 
   const double delta_t = 0;
 
@@ -410,6 +408,8 @@ public:
     const gtsam::PreintegratedImuMeasurements & preint_imu =
       dynamic_cast<const gtsam::PreintegratedImuMeasurements &>(imuIntegratorOpt_);
     gtsam::ImuFactor imu_factor(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), preint_imu);
+    gtsam::NonlinearFactorGraph graphFactors;
+
     graphFactors.add(imu_factor);
     // add imu bias between factor
     graphFactors.add(
@@ -430,6 +430,7 @@ public:
     graphFactors.add(pose_factor);
     // insert predicted values
     const gtsam::NavState state = imuIntegratorOpt_.predict(prevState_, prevBias_);
+    gtsam::Values graphValues;
     graphValues.insert(X(key), state.pose());
     graphValues.insert(V(key), state.v());
     graphValues.insert(B(key), prevBias_);
