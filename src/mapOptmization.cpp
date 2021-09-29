@@ -903,22 +903,9 @@ public:
       return;
     }
 
-    // wait for system initialized and settles down
-    if (cloudKeyPoses3D.points.empty()) {
-      return;
-    }
-
     const double distance =
       (getXYZ(cloudKeyPoses3D.front()) - getXYZ(cloudKeyPoses3D.back())).norm();
     if (distance < 5.0) {
-      return;
-    }
-
-    // pose covariance small, no need to correct
-    if (
-      poseCovariance(3, 3) < poseCovThreshold &&
-      poseCovariance(4, 4) < poseCovThreshold)
-    {
       return;
     }
 
@@ -993,8 +980,12 @@ public:
     // odom factor
     addOdomFactor(cloudKeyPoses6D, posevec, gtSAMgraph, initialEstimate);
 
-    // gps factor
-    addGPSFactor();
+    if (
+      !cloudKeyPoses3D.points.empty() &&
+      (poseCovariance(3, 3) >= poseCovThreshold || poseCovariance(4, 4) >= poseCovThreshold))
+    {
+      addGPSFactor();
+    }
 
     // std::cout << "****************************************************" << std::endl;
     // gtSAMgraph.print("GTSAM Graph:\n");
