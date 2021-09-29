@@ -414,10 +414,9 @@ public:
 
     // extract visualized and downsampled key frames
     for (unsigned int i = 0; i < globalMapKeyPosesDS.size(); ++i) {
-      if (pointDistance(
-          globalMapKeyPosesDS.points[i],
-          cloudKeyPoses3D.back()) > globalMapVisualizationSearchRadius)
-      {
+      const double distance =
+        (getXYZ(globalMapKeyPosesDS.points[i]) - getXYZ(cloudKeyPoses3D.back())).norm();
+      if (distance > globalMapVisualizationSearchRadius) {
         continue;
       }
       int index = (int)globalMapKeyPosesDS.points[i].intensity;
@@ -527,9 +526,9 @@ public:
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
     for (unsigned int i = 0; i < downsampled.size(); ++i) {
-      if (pointDistance(downsampled.points[i], cloudKeyPoses3D.back()) >
-        surroundingKeyframeSearchRadius)
-      {
+      const double distance =
+        (getXYZ(downsampled.points[i]) - getXYZ(cloudKeyPoses3D.back())).norm();
+      if (distance > surroundingKeyframeSearchRadius) {
         continue;
       }
 
@@ -909,7 +908,9 @@ public:
       return;
     }
 
-    if (pointDistance(cloudKeyPoses3D.front(), cloudKeyPoses3D.back()) < 5.0) {
+    const double distance =
+      (getXYZ(cloudKeyPoses3D.front()) - getXYZ(cloudKeyPoses3D.back())).norm();
+    if (distance < 5.0) {
       return;
     }
 
