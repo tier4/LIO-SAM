@@ -263,7 +263,7 @@ public:
   Eigen::Affine3d incrementalOdometryAffineFront;
   Eigen::Affine3d incrementalOdometryAffineBack;
   Eigen::Affine3d lastImuTransformation;
-  PointType lastGPSPoint;
+  Eigen::Vector3d last_gps_position;
 
   bool lastImuPreTransAvailable;
   Eigen::Affine3d lastImuPreTransformation;
@@ -953,12 +953,11 @@ public:
       }
 
       // Add GPS every a few meters
-      const PointType curGPSPoint = makePoint(gps_position);
-      if (pointDistance(curGPSPoint, lastGPSPoint) < 5.0) {
+      if ((gps_position - last_gps_position).norm() < 5.0) {
         continue;
       }
 
-      lastGPSPoint = curGPSPoint;
+      last_gps_position = gps_position;
 
       const gtsam::Vector3 Vector(noise_x, noise_y, noise_z);
       const auto gps_noise = noiseModel::Diagonal::Variances(Vector.cwiseMax(1.0f));
