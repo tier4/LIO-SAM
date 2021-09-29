@@ -935,17 +935,16 @@ public:
 
       // GPS too noisy, skip
       const Eigen::Map<const RowMajorMatrixXd> covariance(pose.covariance.data(), 6, 6);
-      float noise_x = covariance(0, 0);
-      float noise_y = covariance(1, 1);
-      float noise_z = covariance(2, 2);
-      if (noise_x > gpsCovThreshold || noise_y > gpsCovThreshold) {
+      Eigen::Vector3d position_variances = covariance.diagonal().head(3);
+
+      if (position_variances(0) > gpsCovThreshold || position_variances(1) > gpsCovThreshold) {
         continue;
       }
 
       Eigen::Vector3d gps_position = pointToEigen(pose.pose.position);
       if (!useGpsElevation) {
         gps_position(2) = posevec(5);
-        noise_z = 0.01;
+        position_variances(2) = 0.01;
       }
 
       // GPS not properly initialized (0,0,0)
@@ -960,8 +959,7 @@ public:
 
       last_gps_position = gps_position;
 
-      const gtsam::Vector3 Vector(noise_x, noise_y, noise_z);
-      const auto gps_noise = noiseModel::Diagonal::Variances(Vector.cwiseMax(1.0f));
+      const auto gps_noise = noiseModel::Diagonal::Variances(position_variances.cwiseMax(1.0f));
       gtsam::GPSFactor gps_factor(cloudKeyPoses3D.size(), gps_position, gps_noise);
       gtSAMgraph.add(gps_factor);
 
