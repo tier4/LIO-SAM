@@ -417,9 +417,11 @@ public:
     if (timestamp.toSec() - timeLastProcessing >= mappingProcessInterval) {
       timeLastProcessing = timestamp.toSec();
 
+      // save current transformation before any processing
+      Eigen::Affine3d incrementalOdometryAffineFront = getTransformation(posevec);
       updateInitialGuess();
 
-      extractSurroundingKeyFrames(corner_surface_dict);
+      extractSurroundingKeyFrames(cloudKeyPoses6D, corner_surface_dict);
 
       pcl::VoxelGrid<PointType> downSizeFilterCorner;
       downSizeFilterCorner.setLeafSize(
@@ -446,7 +448,7 @@ public:
 
       correctPoses(isamCurrentEstimate, corner_surface_dict);
 
-      publishOdometry();
+      publishOdometry(incrementalOdometryAffineFront);
 
       publishFrames(laserCloudCornerLastDS, laserCloudSurfLastDS);
     }
@@ -454,8 +456,6 @@ public:
 
   void updateInitialGuess()
   {
-    // save current transformation before any processing
-    incrementalOdometryAffineFront = getTransformation(posevec);
 
     const Eigen::Vector3d rpy = vector3ToEigen(cloudInfo.initialIMU);
 
@@ -505,7 +505,9 @@ public:
     }
   }
 
-  void extractSurroundingKeyFrames(CornerSurfaceDict & corner_surface_dict)
+  void extractSurroundingKeyFrames(
+    const pcl::PointCloud<StampedPose> & cloudKeyPoses6D,
+    CornerSurfaceDict & corner_surface_dict)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
@@ -1035,7 +1037,7 @@ public:
     }
   }
 
-  void publishOdometry()
+  void publishOdometry(const Eigen::Affine3d & incrementalOdometryAffineFront)
   {
     // Publish odometry for ROS (global)
     nav_msgs::Odometry laserOdometryROS;
