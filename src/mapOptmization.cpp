@@ -29,9 +29,9 @@ using gtsam::symbol_shorthand::G; // GPS pose
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
     */
-struct PointXYZIRPYT
+struct PointXYZRPYT
 {
-  PCL_ADD_POINT4D PCL_ADD_INTENSITY;  // preferred way of adding a XYZ+padding
+  PCL_ADD_POINT4D;  // preferred way of adding a XYZ
   float roll;
   float pitch;
   float yaw;
@@ -40,20 +40,19 @@ struct PointXYZIRPYT
 } EIGEN_ALIGN16;                    // enforce SSE padding for correct memory alignment
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(
-  PointXYZIRPYT,
-  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(float, roll, roll)(
+  PointXYZRPYT,
+  (float, x, x)(float, y, y)(float, z, z)(float, roll, roll)(
     float, pitch, pitch)(float, yaw, yaw)(double, time, time)
 )
 
-PointXYZIRPYT make6DofPose(
+PointXYZRPYT make6DofPose(
   const Eigen::Vector3d & xyz, const Eigen::Vector3d & rpy,
-  const double intensity, const double time)
+  const double time)
 {
-  PointXYZIRPYT pose6dof;
+  PointXYZRPYT pose6dof;
   pose6dof.x = xyz(0);
   pose6dof.y = xyz(1);
   pose6dof.z = xyz(2);
-  pose6dof.intensity = intensity;  // this can be used as index
   pose6dof.roll = rpy(0);
   pose6dof.pitch = rpy(1);
   pose6dof.yaw = rpy(2);
@@ -128,7 +127,7 @@ gtsam::Pose3 posevecToGtsamPose(const Vector6d & posevec)
     gtsam::Point3(posevec(3), posevec(4), posevec(5)));
 }
 
-Vector6d makePosevec(const PointXYZIRPYT & p)
+Vector6d makePosevec(const PointXYZRPYT & p)
 {
   Vector6d v;
   v << p.roll, p.pitch, p.yaw, p.x, p.y, p.z;
@@ -179,7 +178,7 @@ bool validatePlane(
 }
 
 void addOdomFactor(
-  const pcl::PointCloud<PointXYZIRPYT> & cloudKeyPoses6D,
+  const pcl::PointCloud<PointXYZRPYT> & cloudKeyPoses6D,
   const Vector6d & posevec,
   gtsam::NonlinearFactorGraph & gtSAMgraph,
   gtsam::Values & initialEstimate)
@@ -324,7 +323,7 @@ public:
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
 
   pcl::PointCloud<PointType> cloudKeyPoses3D;
-  pcl::PointCloud<PointXYZIRPYT> cloudKeyPoses6D;
+  pcl::PointCloud<PointXYZRPYT> cloudKeyPoses6D;
 
   CornerSurfaceDict corner_surface_dict;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
@@ -1058,7 +1057,7 @@ public:
     const Eigen::Vector3d xyz = latestEstimate.translation();
     const Eigen::Vector3d rpy = latestEstimate.rotation().rpy();
     // intensity can be used as index
-    const PointXYZIRPYT pose6dof = make6DofPose(xyz, rpy, position.intensity, timestamp.toSec());
+    const PointXYZRPYT pose6dof = make6DofPose(xyz, rpy, timestamp.toSec());
     cloudKeyPoses6D.push_back(pose6dof);
 
     // std::cout << "****************************************************" << std::endl;
@@ -1102,7 +1101,7 @@ public:
         cloudKeyPoses3D.points[i] = makePoint(xyz, point3d.intensity);
 
         const auto point6d = cloudKeyPoses6D.points[i];
-        cloudKeyPoses6D.points[i] = make6DofPose(xyz, rpy, point6d.intensity, point6d.time);
+        cloudKeyPoses6D.points[i] = make6DofPose(xyz, rpy, point6d.time);
 
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
