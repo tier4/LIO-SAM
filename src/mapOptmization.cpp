@@ -924,9 +924,7 @@ public:
       const auto [xyz, rpy] = getXYZRPY(transStart.inverse() * transFinal);
 
       if (
-        abs(rpy(0)) < surroundingkeyframeAddingAngleThreshold &&
-        abs(rpy(1)) < surroundingkeyframeAddingAngleThreshold &&
-        abs(rpy(2)) < surroundingkeyframeAddingAngleThreshold &&
+        (rpy.array() < surroundingkeyframeAddingAngleThreshold).all() &&
         xyz.norm() < surroundingkeyframeAddingDistThreshold)
       {
         return;
