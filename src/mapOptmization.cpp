@@ -775,8 +775,8 @@ public:
       return false;
     }
 
-    cv::Mat matA(laserCloudSelNum, 6, CV_32F, cv::Scalar::all(0));
-    cv::Mat matB(laserCloudSelNum, 1, CV_32F, cv::Scalar::all(0));
+    Eigen::MatrixXd A(laserCloudSelNum, 6);
+    Eigen::VectorXd b(laserCloudSelNum);
 
     for (int i = 0; i < laserCloudSelNum; i++) {
       // lidar -> camera
@@ -804,33 +804,27 @@ public:
       const float arz = (MZ * point_ori).dot(coeff_vec);
 
       // lidar -> camera
-      matA.at<float>(i, 0) = arz;
-      matA.at<float>(i, 1) = arx;
-      matA.at<float>(i, 2) = ary;
-      matA.at<float>(i, 3) = coeffSel.points[i].x;
-      matA.at<float>(i, 4) = coeffSel.points[i].y;
-      matA.at<float>(i, 5) = coeffSel.points[i].z;
-      matB.at<float>(i, 0) = -intensity;
+      A(i, 0) = arz;
+      A(i, 1) = arx;
+      A(i, 2) = ary;
+      A(i, 3) = coeffSel.points[i].x;
+      A(i, 4) = coeffSel.points[i].y;
+      A(i, 5) = coeffSel.points[i].z;
+      b(i) = -intensity;
     }
 
-    cv::Mat matAt(6, laserCloudSelNum, CV_32F, cv::Scalar::all(0));
-    cv::transpose(matA, matAt);
-    const cv::Mat matAtA = matAt * matA;
-    const cv::Mat matAtB = matAt * matB;
+    const Eigen::MatrixXd AtA = A.transpose() * A;
+    const Eigen::VectorXd AtB = A.transpose() * b;
 
-    cv::Mat matX(6, 1, CV_32F, cv::Scalar::all(0));
-    cv::solve(matAtA, matAtB, matX, cv::DECOMP_QR);
+    const Eigen::VectorXd matX = AtA.householderQr().solve(AtB);
 
     if (iterCount == 0) {
-
-      cv::Mat matE(1, 6, CV_32F, cv::Scalar::all(0));
-      cv::Mat matV(6, 6, CV_32F, cv::Scalar::all(0));
-
-      cv::eigen(matAtA, matE, matV);
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
+      const Eigen::VectorXd eigenvalues = es.eigenvalues();
 
       isDegenerate = false;
       for (int i = 5; i >= 0; i--) {
-        if (matE.at<float>(0, i) < 100.0) {
+        if (eigenvalues(i) < 100.0) {
           isDegenerate = true;
         } else {
           break;
@@ -838,25 +832,18 @@ public:
       }
     }
 
-    if (isDegenerate) {
-      matX = cv::Scalar::all(0);
+    if (!isDegenerate) {
+      posevec += matX;
     }
 
-    posevec(0) += matX.at<float>(0, 0);
-    posevec(1) += matX.at<float>(1, 0);
-    posevec(2) += matX.at<float>(2, 0);
-    posevec(3) += matX.at<float>(3, 0);
-    posevec(4) += matX.at<float>(4, 0);
-    posevec(5) += matX.at<float>(5, 0);
-
     float deltaR = sqrt(
-      pow(pcl::rad2deg(matX.at<float>(0, 0)), 2) +
-      pow(pcl::rad2deg(matX.at<float>(1, 0)), 2) +
-      pow(pcl::rad2deg(matX.at<float>(2, 0)), 2));
+      pow(pcl::rad2deg(matX(0)), 2) +
+      pow(pcl::rad2deg(matX(1)), 2) +
+      pow(pcl::rad2deg(matX(2)), 2));
     float deltaT = sqrt(
-      pow(matX.at<float>(3, 0) * 100, 2) +
-      pow(matX.at<float>(4, 0) * 100, 2) +
-      pow(matX.at<float>(5, 0) * 100, 2));
+      pow(matX(3) * 100, 2) +
+      pow(matX(4) * 100, 2) +
+      pow(matX(5) * 100, 2));
 
     if (deltaR < 0.05 && deltaT < 0.05) {
       return true; // converged
