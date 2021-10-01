@@ -285,6 +285,21 @@ private:
   std::deque<nav_msgs::Odometry> gpsQueue;
 };
 
+void publishPath(
+  const ros::Publisher & publisher,
+  const std::string & frame_id, const ros::Time & timestamp,
+  const std::vector<geometry_msgs::PoseStamped> & poses)
+{
+  if (publisher.getNumSubscribers() == 0) {
+    return;
+  }
+  nav_msgs::Path path;
+  path.header.frame_id = frame_id;
+  path.header.stamp = timestamp;
+  path.poses = poses;
+  publisher.publish(path);
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -1129,14 +1144,7 @@ public:
         pubCloudRegisteredRaw, transform(cloudOut, posevec),
         timestamp, odometryFrame);
     }
-    // publish path
-    if (pubPath.getNumSubscribers() != 0) {
-      nav_msgs::Path path;
-      path.poses = path_poses_;
-      path.header.stamp = timestamp;
-      path.header.frame_id = odometryFrame;
-      pubPath.publish(path);
-    }
+    publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
 };
 
