@@ -321,8 +321,6 @@ public:
 
   const ros::Publisher pubRecentKeyFrames;
   const ros::Publisher pubRecentKeyFrame;
-  const ros::Publisher pubCloudRegisteredRaw;
-
   const ros::Subscriber subCloud;
   const ros::Subscriber subGPS;
 
@@ -378,8 +376,6 @@ public:
     pubRecentKeyFrames(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1)),
     pubRecentKeyFrame(
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1)),
-    pubCloudRegisteredRaw(
-      nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered_raw", 1)),
     subCloud(nh.subscribe<lio_sam::cloud_info>(
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
@@ -1135,14 +1131,6 @@ public:
       cloudOut += transform(laserCloudCornerLastDS, posevec);
       cloudOut += transform(laserCloudSurfLastDS, posevec);
       publishCloud(pubRecentKeyFrame, cloudOut, timestamp, odometryFrame);
-    }
-    // publish registered high-res raw cloud
-    if (pubCloudRegisteredRaw.getNumSubscribers() != 0) {
-      const pcl::PointCloud<PointType> cloudOut =
-        getPointCloud<PointType>(cloudInfo.cloud_deskewed);
-      publishCloud(
-        pubCloudRegisteredRaw, transform(cloudOut, posevec),
-        timestamp, odometryFrame);
     }
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
