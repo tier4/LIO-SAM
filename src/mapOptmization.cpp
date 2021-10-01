@@ -440,75 +440,6 @@ public:
     }
   }
 
-  void visualizeGlobalMapThread()
-  {
-    ros::Rate rate(0.2);
-    while (ros::ok()) {
-      rate.sleep();
-      publishGlobalMap();
-    }
-  }
-
-  void publishGlobalMap()
-  {
-    if (pubLaserCloudSurround.getNumSubscribers() == 0) {
-      return;
-    }
-
-    if (cloudKeyPoses3D.points.empty()) {
-      return;
-    }
-
-    pcl::KdTreeFLANN<PointType> kdtreeGlobalMap;
-
-    // kd-tree to find near key frames to visualize
-    std::vector<int> pointSearchIndGlobalMap;
-    std::vector<float> pointSearchSqDisGlobalMap;
-    // search near key frames to visualize
-    mtx.lock();
-    kdtreeGlobalMap.setInputCloud(cloudKeyPoses3D.makeShared());
-    kdtreeGlobalMap.radiusSearch(
-      cloudKeyPoses3D.back(),
-      globalMapVisualizationSearchRadius, pointSearchIndGlobalMap,
-      pointSearchSqDisGlobalMap, 0);
-    mtx.unlock();
-
-    pcl::PointCloud<PointType>::Ptr globalMapKeyPoses(new pcl::PointCloud<PointType>());
-    for (unsigned int i = 0; i < pointSearchIndGlobalMap.size(); ++i) {
-      globalMapKeyPoses->push_back(cloudKeyPoses3D.points[pointSearchIndGlobalMap[i]]);
-    }
-    // downsample near selected key frames
-    pcl::PointCloud<PointType> globalMapKeyPosesDS =
-      downsample(globalMapKeyPoses, globalMapVisualizationPoseDensity);
-    for (auto & pt : globalMapKeyPosesDS.points) {
-      kdtreeGlobalMap.nearestKSearch(
-        pt, 1, pointSearchIndGlobalMap,
-        pointSearchSqDisGlobalMap);
-      pt.intensity = cloudKeyPoses3D.points[pointSearchIndGlobalMap[0]].intensity;
-    }
-
-    pcl::PointCloud<PointType>::Ptr global_map(new pcl::PointCloud<PointType>());
-
-    // extract visualized and downsampled key frames
-    for (unsigned int i = 0; i < globalMapKeyPosesDS.size(); ++i) {
-      const double distance =
-        (getXYZ(globalMapKeyPosesDS.points[i]) - getXYZ(cloudKeyPoses3D.back())).norm();
-      if (distance > globalMapVisualizationSearchRadius) {
-        continue;
-      }
-      int index = static_cast<int>(globalMapKeyPosesDS.points[i].intensity);
-      *global_map +=
-        transform(corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
-      *global_map +=
-        transform(surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
-    }
-    // downsample visualized points
-    // for global map visualization
-    const pcl::PointCloud<PointType> downsampled =
-      downsample(global_map, globalMapVisualizationLeafSize);
-    publishCloud(pubLaserCloudSurround, downsampled, timestamp, odometryFrame);
-  }
-
   void updateInitialGuess()
   {
     // save current transformation before any processing
@@ -1216,12 +1147,7 @@ int main(int argc, char ** argv)
 
   ROS_INFO("\033[1;32m----> Map Optimization Started.\033[0m");
 
-  std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread,
-    &MO);
-
   ros::spin();
-
-  visualizeMapThread.join();
 
   return 0;
 }
