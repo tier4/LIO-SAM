@@ -204,6 +204,66 @@ void addOdomFactor(
   initialEstimate.insert(size, dst);
 }
 
+std::optional<gtsam::GPSFactor> makeGPSFactor(
+  const pcl::PointCloud<PointType> & cloudKeyPoses3D,
+  const float gpsCovThreshold, const bool useGpsElevation,
+  const Vector6d & posevec, const Eigen::Vector3d & last_gps_position,
+  const ros::Time & timestamp,
+  std::deque<nav_msgs::Odometry> & gpsQueue)
+{
+
+  if (gpsQueue.empty()) {
+    return std::nullopt;
+  }
+
+  const double distance =
+    (getXYZ(cloudKeyPoses3D.front()) - getXYZ(cloudKeyPoses3D.back())).norm();
+  if (distance < 5.0) {
+    return std::nullopt;
+  }
+
+  dropBefore(timestamp.toSec() - 0.2, gpsQueue);
+
+  if (timeInSec(gpsQueue.front().header) > timestamp.toSec() + 0.2) {
+    // message too new
+    return std::nullopt;
+  }
+
+  while (!gpsQueue.empty()) {
+    const geometry_msgs::PoseWithCovariance pose = gpsQueue.front().pose;
+    gpsQueue.pop_front();
+
+    // GPS too noisy, skip
+    const Eigen::Map<const RowMajorMatrixXd> covariance(pose.covariance.data(), 6, 6);
+    Eigen::Vector3d position_variances = covariance.diagonal().head(3);
+
+    if (position_variances(0) > gpsCovThreshold || position_variances(1) > gpsCovThreshold) {
+      continue;
+    }
+
+    Eigen::Vector3d gps_position = pointToEigen(pose.pose.position);
+    if (!useGpsElevation) {
+      gps_position(2) = posevec(5);
+      position_variances(2) = 0.01;
+    }
+
+    // GPS not properly initialized (0,0,0)
+    if (abs(gps_position(0)) < 1e-6 && abs(gps_position(1)) < 1e-6) {
+      continue;
+    }
+
+    // Add GPS every a few meters
+    if ((gps_position - last_gps_position).norm() < 5.0) {
+      continue;
+    }
+
+    const auto gps_noise = noiseModel::Diagonal::Variances(position_variances.cwiseMax(1.0f));
+    return std::make_optional<gtsam::GPSFactor>(cloudKeyPoses3D.size(), gps_position, gps_noise);
+  }
+
+  return std::nullopt;
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -899,60 +959,18 @@ public:
 
   void addGPSFactor()
   {
-    if (gpsQueue.empty()) {
+    const std::optional<gtsam::GPSFactor> gps_factor = makeGPSFactor(
+      cloudKeyPoses3D, gpsCovThreshold, useGpsElevation,
+      posevec, last_gps_position, timestamp, gpsQueue
+    );
+
+    if (!gps_factor.has_value()) {
       return;
     }
 
-    const double distance =
-      (getXYZ(cloudKeyPoses3D.front()) - getXYZ(cloudKeyPoses3D.back())).norm();
-    if (distance < 5.0) {
-      return;
-    }
-
-    dropBefore(timestamp.toSec() - 0.2, gpsQueue);
-
-    if (timeInSec(gpsQueue.front().header) > timestamp.toSec() + 0.2) {
-      // message too new
-      return;
-    }
-
-    while (!gpsQueue.empty()) {
-      const geometry_msgs::PoseWithCovariance pose = gpsQueue.front().pose;
-      gpsQueue.pop_front();
-
-      // GPS too noisy, skip
-      const Eigen::Map<const RowMajorMatrixXd> covariance(pose.covariance.data(), 6, 6);
-      Eigen::Vector3d position_variances = covariance.diagonal().head(3);
-
-      if (position_variances(0) > gpsCovThreshold || position_variances(1) > gpsCovThreshold) {
-        continue;
-      }
-
-      Eigen::Vector3d gps_position = pointToEigen(pose.pose.position);
-      if (!useGpsElevation) {
-        gps_position(2) = posevec(5);
-        position_variances(2) = 0.01;
-      }
-
-      // GPS not properly initialized (0,0,0)
-      if (abs(gps_position(0)) < 1e-6 && abs(gps_position(1)) < 1e-6) {
-        continue;
-      }
-
-      // Add GPS every a few meters
-      if ((gps_position - last_gps_position).norm() < 5.0) {
-        continue;
-      }
-
-      last_gps_position = gps_position;
-
-      const auto gps_noise = noiseModel::Diagonal::Variances(position_variances.cwiseMax(1.0f));
-      gtsam::GPSFactor gps_factor(cloudKeyPoses3D.size(), gps_position, gps_noise);
-      gtSAMgraph.add(gps_factor);
-
-      aLoopIsClosed = true;
-      return;
-    }
+    gtSAMgraph.add(gps_factor.value());
+    last_gps_position = gps_factor.value().measurementIn();
+    aLoopIsClosed = true;
   }
 
   void saveKeyFramesAndFactor(

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(lio_sam)
 
 set(CMAKE_BUILD_TYPE "Debug")
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-O3 -Wall -g -pthread")
 
 find_package(catkin REQUIRED COMPONENTS
