@@ -311,6 +311,8 @@ public:
   const ros::Subscriber subCloud;
   const ros::Subscriber subGPS;
 
+  Vector6d posevec;
+
   std::shared_ptr<gtsam::ISAM2> isam;
 
   GPSFactor gps_factor_;
@@ -330,8 +332,6 @@ public:
   pcl::KdTreeFLANN<PointType> kdtreeSurfFromMap;
 
   ros::Time timestamp;
-
-  Vector6d posevec;
 
   std::mutex mtx;
 
