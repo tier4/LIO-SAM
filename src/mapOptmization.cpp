@@ -174,26 +174,27 @@ bool validatePlane(
   return true;
 }
 
-void addOdomFactor(
-  const pcl::PointCloud<StampedPose> & cloudKeyPoses6D,
-  const Vector6d & posevec,
-  gtsam::NonlinearFactorGraph & gtSAMgraph)
+gtsam::PriorFactor<gtsam::Pose3> makePriorFactor(const Vector6d & posevec)
 {
-  if (cloudKeyPoses6D.empty()) {
-    // rad*rad, meter*meter
-    const Vector6d v = (Vector6d() << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
-    const auto priorNoise = gtsam::noiseModel::Diagonal::Variances(v);
-    gtSAMgraph.add(gtsam::PriorFactor<gtsam::Pose3>(0, posevecToGtsamPose(posevec), priorNoise));
-    return;
-  }
+  // rad*rad, meter*meter
+  const gtsam::Pose3 dst = posevecToGtsamPose(posevec);
+  const Vector6d v = (Vector6d() << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
+  const auto noise = gtsam::noiseModel::Diagonal::Variances(v);
+  return gtsam::PriorFactor<gtsam::Pose3>(0, dst, noise);
+}
 
-  const Vector6d v = (Vector6d() << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
-  const auto odometryNoise = gtsam::noiseModel::Diagonal::Variances(v);
+gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
+  const pcl::PointCloud<StampedPose> & cloudKeyPoses6D, const Vector6d & posevec)
+{
   const gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
   const gtsam::Pose3 dst = posevecToGtsamPose(posevec);
+
+  const Vector6d v = (Vector6d() << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
+  const auto noise = gtsam::noiseModel::Diagonal::Variances(v);
+
   const unsigned int size = cloudKeyPoses6D.size();
-  gtSAMgraph.add(
-    gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), odometryNoise));
+
+  return gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), noise);
 }
 
 std::optional<gtsam::GPSFactor> makeGPSFactor(
@@ -932,8 +933,11 @@ public:
       }
     }
 
-    // odom factor
-    addOdomFactor(cloudKeyPoses6D, posevec, gtSAMgraph);
+    if (cloudKeyPoses6D.empty()) {
+      gtSAMgraph.add(makePriorFactor(posevec));
+    } else {
+      gtSAMgraph.add(makeOdomFactor(cloudKeyPoses6D, posevec));
+    }
 
     if (
       !cloudKeyPoses3D.points.empty() &&
