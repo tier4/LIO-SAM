@@ -21,12 +21,10 @@
 
 #include <gtsam/nonlinear/ISAM2.h>
 
-using namespace gtsam;
-
-using symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
-using symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
-using symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
-using symbol_shorthand::G; // GPS pose
+using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
+using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
+using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
+using gtsam::symbol_shorthand::G; // GPS pose
 
 /*
     * A point cloud type that has 6D pose info ([x,y,z,roll,pitch,yaw] intensity is time stamp)
@@ -183,24 +181,25 @@ bool validatePlane(
 void addOdomFactor(
   const pcl::PointCloud<PointXYZIRPYT> & cloudKeyPoses6D,
   const Vector6d & posevec,
-  NonlinearFactorGraph & gtSAMgraph,
-  Values & initialEstimate)
+  gtsam::NonlinearFactorGraph & gtSAMgraph,
+  gtsam::Values & initialEstimate)
 {
   if (cloudKeyPoses6D.empty()) {
     // rad*rad, meter*meter
-    const Eigen::MatrixXd v = (Vector(6) << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
-    const noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Variances(v);
-    gtSAMgraph.add(PriorFactor<Pose3>(0, posevecToGtsamPose(posevec), priorNoise));
+    const Vector6d v = (Vector6d() << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
+    const auto priorNoise = gtsam::noiseModel::Diagonal::Variances(v);
+    gtSAMgraph.add(gtsam::PriorFactor<gtsam::Pose3>(0, posevecToGtsamPose(posevec), priorNoise));
     initialEstimate.insert(0, posevecToGtsamPose(posevec));
     return;
   }
 
-  const Eigen::MatrixXd v = (Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
-  const noiseModel::Diagonal::shared_ptr odometryNoise = noiseModel::Diagonal::Variances(v);
+  const Vector6d v = (Vector6d() << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
+  const auto odometryNoise = gtsam::noiseModel::Diagonal::Variances(v);
   gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
   gtsam::Pose3 dst = posevecToGtsamPose(posevec);
   const unsigned int size = cloudKeyPoses6D.size();
-  gtSAMgraph.add(BetweenFactor<Pose3>(size - 1, size, src.between(dst), odometryNoise));
+  gtSAMgraph.add(
+    gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), odometryNoise));
   initialEstimate.insert(size, dst);
 }
 
@@ -257,7 +256,9 @@ std::optional<gtsam::GPSFactor> makeGPSFactor(
       continue;
     }
 
-    const auto gps_noise = noiseModel::Diagonal::Variances(position_variances.cwiseMax(1.0f));
+    const auto gps_noise = gtsam::noiseModel::Diagonal::Variances(
+      position_variances.cwiseMax(1.0f)
+    );
     return std::make_optional<gtsam::GPSFactor>(cloudKeyPoses3D.size(), gps_position, gps_noise);
   }
 
@@ -274,7 +275,7 @@ class mapOptimization : public ParamServer
 
 public:
   // gtsam
-  NonlinearFactorGraph gtSAMgraph;
+  gtsam::NonlinearFactorGraph gtSAMgraph;
   Eigen::MatrixXd poseCovariance;
 
   const ros::Publisher pubLaserCloudSurround;
@@ -290,7 +291,7 @@ public:
   const ros::Subscriber subCloud;
   const ros::Subscriber subGPS;
 
-  std::shared_ptr<ISAM2> isam;
+  std::shared_ptr<gtsam::ISAM2> isam;
 
   std::deque<nav_msgs::Odometry> gpsQueue;
   lio_sam::cloud_info cloudInfo;
@@ -351,7 +352,8 @@ public:
         gpsTopic, 200, &mapOptimization::gpsHandler, this,
         ros::TransportHints().tcpNoDelay())),
     posevec(Vector6d::Zero()),
-    isam(std::make_shared<ISAM2>(gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
+    isam(std::make_shared<gtsam::ISAM2>(
+        gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false)
   {
@@ -407,7 +409,7 @@ public:
 
       scan2MapOptimization(laserCloudCornerLastDS, laserCloudSurfLastDS);
 
-      Values isamCurrentEstimate;
+      gtsam::Values isamCurrentEstimate;
       saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, isamCurrentEstimate);
 
       correctPoses(isamCurrentEstimate, corner_surface_dict);
@@ -976,7 +978,7 @@ public:
   void saveKeyFramesAndFactor(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-    Values & isamCurrentEstimate)
+    gtsam::Values & isamCurrentEstimate)
   {
     if (!cloudKeyPoses3D.points.empty()) {
       Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
@@ -993,7 +995,7 @@ public:
       }
     }
 
-    Values initialEstimate;
+    gtsam::Values initialEstimate;
 
     // odom factor
     addOdomFactor(cloudKeyPoses6D, posevec, gtSAMgraph, initialEstimate);
@@ -1023,10 +1025,10 @@ public:
     gtSAMgraph.resize(0);
 
     //save key poses
-    Pose3 latestEstimate;
+    gtsam::Pose3 latestEstimate;
 
     isamCurrentEstimate = isam->calculateEstimate();
-    latestEstimate = isamCurrentEstimate.at<Pose3>(isamCurrentEstimate.size() - 1);
+    latestEstimate = isamCurrentEstimate.at<gtsam::Pose3>(isamCurrentEstimate.size() - 1);
     // std::cout << "****************************************************" << std::endl;
     // isamCurrentEstimate.print("Current estimate: ");
 
@@ -1061,7 +1063,7 @@ public:
   }
 
   void correctPoses(
-    const Values & isamCurrentEstimate, CornerSurfaceDict & corner_surface_dict)
+    const gtsam::Values & isamCurrentEstimate, CornerSurfaceDict & corner_surface_dict)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
@@ -1074,8 +1076,8 @@ public:
       globalPath.poses.clear();
       // update key poses
       for (unsigned int i = 0; i < isamCurrentEstimate.size(); ++i) {
-        const Eigen::Vector3d xyz = isamCurrentEstimate.at<Pose3>(i).translation();
-        const Eigen::Vector3d rpy = isamCurrentEstimate.at<Pose3>(i).rotation().rpy();
+        const Eigen::Vector3d xyz = isamCurrentEstimate.at<gtsam::Pose3>(i).translation();
+        const Eigen::Vector3d rpy = isamCurrentEstimate.at<gtsam::Pose3>(i).rotation().rpy();
 
         const auto point3d = cloudKeyPoses3D.points[i];
         cloudKeyPoses3D.points[i] = makePoint(xyz, point3d.intensity);
