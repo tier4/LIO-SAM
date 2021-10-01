@@ -496,7 +496,7 @@ public:
       if (distance > globalMapVisualizationSearchRadius) {
         continue;
       }
-      int index = (int)globalMapKeyPosesDS.points[i].intensity;
+      int index = static_cast<int>(globalMapKeyPosesDS.points[i].intensity);
       *global_map +=
         transform(corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
       *global_map +=
@@ -609,7 +609,7 @@ public:
         continue;
       }
 
-      int index = (int)downsampled.points[i].intensity;
+      int index = static_cast<int>(downsampled.points[i].intensity);
       if (corner_surface_dict.find(index) != corner_surface_dict.end()) {
         // transformed cloud available
         *corner += corner_surface_dict[index].first;
@@ -931,8 +931,8 @@ public:
     }
 
     if (
-      edgeFeatureMinValidNum >= laserCloudCornerLastDS.size() ||
-      surfFeatureMinValidNum >= laserCloudSurfLastDS.size())
+      edgeFeatureMinValidNum >= static_cast<int>(laserCloudCornerLastDS.size()) ||
+      surfFeatureMinValidNum >= static_cast<int>(laserCloudSurfLastDS.size()))
     {
       ROS_WARN(
         "Not enough features! Only %d edge and %d planar features available.",
