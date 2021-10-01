@@ -339,7 +339,7 @@ public:
 
   bool aLoopIsClosed = false;
 
-  nav_msgs::Path globalPath;
+  std::vector<geometry_msgs::PoseStamped> path_poses_;
 
   Eigen::Affine3d incrementalOdometryAffineFront;
   Eigen::Affine3d incrementalOdometryAffineBack;
@@ -1005,7 +1005,7 @@ public:
     pose_stamped.header.stamp = ros::Time().fromSec(pose6dof.time);
     pose_stamped.header.frame_id = odometryFrame;
     pose_stamped.pose = makePose(xyz, rpy);
-    globalPath.poses.push_back(pose_stamped);
+    path_poses_.push_back(pose_stamped);
   }
 
   void correctPoses(
@@ -1019,7 +1019,7 @@ public:
       // clear map cache
       corner_surface_dict.clear();
       // clear path
-      globalPath.poses.clear();
+      path_poses_.clear();
       // update key poses
       for (unsigned int i = 0; i < isamCurrentEstimate.size(); ++i) {
         const Eigen::Vector3d xyz = isamCurrentEstimate.at<gtsam::Pose3>(i).translation();
@@ -1036,7 +1036,7 @@ public:
         pose_stamped.header.frame_id = odometryFrame;
         pose_stamped.pose = makePose(xyz, rpy);
 
-        globalPath.poses.push_back(pose_stamped);
+        path_poses_.push_back(pose_stamped);
       }
 
       aLoopIsClosed = false;
@@ -1103,7 +1103,7 @@ public:
 
   void publishFrames(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
-    const pcl::PointCloud<PointType> & laserCloudSurfLastDS)
+    const pcl::PointCloud<PointType> & laserCloudSurfLastDS) const
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
@@ -1131,9 +1131,11 @@ public:
     }
     // publish path
     if (pubPath.getNumSubscribers() != 0) {
-      globalPath.header.stamp = timestamp;
-      globalPath.header.frame_id = odometryFrame;
-      pubPath.publish(globalPath);
+      nav_msgs::Path path;
+      path.poses = path_poses_;
+      path.header.stamp = timestamp;
+      path.header.frame_id = odometryFrame;
+      pubPath.publish(path);
     }
   }
 };
