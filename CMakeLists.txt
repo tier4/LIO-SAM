@@ -62,8 +62,10 @@ catkin_package(
 )
 
 # include directories
+include_directories(include)
+
 include_directories(
-	include
+  SYSTEM
 	${catkin_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
