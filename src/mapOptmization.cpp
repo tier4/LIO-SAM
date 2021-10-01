@@ -265,6 +265,30 @@ std::optional<gtsam::GPSFactor> makeGPSFactor(
   return std::nullopt;
 }
 
+class GPSFactor
+{
+public:
+  void handler(const nav_msgs::Odometry::ConstPtr & gpsMsg)
+  {
+    gpsQueue.push_back(*gpsMsg);
+  }
+
+  std::optional<gtsam::GPSFactor> make(
+    const pcl::PointCloud<PointType> & cloudKeyPoses3D,
+    const float gpsCovThreshold, const bool useGpsElevation,
+    const Vector6d & posevec, const Eigen::Vector3d & last_gps_position,
+    const ros::Time & timestamp)
+  {
+    return makeGPSFactor(
+      cloudKeyPoses3D, gpsCovThreshold, useGpsElevation,
+      posevec, last_gps_position, timestamp, gpsQueue
+    );
+  }
+
+private:
+  std::deque<nav_msgs::Odometry> gpsQueue;
+};
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -293,7 +317,7 @@ public:
 
   std::shared_ptr<gtsam::ISAM2> isam;
 
-  std::deque<nav_msgs::Odometry> gpsQueue;
+  GPSFactor gps_factor_;
   lio_sam::cloud_info cloudInfo;
 
   std::vector<pcl::PointCloud<PointType>> corner_cloud;
@@ -349,7 +373,7 @@ public:
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
     subGPS(nh.subscribe<nav_msgs::Odometry>(
-        gpsTopic, 200, &mapOptimization::gpsHandler, this,
+        gpsTopic, 200, &GPSFactor::handler, &gps_factor_,
         ros::TransportHints().tcpNoDelay())),
     posevec(Vector6d::Zero()),
     isam(std::make_shared<gtsam::ISAM2>(
@@ -418,11 +442,6 @@ public:
 
       publishFrames(laserCloudCornerLastDS, laserCloudSurfLastDS);
     }
-  }
-
-  void gpsHandler(const nav_msgs::Odometry::ConstPtr & gpsMsg)
-  {
-    gpsQueue.push_back(*gpsMsg);
   }
 
   void visualizeGlobalMapThread()
@@ -961,9 +980,9 @@ public:
 
   void addGPSFactor()
   {
-    const std::optional<gtsam::GPSFactor> gps_factor = makeGPSFactor(
+    const std::optional<gtsam::GPSFactor> gps_factor = gps_factor_.make(
       cloudKeyPoses3D, gpsCovThreshold, useGpsElevation,
-      posevec, last_gps_position, timestamp, gpsQueue
+      posevec, last_gps_position, timestamp
     );
 
     if (!gps_factor.has_value()) {
