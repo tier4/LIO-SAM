@@ -348,9 +348,8 @@ public:
 
   std::mutex mtx;
 
-  bool isDegenerate = false;
-
-  bool aLoopIsClosed = false;
+  bool isDegenerate;
+  bool aLoopIsClosed;
 
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
@@ -385,6 +384,8 @@ public:
     posevec(Vector6d::Zero()),
     isam(std::make_shared<gtsam::ISAM2>(
         gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
+    isDegenerate(false),
+    aLoopIsClosed(false),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false)
   {
