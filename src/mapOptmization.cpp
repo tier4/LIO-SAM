@@ -177,26 +177,23 @@ bool validatePlane(
 void addOdomFactor(
   const pcl::PointCloud<StampedPose> & cloudKeyPoses6D,
   const Vector6d & posevec,
-  gtsam::NonlinearFactorGraph & gtSAMgraph,
-  gtsam::Values & initialEstimate)
+  gtsam::NonlinearFactorGraph & gtSAMgraph)
 {
   if (cloudKeyPoses6D.empty()) {
     // rad*rad, meter*meter
     const Vector6d v = (Vector6d() << 1e-2, 1e-2, M_PI * M_PI, 1e8, 1e8, 1e8).finished();
     const auto priorNoise = gtsam::noiseModel::Diagonal::Variances(v);
     gtSAMgraph.add(gtsam::PriorFactor<gtsam::Pose3>(0, posevecToGtsamPose(posevec), priorNoise));
-    initialEstimate.insert(0, posevecToGtsamPose(posevec));
     return;
   }
 
   const Vector6d v = (Vector6d() << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
   const auto odometryNoise = gtsam::noiseModel::Diagonal::Variances(v);
-  gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
-  gtsam::Pose3 dst = posevecToGtsamPose(posevec);
+  const gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
+  const gtsam::Pose3 dst = posevecToGtsamPose(posevec);
   const unsigned int size = cloudKeyPoses6D.size();
   gtSAMgraph.add(
     gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), odometryNoise));
-  initialEstimate.insert(size, dst);
 }
 
 std::optional<gtsam::GPSFactor> makeGPSFactor(
@@ -935,10 +932,8 @@ public:
       }
     }
 
-    gtsam::Values initialEstimate;
-
     // odom factor
-    addOdomFactor(cloudKeyPoses6D, posevec, gtSAMgraph, initialEstimate);
+    addOdomFactor(cloudKeyPoses6D, posevec, gtSAMgraph);
 
     if (
       !cloudKeyPoses3D.points.empty() &&
@@ -951,7 +946,9 @@ public:
     // gtSAMgraph.print("GTSAM Graph:\n");
 
     // update iSAM
-    isam->update(gtSAMgraph, initialEstimate);
+    gtsam::Values initial;
+    initial.insert(cloudKeyPoses6D.size(), posevecToGtsamPose(posevec));
+    isam->update(gtSAMgraph, initial);
     isam->update();
 
     if (aLoopIsClosed) {
