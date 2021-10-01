@@ -822,14 +822,7 @@ public:
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
       const Eigen::VectorXd eigenvalues = es.eigenvalues();
 
-      isDegenerate = false;
-      for (int i = 5; i >= 0; i--) {
-        if (eigenvalues(i) < 100.0) {
-          isDegenerate = true;
-        } else {
-          break;
-        }
-      }
+      isDegenerate = (eigenvalues.array() < 100.0).any();
     }
 
     if (!isDegenerate) {
