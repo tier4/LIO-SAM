@@ -461,10 +461,7 @@ public:
 
       scan2MapOptimization(laserCloudCornerLastDS, laserCloudSurfLastDS, laserCloudSurfFromMapDS);
 
-      gtsam::Values isamCurrentEstimate;
-      saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, isamCurrentEstimate);
-
-      correctPoses(isamCurrentEstimate, corner_surface_dict);
+      saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, corner_surface_dict);
 
       publishOdometry(incrementalOdometryAffineFront);
 
@@ -919,7 +916,7 @@ public:
   void saveKeyFramesAndFactor(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-    gtsam::Values & isamCurrentEstimate)
+    CornerSurfaceDict & corner_surface_dict)
   {
     if (!cloudKeyPoses3D.points.empty()) {
       Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
@@ -978,7 +975,7 @@ public:
     //save key poses
     gtsam::Pose3 latestEstimate;
 
-    isamCurrentEstimate = isam->calculateEstimate();
+    gtsam::Values isamCurrentEstimate = isam->calculateEstimate();
     latestEstimate = isamCurrentEstimate.at<gtsam::Pose3>(isamCurrentEstimate.size() - 1);
     // std::cout << "****************************************************" << std::endl;
     // isamCurrentEstimate.print("Current estimate: ");
@@ -1011,15 +1008,12 @@ public:
     pose_stamped.header.frame_id = odometryFrame;
     pose_stamped.pose = makePose(xyz, rpy);
     path_poses_.push_back(pose_stamped);
-  }
 
-  void correctPoses(
-    const gtsam::Values & isamCurrentEstimate, CornerSurfaceDict & corner_surface_dict)
-  {
     if (cloudKeyPoses3D.points.empty()) {
       return;
     }
 
+    // correct poses
     if (aLoopIsClosed) {
       // clear map cache
       corner_surface_dict.clear();
