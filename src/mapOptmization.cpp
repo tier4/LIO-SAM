@@ -159,13 +159,13 @@ PointType pointAssociateToMap(
 bool validatePlane(
   const Points<PointType>::type & points,
   const std::vector<int> & indices,
-  const Eigen::Vector4d & x)
+  const Eigen::Vector4d & y)
 {
   for (int j = 0; j < 5; j++) {
     const Eigen::Vector3d p = getXYZ(points.at(indices[j]));
     const Eigen::Vector4d q = toHomogeneous(p);
 
-    if (fabs(x.transpose() * q) > 0.2) {
+    if (fabs(y.transpose() * q) > 0.2) {
       return false;
     }
   }
@@ -724,17 +724,17 @@ public:
         A.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
       }
 
-      const Eigen::Vector3d matX0 = A.colPivHouseholderQr().solve(b);
+      const Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
 
-      const Eigen::Vector4d x = toHomogeneous(matX0) / matX0.norm();
+      const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
 
-      if (!validatePlane(laserCloudSurfFromMapDS->points, indices, x)) {
+      if (!validatePlane(laserCloudSurfFromMapDS->points, indices, y)) {
         continue;
       }
 
       const Eigen::Vector3d p = getXYZ(pointSel);
       const Eigen::Vector4d q = toHomogeneous(p);
-      const float pd2 = x.transpose() * q;
+      const float pd2 = y.transpose() * q;
       const float s = 1 - 0.9 * fabs(pd2) / sqrt(p.norm());
 
       if (s <= 0.1) {
@@ -742,7 +742,7 @@ public:
       }
 
       laserCloudOriSurfVec[i] = pointOri;
-      coeffSelSurfVec[i] = makePoint(s * x.head(3), s * pd2);
+      coeffSelSurfVec[i] = makePoint((s / x.norm()) * x, s * pd2);
       laserCloudOriSurfFlag[i] = true;
     }
 
