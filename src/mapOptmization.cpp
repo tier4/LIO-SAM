@@ -283,6 +283,27 @@ private:
   std::deque<nav_msgs::Odometry> gpsQueue;
 };
 
+void publishDownsampledCloud(
+  const ros::Publisher & publisher,
+  const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
+  const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
+  const std::string & frame_id, const ros::Time & timestamp,
+  const Vector6d & posevec)
+{
+  // publish registered key frame
+  if (publisher.getNumSubscribers() == 0) {
+    return;
+  }
+
+  pcl::PointCloud<PointType> cloudOut;
+  cloudOut += transform(laserCloudCornerLastDS, posevec);
+  cloudOut += transform(laserCloudSurfLastDS, posevec);
+  sensor_msgs::PointCloud2 msg = toRosMsg(cloudOut);
+  msg.header.stamp = timestamp;
+  msg.header.frame_id = frame_id;
+  publisher.publish(msg);
+}
+
 void publishPath(
   const ros::Publisher & publisher,
   const std::string & frame_id, const ros::Time & timestamp,
@@ -1107,13 +1128,9 @@ public:
     publishCloud(
       pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp,
       odometryFrame);
-    // publish registered key frame
-    if (pubRecentKeyFrame.getNumSubscribers() != 0) {
-      pcl::PointCloud<PointType> cloudOut;
-      cloudOut += transform(laserCloudCornerLastDS, posevec);
-      cloudOut += transform(laserCloudSurfLastDS, posevec);
-      publishCloud(pubRecentKeyFrame, cloudOut, timestamp, odometryFrame);
-    }
+    publishDownsampledCloud(
+      pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
+      odometryFrame, timestamp, posevec);
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
 };

@@ -238,6 +238,13 @@ public:
   }
 };
 
+sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud < PointType > & pointcloud)
+{
+  sensor_msgs::PointCloud2 msg;
+  pcl::toROSMsg(pointcloud, msg);
+  return msg;
+}
+
 sensor_msgs::PointCloud2 publishCloud(
   const ros::Publisher & thisPub,
   const pcl::PointCloud < PointType > & thisCloud,
