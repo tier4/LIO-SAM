@@ -157,12 +157,13 @@ PointType pointAssociateToMap(
 }
 
 bool validatePlane(
-  const Points<PointType>::type & points,
-  const std::vector<int> & indices,
-  const Eigen::Vector4d & y)
+  const Eigen::Matrix<double, 5, 3> & A,
+  const Eigen::Vector3d & x)
 {
+  const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
+
   for (int j = 0; j < 5; j++) {
-    const Eigen::Vector3d p = getXYZ(points.at(indices[j]));
+    const Eigen::Vector3d p = A.row(j);
     const Eigen::Vector4d q = toHomogeneous(p);
 
     if (fabs(y.transpose() * q) > 0.2) {
@@ -726,12 +727,11 @@ public:
 
       const Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
 
-      const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
-
-      if (!validatePlane(laserCloudSurfFromMapDS->points, indices, y)) {
+      if (!validatePlane(A, x)) {
         continue;
       }
 
+      const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
       const Eigen::Vector3d p = getXYZ(pointSel);
       const Eigen::Vector4d q = toHomogeneous(p);
       const float pd2 = y.transpose() * q;
