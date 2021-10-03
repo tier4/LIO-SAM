@@ -713,21 +713,18 @@ public:
       const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, squared_distances);
 
-      Eigen::Matrix<double, 5, 3> matA0;
-      Eigen::Matrix<double, 5, 1> matB0;
-
-      matA0.setZero();
-      matB0.fill(-1);
-
       if (squared_distances[4] >= 1.0) {
         continue;
       }
 
+      Eigen::Matrix<double, 5, 3> A = Eigen::Matrix<double, 5, 3>::Zero();
+      const Eigen::Matrix<double, 5, 1> b = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
+
       for (int j = 0; j < 5; j++) {
-        matA0.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
+        A.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
       }
 
-      const Eigen::Vector3d matX0 = matA0.colPivHouseholderQr().solve(matB0);
+      const Eigen::Vector3d matX0 = A.colPivHouseholderQr().solve(b);
 
       const Eigen::Vector4d x = toHomogeneous(matX0) / matX0.norm();
 
