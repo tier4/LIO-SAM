@@ -918,22 +918,6 @@ public:
     incrementalOdometryAffineBack = getTransformation(posevec);
   }
 
-  void addGPSFactor()
-  {
-    const std::optional<gtsam::GPSFactor> gps_factor = gps_factor_.make(
-      cloudKeyPoses3D, gpsCovThreshold, useGpsElevation,
-      posevec, last_gps_position, timestamp
-    );
-
-    if (!gps_factor.has_value()) {
-      return;
-    }
-
-    gtSAMgraph.add(gps_factor.value());
-    last_gps_position = gps_factor.value().measurementIn();
-    aLoopIsClosed = true;
-  }
-
   void saveKeyFramesAndFactor(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
@@ -962,7 +946,16 @@ public:
       !cloudKeyPoses3D.points.empty() &&
       (poseCovariance(3, 3) >= poseCovThreshold || poseCovariance(4, 4) >= poseCovThreshold))
     {
-      addGPSFactor();
+      const std::optional<gtsam::GPSFactor> gps_factor = gps_factor_.make(
+        cloudKeyPoses3D, gpsCovThreshold, useGpsElevation,
+        posevec, last_gps_position, timestamp
+      );
+
+      if (gps_factor.has_value()) {
+        gtSAMgraph.add(gps_factor.value());
+        last_gps_position = gps_factor.value().measurementIn();
+        aLoopIsClosed = true;
+      }
     }
 
     // std::cout << "****************************************************" << std::endl;
