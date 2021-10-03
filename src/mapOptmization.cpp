@@ -147,15 +147,6 @@ pcl::PointCloud<PointType> transform(
   return output;
 }
 
-PointType pointAssociateToMap(
-  const Eigen::Affine3d & transPointAssociateToMap,
-  const PointType & pi)
-{
-  const Eigen::Vector3d p(pi.x, pi.y, pi.z);
-  const Eigen::Vector3d q = transPointAssociateToMap * p;
-  return makePoint(q, pi.intensity);
-}
-
 bool validatePlane(
   const Eigen::Matrix<double, 5, 3> & A,
   const Eigen::Vector3d & x)
@@ -628,7 +619,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
   {
-    const Eigen::Affine3d transPointAssociateToMap = getTransformation(posevec);
+    const Eigen::Affine3d point_to_map = getTransformation(posevec);
     std::vector<PointType> laserCloudOriCornerVec(N_SCAN * Horizon_SCAN);
     std::vector<PointType> coeffSelCornerVec(N_SCAN * Horizon_SCAN);
     // corner point holder for parallel computation
@@ -640,8 +631,8 @@ public:
       std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
-      const PointType pointOri = laserCloudCornerLastDS.points[i];
-      const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
+      const PointType point = laserCloudCornerLastDS.points[i];
+      const PointType pointSel = makePoint(point_to_map * getXYZ(point), point.intensity);
       kdtreeCornerFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
@@ -701,7 +692,7 @@ public:
           const double s = 1 - 0.9 * fabs(ld2);
 
           if (s > 0.1) {
-            laserCloudOriCornerVec[i] = pointOri;
+            laserCloudOriCornerVec[i] = point;
             coeffSelCornerVec[i] = makePoint(s * v / (a012 * l12), s * ld2);
             laserCloudOriCornerFlag[i] = true;
           }
@@ -721,8 +712,8 @@ public:
       std::vector<int> indices;
       std::vector<float> squared_distances;
 
-      const PointType pointOri = laserCloudSurfLastDS.at(i);
-      const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
+      const PointType point = laserCloudSurfLastDS.at(i);
+      const PointType pointSel = makePoint(point_to_map * getXYZ(point), point.intensity);
       kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, squared_distances);
 
       if (squared_distances[4] >= 1.0) {
@@ -747,7 +738,7 @@ public:
         continue;
       }
 
-      laserCloudOriSurfVec[i] = pointOri;
+      laserCloudOriSurfVec[i] = point;
       coeffSelSurfVec[i] = makePoint((s / x.norm()) * x, s * pd2);
       laserCloudOriSurfFlag[i] = true;
     }
