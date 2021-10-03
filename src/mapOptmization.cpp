@@ -654,15 +654,11 @@ public:
 
         sa = sa / 5.0;
 
-        cv::Mat matA1(3, 3, CV_64F, cv::Scalar::all(0));
-        cv::eigen2cv(sa, matA1);
-        cv::Mat matD1(1, 3, CV_64F, cv::Scalar::all(0));
-        cv::Mat matV1(3, 3, CV_64F, cv::Scalar::all(0));
-        cv::eigen(matA1, matD1, matV1);
-        Eigen::Matrix3d v1;
-        cv::cv2eigen(matV1, v1);
+        const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(sa);
+        const Eigen::Vector3d d1 = solver.eigenvalues();
+        const Eigen::Matrix3d v1 = solver.eigenvectors();
 
-        if (matD1.at<float>(0, 0) > 3 * matD1.at<float>(0, 1)) {
+        if (d1(0) > 3 * d1(1)) {
           const Eigen::Vector3d p0 = getXYZ(pointSel);
           const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
           const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
