@@ -632,8 +632,9 @@ public:
       std::vector<float> pointSearchSqDis;
 
       const PointType point = laserCloudCornerLastDS.points[i];
-      const PointType pointSel = makePoint(point_to_map * getXYZ(point), point.intensity);
-      kdtreeCornerFromMap.nearestKSearch(pointSel, 5, indices, pointSearchSqDis);
+      const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
+      kdtreeCornerFromMap.nearestKSearch(
+        makePoint(map_point, point.intensity), 5, indices, pointSearchSqDis);
 
       if (pointSearchSqDis[4] < 1.0) {
         Eigen::Vector3d c = Eigen::Vector3d::Zero();
@@ -657,7 +658,7 @@ public:
         const Eigen::Matrix3d v1 = solver.eigenvectors();
 
         if (d1(0) > 3 * d1(1)) {
-          const Eigen::Vector3d p0 = getXYZ(pointSel);
+          const Eigen::Vector3d p0 = map_point;
           const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
           const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
 
@@ -713,8 +714,9 @@ public:
       std::vector<float> squared_distances;
 
       const PointType point = laserCloudSurfLastDS.at(i);
-      const PointType pointSel = makePoint(point_to_map * getXYZ(point), point.intensity);
-      kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, squared_distances);
+      const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
+      kdtreeSurfFromMap.nearestKSearch(
+        makePoint(map_point, point.intensity), 5, indices, squared_distances);
 
       if (squared_distances[4] >= 1.0) {
         continue;
@@ -729,10 +731,9 @@ public:
       }
 
       const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
-      const Eigen::Vector3d p = getXYZ(pointSel);
-      const Eigen::Vector4d q = toHomogeneous(p);
+      const Eigen::Vector4d q = toHomogeneous(map_point);
       const float pd2 = y.transpose() * q;
-      const float s = 1 - 0.9 * fabs(pd2) / sqrt(p.norm());
+      const float s = 1 - 0.9 * fabs(pd2) / sqrt(map_point.norm());
 
       if (s <= 0.1) {
         continue;
