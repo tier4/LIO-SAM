@@ -436,6 +436,11 @@ Eigen::Vector3d getXYZ(const PointType & point)
   return Eigen::Vector3d(point.x, point.y, point.z);
 }
 
+Eigen::MatrixXd rad2deg(const Eigen::MatrixXd & x)
+{
+  return x * (180.0 / M_PI);
+}
+
 pcl::PointCloud < PointType > downsample(
   const pcl::PointCloud < PointType > ::Ptr & input_cloud, const int leaf_size)
 {

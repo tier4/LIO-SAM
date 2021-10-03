@@ -845,14 +845,8 @@ public:
       posevec += matX;
     }
 
-    float deltaR = sqrt(
-      pow(pcl::rad2deg(matX(0)), 2) +
-      pow(pcl::rad2deg(matX(1)), 2) +
-      pow(pcl::rad2deg(matX(2)), 2));
-    float deltaT = sqrt(
-      pow(matX(3) * 100, 2) +
-      pow(matX(4) * 100, 2) +
-      pow(matX(5) * 100, 2));
+    const float deltaR = rad2deg(matX.head(3)).norm();
+    const float deltaT = (100 * matX.tail(3)).norm();
 
     if (deltaR < 0.05 && deltaT < 0.05) {
       return true; // converged
