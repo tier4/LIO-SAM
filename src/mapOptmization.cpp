@@ -635,14 +635,14 @@ public:
       if (pointSearchSqDis[4] < 1.0) {
         Eigen::Vector3d c = Eigen::Vector3d::Zero();
         for (int j = 0; j < 5; j++) {
-          c += getXYZ(laserCloudCornerFromMapDS->points[indices[j]]);
+          c += getXYZ(laserCloudCornerFromMapDS->at(indices[j]));
         }
         c /= 5.0;
 
         Eigen::Matrix3d sa = Eigen::Matrix3d::Zero();
 
         for (int j = 0; j < 5; j++) {
-          const Eigen::Vector3d x = getXYZ(laserCloudCornerFromMapDS->points[indices[j]]);
+          const Eigen::Vector3d x = getXYZ(laserCloudCornerFromMapDS->at(indices[j]));
           const Eigen::Vector3d a = x - c;
           sa += a * a.transpose();
         }
@@ -721,7 +721,7 @@ public:
       const Eigen::Matrix<double, 5, 1> b = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
 
       for (int j = 0; j < 5; j++) {
-        A.row(j) = getXYZ(laserCloudSurfFromMapDS->points[indices[j]]);
+        A.row(j) = getXYZ(laserCloudSurfFromMapDS->at(indices[j]));
       }
 
       const Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
