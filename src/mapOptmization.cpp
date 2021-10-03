@@ -173,6 +173,17 @@ bool validatePlane(
   return true;
 }
 
+Eigen::Matrix<double, 5, 3> makeMatrixA(
+  const pcl::PointCloud<PointType>::Ptr & pointcloud,
+  const std::vector<int> & indices)
+{
+  Eigen::Matrix<double, 5, 3> A = Eigen::Matrix<double, 5, 3>::Zero();
+  for (int j = 0; j < 5; j++) {
+    A.row(j) = getXYZ(pointcloud->at(indices[j]));
+  }
+  return A;
+}
+
 gtsam::PriorFactor<gtsam::Pose3> makePriorFactor(const Vector6d & posevec)
 {
   // rad*rad, meter*meter
@@ -718,13 +729,8 @@ public:
         continue;
       }
 
-      Eigen::Matrix<double, 5, 3> A = Eigen::Matrix<double, 5, 3>::Zero();
       const Eigen::Matrix<double, 5, 1> b = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
-
-      for (int j = 0; j < 5; j++) {
-        A.row(j) = getXYZ(laserCloudSurfFromMapDS->at(indices[j]));
-      }
-
+      const Eigen::Matrix<double, 5, 3> A = makeMatrixA(laserCloudSurfFromMapDS, indices);
       const Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
 
       if (!validatePlane(A, x)) {
