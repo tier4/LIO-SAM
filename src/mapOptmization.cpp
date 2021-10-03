@@ -140,9 +140,9 @@ pcl::PointCloud<PointType> transform(
 
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < input.size(); ++i) {
-    const auto & point = input.points[i];
+    const auto & point = input.at(i);
     const Eigen::Vector3d p = getXYZ(point);
-    output.points[i] = makePoint(transform * p, point.intensity);
+    output.at(i) = makePoint(transform * p, point.intensity);
   }
   return output;
 }
@@ -544,19 +544,19 @@ public:
       cloudKeyPoses3D.back(),
       (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
     for (unsigned int index : indices) {
-      poses->push_back(cloudKeyPoses3D.points[index]);
+      poses->push_back(cloudKeyPoses3D.at(index));
     }
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled.points) {
       kdtree.nearestKSearch(pt, 1, indices, pointSearchSqDis);
-      pt.intensity = cloudKeyPoses3D.points[indices[0]].intensity;
+      pt.intensity = cloudKeyPoses3D.at(indices[0]).intensity;
     }
 
     // also extract some latest key frames in case the robot rotates in one position
     for (int i = cloudKeyPoses3D.size() - 1; i >= 0; --i) {
-      if (timestamp.toSec() - cloudKeyPoses6D.points[i].time < 10.0) {
-        downsampled.push_back(cloudKeyPoses3D.points[i]);
+      if (timestamp.toSec() - cloudKeyPoses6D.at(i).time < 10.0) {
+        downsampled.push_back(cloudKeyPoses3D.at(i));
       } else {
         break;
       }
@@ -568,12 +568,12 @@ public:
 
     for (unsigned int i = 0; i < downsampled.size(); ++i) {
       const double distance =
-        (getXYZ(downsampled.points[i]) - getXYZ(cloudKeyPoses3D.back())).norm();
+        (getXYZ(downsampled.at(i)) - getXYZ(cloudKeyPoses3D.back())).norm();
       if (distance > surroundingKeyframeSearchRadius) {
         continue;
       }
 
-      int index = static_cast<int>(downsampled.points[i].intensity);
+      int index = static_cast<int>(downsampled.at(i).intensity);
       if (corner_surface_dict.find(index) != corner_surface_dict.end()) {
         // transformed cloud available
         *corner += corner_surface_dict[index].first;
@@ -582,9 +582,9 @@ public:
       }
       // transformed cloud not available
       pcl::PointCloud<PointType> c = transform(
-        corner_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
+        corner_cloud[index], makePosevec(cloudKeyPoses6D.at(index)));
       pcl::PointCloud<PointType> s = transform(
-        surface_cloud[index], makePosevec(cloudKeyPoses6D.points[index]));
+        surface_cloud[index], makePosevec(cloudKeyPoses6D.at(index)));
       *corner += c;
       *surface += s;
       corner_surface_dict[index] = std::make_pair(c, s);
@@ -631,7 +631,7 @@ public:
       std::vector<int> indices;
       std::vector<float> pointSearchSqDis;
 
-      const PointType point = laserCloudCornerLastDS.points[i];
+      const PointType point = laserCloudCornerLastDS.at(i);
       const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
       kdtreeCornerFromMap.nearestKSearch(
         makePoint(map_point, point.intensity), 5, indices, pointSearchSqDis);
@@ -791,7 +791,7 @@ public:
 
     for (int i = 0; i < laserCloudSelNum; i++) {
       // lidar -> camera
-      const float intensity = coeffSel.points[i].intensity;
+      const float intensity = coeffSel.at(i).intensity;
 
       // in camera
 
@@ -1013,11 +1013,11 @@ public:
         const Eigen::Vector3d xyz = isamCurrentEstimate.at<gtsam::Pose3>(i).translation();
         const Eigen::Vector3d rpy = isamCurrentEstimate.at<gtsam::Pose3>(i).rotation().rpy();
 
-        const auto point3d = cloudKeyPoses3D.points[i];
-        cloudKeyPoses3D.points[i] = makePoint(xyz, point3d.intensity);
+        const auto point3d = cloudKeyPoses3D.at(i);
+        cloudKeyPoses3D.at(i) = makePoint(xyz, point3d.intensity);
 
-        const auto point6d = cloudKeyPoses6D.points[i];
-        cloudKeyPoses6D.points[i] = makeStampedPose(xyz, rpy, point6d.time);
+        const auto point6d = cloudKeyPoses6D.at(i);
+        cloudKeyPoses6D.at(i) = makeStampedPose(xyz, rpy, point6d.time);
 
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
