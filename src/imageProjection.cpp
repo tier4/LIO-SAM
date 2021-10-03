@@ -206,7 +206,7 @@ private:
   const PositionFinder calc_position;
 };
 
-std::tuple<cv::Mat, Points<PointType>::type>
+std::tuple<Eigen::MatrixXd, Points<PointType>::type>
 projectPointCloud(
   const Points<PointXYZIRT>::type & input_points,
   const float range_min,
@@ -220,7 +220,8 @@ projectPointCloud(
   bool firstPointFlag = true;
   Eigen::Affine3d transStartInverse;
 
-  cv::Mat rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
+  Eigen::MatrixXd rangeMat = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
+
   Points<PointType>::type output_points(N_SCAN * Horizon_SCAN);
 
   for (const PointXYZIRT & p : input_points) {
@@ -242,11 +243,11 @@ projectPointCloud(
     const int c = Horizon_SCAN / 2 - f;
     const int column_index = c % Horizon_SCAN;
 
-    if (rangeMat.at<float>(row_index, column_index) != FLT_MAX) {
+    if (rangeMat(row_index, column_index) >= 0) {
       continue;
     }
 
-    rangeMat.at<float>(row_index, column_index) = range;
+    rangeMat(row_index, column_index) = range;
 
     const int index = column_index + row_index * Horizon_SCAN;
 
@@ -529,8 +530,8 @@ public:
       cloudInfo.startRingIndex[i] = count + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
-        const float range = rangeMat.at<float>(i, j);
-        if (range == FLT_MAX) {
+        const float range = rangeMat(i, j);
+        if (range < 0) {
           continue;
         }
 

@@ -4,8 +4,6 @@
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/save_map.h"
 
-#include <opencv2/core/eigen.hpp>
-
 #include <gtsam/geometry/Rot3.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
