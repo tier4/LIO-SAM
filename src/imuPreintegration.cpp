@@ -272,8 +272,6 @@ public:
   const ros::Subscriber subOdometry;
   const ros::Publisher pubImuOdometry;
 
-  bool systemInitialized;
-
   const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
 
@@ -281,6 +279,8 @@ public:
 
   gtsam::PreintegratedImuMeasurements imuIntegratorImu_;
   gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
+
+  bool systemInitialized;
 
   std::deque<sensor_msgs::Imu> imuQueOpt;
   std::deque<sensor_msgs::Imu> imuQueImu;
