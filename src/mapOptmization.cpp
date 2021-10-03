@@ -721,7 +721,7 @@ public:
       std::vector<int> indices;
       std::vector<float> squared_distances;
 
-      const PointType pointOri = laserCloudSurfLastDS.points[i];
+      const PointType pointOri = laserCloudSurfLastDS.at(i);
       const PointType pointSel = pointAssociateToMap(transPointAssociateToMap, pointOri);
       kdtreeSurfFromMap.nearestKSearch(pointSel, 5, indices, squared_distances);
 
@@ -804,14 +804,14 @@ public:
       // in camera
 
       const Eigen::Vector3d point_ori(
-        laserCloudOri.points[i].y,
-        laserCloudOri.points[i].z,
-        laserCloudOri.points[i].x);
+        laserCloudOri.at(i).y,
+        laserCloudOri.at(i).z,
+        laserCloudOri.at(i).x);
 
       const Eigen::Vector3d coeff_vec(
-        coeffSel.points[i].y,
-        coeffSel.points[i].z,
-        coeffSel.points[i].x);
+        coeffSel.at(i).y,
+        coeffSel.at(i).z,
+        coeffSel.at(i).x);
 
       const Eigen::Matrix3d MX = dRdx(posevec(0), posevec(2), posevec(1));
       const float arx = (MX * point_ori).dot(coeff_vec);
@@ -826,9 +826,9 @@ public:
       A(i, 0) = arz;
       A(i, 1) = arx;
       A(i, 2) = ary;
-      A(i, 3) = coeffSel.points[i].x;
-      A(i, 4) = coeffSel.points[i].y;
-      A(i, 5) = coeffSel.points[i].z;
+      A(i, 3) = coeffSel.at(i).x;
+      A(i, 4) = coeffSel.at(i).y;
+      A(i, 5) = coeffSel.at(i).z;
       b(i) = -intensity;
     }
 
