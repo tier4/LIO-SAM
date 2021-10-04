@@ -493,10 +493,7 @@ public:
     // use imu pre-integration estimation for pose guess
     if (cloudInfo.odomAvailable) {
       const Eigen::Affine3d back = poseToAffine(cloudInfo.initial_pose);
-      if (!lastImuPreTransAvailable) {
-        lastImuPreTransformation = back;
-        lastImuPreTransAvailable = true;
-      } else {
+      if (lastImuPreTransAvailable) {
         const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
         const Eigen::Affine3d tobe = getTransformation(posevec);
         posevec = getPoseVec(tobe * incre);
@@ -507,6 +504,8 @@ public:
         lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
         return;
       }
+      lastImuPreTransformation = back;
+      lastImuPreTransAvailable = true;
     }
 
     // use imu incremental estimation for pose guess (only rotation)
