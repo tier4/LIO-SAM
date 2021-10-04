@@ -293,11 +293,9 @@ void imuDeskewInfo(
   const double scan_end_time,
   std::vector<double> & imuTime,
   std::vector<Eigen::Vector3d> & imuRot,
-  std::deque<sensor_msgs::Imu> & imu_buffer,
+  const std::deque<sensor_msgs::Imu> & imu_buffer,
   geometry_msgs::Vector3 & initialIMU)
 {
-  dropBefore(scan_start_time - 0.01, imu_buffer);
-
   if (imu_buffer.empty()) {
     return;
   }
@@ -472,31 +470,35 @@ public:
 
     {
       std::lock_guard<std::mutex> lock1(imuLock);
+      dropBefore(scan_start_time - 0.01, imu_buffer);
+    }
+
+    imuDeskewInfo(
+      scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
+      cloudInfo.initialIMU);
+
+    imuAvailable = imuTime.size() > 1;
+
+    {
       std::lock_guard<std::mutex> lock2(odoLock);
-
-      imuDeskewInfo(
-        scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
-        cloudInfo.initialIMU);
-
-      imuAvailable = imuTime.size() > 1;
-
       dropBefore(scan_start_time - 0.01, odomQueue);
-      odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
+    }
 
-      if (odomAvailable) {
-        const unsigned int index0 = indexNextTimeOf(odomQueue, scan_start_time);
-        const nav_msgs::Odometry msg0 = odomQueue[index0];
+    odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
 
-        const unsigned int index1 = indexNextTimeOf(odomQueue, scan_end_time);
-        const nav_msgs::Odometry msg1 = odomQueue[index1];
+    if (odomAvailable) {
+      const unsigned int index0 = indexNextTimeOf(odomQueue, scan_start_time);
+      const nav_msgs::Odometry msg0 = odomQueue[index0];
 
-        cloudInfo.initial_pose = msg0.pose.pose;
+      const unsigned int index1 = indexNextTimeOf(odomQueue, scan_end_time);
+      const nav_msgs::Odometry msg1 = odomQueue[index1];
 
-        if (doOdomDeskew(msg0.pose.covariance, msg1.pose.covariance)) {
-          const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);
-          const Eigen::Affine3d p1 = poseToAffine(msg1.pose.pose);
-          odomInc = (p0.inverse() * p1).translation();
-        }
+      cloudInfo.initial_pose = msg0.pose.pose;
+
+      if (doOdomDeskew(msg0.pose.covariance, msg1.pose.covariance)) {
+        const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);
+        const Eigen::Affine3d p1 = poseToAffine(msg1.pose.pose);
+        odomInc = (p0.inverse() * p1).translation();
       }
     }
 
