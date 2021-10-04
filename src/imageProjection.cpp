@@ -169,9 +169,9 @@ public:
     scan_start_time(scan_start_time),
     scan_end_time(scan_end_time) {}
 
-  Eigen::Vector3d operator()(const double relTime) const
+  Eigen::Vector3d operator()(const double time) const
   {
-    const float ratio = relTime / (scan_end_time - scan_start_time);
+    const float ratio = time / (scan_end_time - scan_start_time);
     return ratio * odomInc;
   }
 
@@ -179,32 +179,6 @@ private:
   const Eigen::Vector3d & odomInc;
   const double scan_start_time;
   const double scan_end_time;
-};
-
-class AffineFinder
-{
-public:
-  AffineFinder(
-    const std::vector<Eigen::Vector3d> & angles,
-    const std::vector<double> & timestamps,
-    const Eigen::Vector3d & odomInc,
-    const double scan_start_time,
-    const double scan_end_time)
-  : calc_rotation(RotationFinder(scan_start_time, angles, timestamps)),
-    calc_position(PositionFinder(odomInc, scan_start_time, scan_end_time))
-  {
-  }
-
-  Eigen::Affine3d operator()(const double rel_time) const
-  {
-    const Eigen::Vector3d r = calc_rotation(rel_time);
-    const Eigen::Vector3d p = calc_position(rel_time);
-    return makeAffine(r, p);
-  }
-
-private:
-  const RotationFinder calc_rotation;
-  const PositionFinder calc_position;
 };
 
 std::tuple<Eigen::MatrixXd, Points<PointType>::type>
@@ -216,7 +190,8 @@ projectPointCloud(
   const int N_SCAN,
   const int Horizon_SCAN,
   const bool imuAvailable,
-  const AffineFinder & calc_transform)
+  const RotationFinder & calc_rotation,
+  const PositionFinder & calc_position)
 {
   bool firstPointFlag = true;
   Eigen::Affine3d transStartInverse;
@@ -257,7 +232,7 @@ projectPointCloud(
       continue;
     }
 
-    const Eigen::Affine3d transform = calc_transform(p.time);
+    const Eigen::Affine3d transform = makeAffine(calc_rotation(p.time), calc_position(p.time));
 
     if (firstPointFlag) {
       transStartInverse = transform.inverse();
@@ -511,13 +486,14 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = timestamps.size() > 1;
 
-    const AffineFinder calc_transform(angles, timestamps, odomInc, scan_start_time, scan_end_time);
+    const RotationFinder calc_rotation(scan_start_time, angles, timestamps);
+    const PositionFinder calc_position(odomInc, scan_start_time, scan_end_time);
 
     const auto [rangeMat, output_points] = projectPointCloud(
       input_cloud.points,
       range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
-      cloudInfo.imuAvailable, calc_transform
+      cloudInfo.imuAvailable, calc_rotation, calc_position
     );
 
     pcl::PointCloud<PointType> extractedCloud;
