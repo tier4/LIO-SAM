@@ -123,9 +123,9 @@ class RotationFinder
 public:
   RotationFinder(
     const double scan_start_time,
-    const std::vector<Eigen::Vector3d> & angular_velocities,
+    const std::vector<Eigen::Vector3d> & angles,
     const std::vector<double> & timestamps)
-  : scan_start_time(scan_start_time), angular_velocities(angular_velocities), timestamps(timestamps)
+  : scan_start_time(scan_start_time), angles(angles), timestamps(timestamps)
   {
   }
 
@@ -142,11 +142,11 @@ public:
     }
 
     if (point_time > timestamps[index] || index == 0) {
-      return angular_velocities[index];
+      return angles[index];
     }
 
     return interpolatePose(
-      angular_velocities[index - 1], angular_velocities[index - 0],
+      angles[index - 1], angles[index - 0],
       timestamps[index - 1], timestamps[index - 0],
       point_time
     );
@@ -154,7 +154,7 @@ public:
 
 private:
   const double scan_start_time;
-  const std::vector<Eigen::Vector3d> angular_velocities;
+  const std::vector<Eigen::Vector3d> angles;
   const std::vector<double> timestamps;
 };
 
@@ -185,12 +185,12 @@ class AffineFinder
 {
 public:
   AffineFinder(
-    const std::vector<Eigen::Vector3d> & angular_velocities,
+    const std::vector<Eigen::Vector3d> & angles,
     const std::vector<double> & timestamps,
     const Eigen::Vector3d & odomInc,
     const double scan_start_time,
     const double scan_end_time)
-  : calc_rotation(RotationFinder(scan_start_time, angular_velocities, timestamps)),
+  : calc_rotation(RotationFinder(scan_start_time, angles, timestamps)),
     calc_position(PositionFinder(odomInc, scan_start_time, scan_end_time))
   {
   }
@@ -314,10 +314,10 @@ std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdom
   const std::deque<sensor_msgs::Imu> & imu_buffer)
 {
   std::vector<double> timestamps;
-  std::vector<Eigen::Vector3d> angular_velocities;
+  std::vector<Eigen::Vector3d> angles;
 
   if (imu_buffer.empty()) {
-    return {timestamps, angular_velocities};
+    return {timestamps, angles};
   }
 
   for (const sensor_msgs::Imu & imu : imu_buffer) {
@@ -328,17 +328,17 @@ std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdom
     }
 
     if (timestamps.size() == 0) {
-      angular_velocities.push_back(Eigen::Vector3d::Zero());
+      angles.push_back(Eigen::Vector3d::Zero());
       timestamps.push_back(time);
       continue;
     }
 
     const Eigen::Vector3d angular = vector3ToEigen(imu.angular_velocity);
     const double dt = time - timestamps.back();
-    angular_velocities.push_back(angular_velocities.back() + angular * dt);
+    angles.push_back(angles.back() + angular * dt);
     timestamps.push_back(time);
   }
-  return {timestamps, angular_velocities};
+  return {timestamps, angles};
 }
 
 bool checkImuTime(
@@ -474,9 +474,6 @@ public:
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
-    bool imuAvailable = false;
-    bool odomAvailable = false;
-
     Eigen::Vector3d odomInc = Eigen::Vector3d::Zero();
 
     {
@@ -486,16 +483,14 @@ public:
 
     cloudInfo.initialIMU = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
 
-    const auto [timestamps, angular_velocities] = imuIncrementalOdometry(scan_end_time, imu_buffer);
-
-    imuAvailable = timestamps.size() > 1;
+    const auto [timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);
       dropBefore(scan_start_time - 0.01, odomQueue);
     }
 
-    odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
+    const bool odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
 
     if (odomAvailable) {
       const unsigned int index0 = indexNextTimeOf(odomQueue, scan_start_time);
@@ -514,10 +509,9 @@ public:
     }
 
     cloudInfo.odomAvailable = odomAvailable;
-    cloudInfo.imuAvailable = imuAvailable;
+    cloudInfo.imuAvailable = timestamps.size() > 1;
 
-    const AffineFinder calc_transform(
-      angular_velocities, timestamps, odomInc, scan_start_time, scan_end_time);
+    const AffineFinder calc_transform(angles, timestamps, odomInc, scan_start_time, scan_end_time);
 
     const auto [rangeMat, output_points] = projectPointCloud(
       input_cloud.points,

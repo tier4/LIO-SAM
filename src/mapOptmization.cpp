@@ -1012,8 +1012,7 @@ public:
         const Eigen::Vector3d xyz = isamCurrentEstimate.at<gtsam::Pose3>(i).translation();
         const Eigen::Vector3d rpy = isamCurrentEstimate.at<gtsam::Pose3>(i).rotation().rpy();
 
-        const auto point3d = cloudKeyPoses3D.at(i);
-        cloudKeyPoses3D.at(i) = makePoint(xyz, point3d.intensity);
+        cloudKeyPoses3D.at(i) = makePoint(xyz, cloudKeyPoses3D.at(i).intensity);
 
         const auto point6d = cloudKeyPoses6D.at(i);
         cloudKeyPoses6D.at(i) = makeStampedPose(xyz, rpy, point6d.time);
