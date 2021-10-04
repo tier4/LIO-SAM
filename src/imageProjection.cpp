@@ -189,8 +189,7 @@ public:
     const double scan_start_time,
     const double scan_end_time)
   : calc_rotation(RotationFinder(scan_start_time, imuRot, imuTime)),
-    calc_position(
-      PositionFinder(odomInc, scan_start_time, scan_end_time))
+    calc_position(PositionFinder(odomInc, scan_start_time, scan_end_time))
   {
   }
 
@@ -283,22 +282,10 @@ bool odometryIsAvailable(
 }
 
 bool doOdomDeskew(
-  const nav_msgs::Odometry & start_msg,
-  const nav_msgs::Odometry & end_msg)
+  const boost::array<double, 36> & covariance0,
+  const boost::array<double, 36> & covariance1)
 {
-  return int(round(start_msg.pose.covariance[0])) == int(round(end_msg.pose.covariance[0]));
-}
-
-Eigen::Vector3d odomDeskewInfo(
-  const nav_msgs::Odometry & start_msg,
-  const nav_msgs::Odometry & end_msg)
-{
-  const Eigen::Affine3d begin = poseToAffine(start_msg.pose.pose);
-  const Eigen::Affine3d end = poseToAffine(end_msg.pose.pose);
-
-  const Eigen::Affine3d odom = begin.inverse() * end;
-
-  return odom.translation();
+  return static_cast<int>(round(covariance0[0])) == static_cast<int>(round(covariance1[0]));
 }
 
 void imuDeskewInfo(
@@ -497,16 +484,18 @@ public:
       odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
 
       if (odomAvailable) {
-        const unsigned int start_index = indexNextTimeOf(odomQueue, scan_start_time);
-        const nav_msgs::Odometry start_msg = odomQueue[start_index];
+        const unsigned int index0 = indexNextTimeOf(odomQueue, scan_start_time);
+        const nav_msgs::Odometry msg0 = odomQueue[index0];
 
-        const unsigned int end_index = indexNextTimeOf(odomQueue, scan_end_time);
-        const nav_msgs::Odometry end_msg = odomQueue[end_index];
+        const unsigned int index1 = indexNextTimeOf(odomQueue, scan_end_time);
+        const nav_msgs::Odometry msg1 = odomQueue[index1];
 
-        cloudInfo.initial_pose = start_msg.pose.pose;
+        cloudInfo.initial_pose = msg0.pose.pose;
 
-        if (doOdomDeskew(start_msg, end_msg)) {
-          odomInc = odomDeskewInfo(start_msg, end_msg);
+        if (doOdomDeskew(msg0.pose.covariance, msg1.pose.covariance)) {
+          const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);
+          const Eigen::Affine3d p1 = poseToAffine(msg1.pose.pose);
+          odomInc = (p0.inverse() * p1).translation();
         }
       }
     }
