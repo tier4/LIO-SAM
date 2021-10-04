@@ -123,37 +123,39 @@ class RotationFinder
 public:
   RotationFinder(
     const double scan_start_time,
-    const std::vector<Eigen::Vector3d> & imuRot,
-    const std::vector<double> & imuTime)
-  : scan_start_time(scan_start_time), imuRot(imuRot), imuTime(imuTime) {}
+    const std::vector<Eigen::Vector3d> & angular_velocities,
+    const std::vector<double> & timestamps)
+  : scan_start_time(scan_start_time), angular_velocities(angular_velocities), timestamps(timestamps)
+  {
+  }
 
   Eigen::Vector3d operator()(const double relTime) const
   {
     const double point_time = scan_start_time + relTime;
 
-    int index = imuTime.size() - 1;
-    for (unsigned int i = 0; i < imuTime.size() - 1; i++) {
-      if (imuTime[i] > point_time) {
+    int index = timestamps.size() - 1;
+    for (unsigned int i = 0; i < timestamps.size() - 1; i++) {
+      if (timestamps[i] > point_time) {
         index = i;
         break;
       }
     }
 
-    if (point_time > imuTime[index] || index == 0) {
-      return imuRot[index];
+    if (point_time > timestamps[index] || index == 0) {
+      return angular_velocities[index];
     }
 
     return interpolatePose(
-      imuRot[index - 1], imuRot[index - 0],
-      imuTime[index - 1], imuTime[index - 0],
+      angular_velocities[index - 1], angular_velocities[index - 0],
+      timestamps[index - 1], timestamps[index - 0],
       point_time
     );
   }
 
 private:
   const double scan_start_time;
-  const std::vector<Eigen::Vector3d> imuRot;
-  const std::vector<double> imuTime;
+  const std::vector<Eigen::Vector3d> angular_velocities;
+  const std::vector<double> timestamps;
 };
 
 class PositionFinder
@@ -183,12 +185,12 @@ class AffineFinder
 {
 public:
   AffineFinder(
-    const std::vector<Eigen::Vector3d> & imuRot,
-    const std::vector<double> & imuTime,
+    const std::vector<Eigen::Vector3d> & angular_velocities,
+    const std::vector<double> & timestamps,
     const Eigen::Vector3d & odomInc,
     const double scan_start_time,
     const double scan_end_time)
-  : calc_rotation(RotationFinder(scan_start_time, imuRot, imuTime)),
+  : calc_rotation(RotationFinder(scan_start_time, angular_velocities, timestamps)),
     calc_position(PositionFinder(odomInc, scan_start_time, scan_end_time))
   {
   }
@@ -307,37 +309,36 @@ Eigen::Vector3d findInitialImu(
   return initialIMU;
 }
 
-std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuDeskewInfo(
-  const double scan_start_time,
+std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdometry(
   const double scan_end_time,
   const std::deque<sensor_msgs::Imu> & imu_buffer)
 {
-  std::vector<double> imuTime;
-  std::vector<Eigen::Vector3d> imuRot;
+  std::vector<double> timestamps;
+  std::vector<Eigen::Vector3d> angular_velocities;
 
   if (imu_buffer.empty()) {
-    return {imuTime, imuRot};
+    return {timestamps, angular_velocities};
   }
 
   for (const sensor_msgs::Imu & imu : imu_buffer) {
-    const double imu_time = timeInSec(imu.header);
+    const double time = timeInSec(imu.header);
 
-    if (imu_time > scan_end_time + 0.01) {
+    if (time > scan_end_time + 0.01) {
       break;
     }
 
-    if (imuTime.size() == 0) {
-      imuRot.push_back(Eigen::Vector3d::Zero());
-      imuTime.push_back(imu_time);
+    if (timestamps.size() == 0) {
+      angular_velocities.push_back(Eigen::Vector3d::Zero());
+      timestamps.push_back(time);
       continue;
     }
 
     const Eigen::Vector3d angular = vector3ToEigen(imu.angular_velocity);
-    const Eigen::Vector3d rot = imuRot.back() + angular * (imu_time - imuTime.back());
-    imuRot.push_back(rot);
-    imuTime.push_back(imu_time);
+    const double dt = time - timestamps.back();
+    angular_velocities.push_back(angular_velocities.back() + angular * dt);
+    timestamps.push_back(time);
   }
-  return {imuTime, imuRot};
+  return {timestamps, angular_velocities};
 }
 
 bool checkImuTime(
@@ -485,9 +486,9 @@ public:
 
     cloudInfo.initialIMU = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
 
-    const auto [imuTime, imuRot] = imuDeskewInfo(scan_start_time, scan_end_time, imu_buffer);
+    const auto [timestamps, angular_velocities] = imuIncrementalOdometry(scan_end_time, imu_buffer);
 
-    imuAvailable = imuTime.size() > 1;
+    imuAvailable = timestamps.size() > 1;
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);
@@ -515,7 +516,8 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imuAvailable;
 
-    const AffineFinder calc_transform(imuRot, imuTime, odomInc, scan_start_time, scan_end_time);
+    const AffineFinder calc_transform(
+      angular_velocities, timestamps, odomInc, scan_start_time, scan_end_time);
 
     const auto [rangeMat, output_points] = projectPointCloud(
       input_cloud.points,
