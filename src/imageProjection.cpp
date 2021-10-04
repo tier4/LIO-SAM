@@ -332,7 +332,7 @@ std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuDeskewInfo(
       continue;
     }
 
-    const Eigen::Vector3d angular = imuAngular2rosAngular(imu.angular_velocity);
+    const Eigen::Vector3d angular = vector3ToEigen(imu.angular_velocity);
     const Eigen::Vector3d rot = imuRot.back() + angular * (imu_time - imuTime.back());
     imuRot.push_back(rot);
     imuTime.push_back(imu_time);

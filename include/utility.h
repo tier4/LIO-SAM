@@ -296,12 +296,6 @@ Eigen::Affine3d makeAffine(
   return transform;
 }
 
-Eigen::Vector3d imuAngular2rosAngular(
-  const geometry_msgs::Vector3 & angular_velocity)
-{
-  return Eigen::Vector3d(angular_velocity.x, angular_velocity.y, angular_velocity.z);
-}
-
 Eigen::Vector3d quaternionToRPY(const tf::Quaternion & orientation)
 {
   Eigen::Vector3d rpy;
