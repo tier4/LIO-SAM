@@ -307,15 +307,16 @@ Eigen::Vector3d findInitialImu(
   return initialIMU;
 }
 
-void imuDeskewInfo(
+std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuDeskewInfo(
   const double scan_start_time,
   const double scan_end_time,
-  const std::deque<sensor_msgs::Imu> & imu_buffer,
-  std::vector<double> & imuTime,
-  std::vector<Eigen::Vector3d> & imuRot)
+  const std::deque<sensor_msgs::Imu> & imu_buffer)
 {
+  std::vector<double> imuTime;
+  std::vector<Eigen::Vector3d> imuRot;
+
   if (imu_buffer.empty()) {
-    return;
+    return {imuTime, imuRot};
   }
 
   for (const sensor_msgs::Imu & imu : imu_buffer) {
@@ -336,6 +337,7 @@ void imuDeskewInfo(
     imuRot.push_back(rot);
     imuTime.push_back(imu_time);
   }
+  return {imuTime, imuRot};
 }
 
 bool checkImuTime(
@@ -471,9 +473,6 @@ public:
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
-    std::vector<double> imuTime;
-    std::vector<Eigen::Vector3d> imuRot;
-
     bool imuAvailable = false;
     bool odomAvailable = false;
 
@@ -486,7 +485,7 @@ public:
 
     cloudInfo.initialIMU = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
 
-    imuDeskewInfo(scan_start_time, scan_end_time, imu_buffer, imuTime, imuRot);
+    const auto [imuTime, imuRot] = imuDeskewInfo(scan_start_time, scan_end_time, imu_buffer);
 
     imuAvailable = imuTime.size() > 1;
 
