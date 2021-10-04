@@ -994,7 +994,7 @@ public:
     geometry_msgs::PoseStamped pose_stamped;
     pose_stamped.header.stamp = ros::Time().fromSec(pose6dof.time);
     pose_stamped.header.frame_id = odometryFrame;
-    pose_stamped.pose = makePose(xyz, rpy);
+    pose_stamped.pose = makePose(rpy, xyz);
     path_poses_.push_back(pose_stamped);
 
     if (cloudKeyPoses3D.points.empty()) {
@@ -1020,7 +1020,7 @@ public:
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
         pose_stamped.header.frame_id = odometryFrame;
-        pose_stamped.pose = makePose(xyz, rpy);
+        pose_stamped.pose = makePose(rpy, xyz);
 
         path_poses_.push_back(pose_stamped);
       }

@@ -356,7 +356,7 @@ geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v)
   return p;
 }
 
-geometry_msgs::Pose makePose(const Eigen::Vector3d & xyz, const Eigen::Vector3d & rpy)
+geometry_msgs::Pose makePose(const Eigen::Vector3d & rpy, const Eigen::Vector3d & xyz)
 {
   geometry_msgs::Pose pose;
   pose.position = eigenToPoint(xyz);
@@ -366,9 +366,7 @@ geometry_msgs::Pose makePose(const Eigen::Vector3d & xyz, const Eigen::Vector3d 
 
 geometry_msgs::Pose makePose(const Vector6d & posevec)
 {
-  geometry_msgs::Pose pose;
-  return makePose(posevec.tail(3), posevec.head(3));
-  return pose;
+  return makePose(posevec.head(3), posevec.tail(3));
 }
 
 Eigen::Affine3d getTransformation(const Vector6d & posevec)
