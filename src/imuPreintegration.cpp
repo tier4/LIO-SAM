@@ -518,8 +518,10 @@ public:
     // transform imu pose to ldiar
     const gtsam::Pose3 lidar_pose = current_imu.pose().compose(imu2Lidar);
 
-    odometry.pose.pose.position = eigenToPoint(lidar_pose.translation());
-    odometry.pose.pose.orientation = eigenToQuaternion(lidar_pose.rotation().toQuaternion());
+    odometry.pose.pose = makePose(
+      eigenToQuaternion(lidar_pose.rotation().toQuaternion()),
+      eigenToPoint(lidar_pose.translation())
+    );
 
     odometry.twist.twist.linear = eigenToVector3(current_imu.velocity());
     const Eigen::Vector3d w = prev_odom_bias_.gyroscope();

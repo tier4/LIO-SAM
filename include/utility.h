@@ -356,12 +356,21 @@ geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v)
   return p;
 }
 
-geometry_msgs::Pose makePose(const Eigen::Vector3d & rpy, const Eigen::Vector3d & xyz)
+geometry_msgs::Pose makePose(
+  const geometry_msgs::Quaternion & orientation,
+  const geometry_msgs::Point & position)
 {
   geometry_msgs::Pose pose;
-  pose.position = eigenToPoint(xyz);
-  pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(rpy(0), rpy(1), rpy(2));
+  pose.position = position;
+  pose.orientation = orientation;
   return pose;
+}
+
+geometry_msgs::Pose makePose(const Eigen::Vector3d & rpy, const Eigen::Vector3d & xyz)
+{
+  const auto orientation = tf::createQuaternionMsgFromRollPitchYaw(rpy(0), rpy(1), rpy(2));
+  const auto position = eigenToPoint(xyz);
+  return makePose(orientation, position);
 }
 
 geometry_msgs::Pose makePose(const Vector6d & posevec)
