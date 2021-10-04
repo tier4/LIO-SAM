@@ -82,6 +82,8 @@ public:
   double lidarOdomTime = -1;
   std::deque<nav_msgs::Odometry> imuOdomQueue;
 
+  tf::TransformBroadcaster tfMap2Odom;
+
   TransformFusion()
   : subLaserOdometry(nh.subscribe<nav_msgs::Odometry>(
         "lio_sam/mapping/odometry",
@@ -108,8 +110,6 @@ public:
 
   void imuOdometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
   {
-    // static tf
-    static tf::TransformBroadcaster tfMap2Odom;
     tfMap2Odom.sendTransform(
       tf::StampedTransform(identityTransform(), odom_msg->header.stamp, mapFrame, odometryFrame));
 
