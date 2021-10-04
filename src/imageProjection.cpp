@@ -288,24 +288,38 @@ bool doOdomDeskew(
   return static_cast<int>(round(covariance0[0])) == static_cast<int>(round(covariance1[0]));
 }
 
+Eigen::Vector3d findInitialImu(
+  const std::deque<sensor_msgs::Imu> & imu_buffer,
+  const double scan_start_time)
+{
+
+  if (imu_buffer.empty()) {
+    return Eigen::Vector3d::Zero();
+  }
+
+  Eigen::Vector3d initialIMU = Eigen::Vector3d::Zero();
+
+  for (const sensor_msgs::Imu & imu : imu_buffer) {
+    if (timeInSec(imu.header) <= scan_start_time) {
+      initialIMU = quaternionToRPY(imu.orientation);
+    }
+  }
+  return initialIMU;
+}
+
 void imuDeskewInfo(
   const double scan_start_time,
   const double scan_end_time,
-  std::vector<double> & imuTime,
-  std::vector<Eigen::Vector3d> & imuRot,
   const std::deque<sensor_msgs::Imu> & imu_buffer,
-  geometry_msgs::Vector3 & initialIMU)
+  std::vector<double> & imuTime,
+  std::vector<Eigen::Vector3d> & imuRot)
 {
   if (imu_buffer.empty()) {
     return;
   }
 
-  for (unsigned int i = 0; i < imu_buffer.size(); ++i) {
-    const double imu_time = timeInSec(imu_buffer[i].header);
-
-    if (imu_time <= scan_start_time) {
-      initialIMU = eigenToVector3(quaternionToRPY(imu_buffer[i].orientation));
-    }
+  for (const sensor_msgs::Imu & imu : imu_buffer) {
+    const double imu_time = timeInSec(imu.header);
 
     if (imu_time > scan_end_time + 0.01) {
       break;
@@ -317,10 +331,7 @@ void imuDeskewInfo(
       continue;
     }
 
-    // get angular velocity
-    const Eigen::Vector3d angular = imuAngular2rosAngular(imu_buffer[i].angular_velocity);
-
-    // integrate rotation
+    const Eigen::Vector3d angular = imuAngular2rosAngular(imu.angular_velocity);
     const Eigen::Vector3d rot = imuRot.back() + angular * (imu_time - imuTime.back());
     imuRot.push_back(rot);
     imuTime.push_back(imu_time);
@@ -473,9 +484,9 @@ public:
       dropBefore(scan_start_time - 0.01, imu_buffer);
     }
 
-    imuDeskewInfo(
-      scan_start_time, scan_end_time, imuTime, imuRot, imu_buffer,
-      cloudInfo.initialIMU);
+    cloudInfo.initialIMU = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
+
+    imuDeskewInfo(scan_start_time, scan_end_time, imu_buffer, imuTime, imuRot);
 
     imuAvailable = imuTime.size() > 1;
 
