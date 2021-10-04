@@ -366,6 +366,16 @@ geometry_msgs::Pose makePose(
   return pose;
 }
 
+geometry_msgs::Twist makeTwist(
+  const geometry_msgs::Vector3 & angular,
+  const geometry_msgs::Vector3 & linear)
+{
+  geometry_msgs::Twist twist;
+  twist.angular = angular;
+  twist.linear = linear;
+  return twist;
+}
+
 geometry_msgs::Pose makePose(const Eigen::Vector3d & rpy, const Eigen::Vector3d & xyz)
 {
   const auto orientation = tf::createQuaternionMsgFromRollPitchYaw(rpy(0), rpy(1), rpy(2));

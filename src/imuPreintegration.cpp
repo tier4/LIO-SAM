@@ -523,10 +523,10 @@ public:
       eigenToPoint(lidar_pose.translation())
     );
 
-    odometry.twist.twist.linear = eigenToVector3(current_imu.velocity());
-    const Eigen::Vector3d w = prev_odom_bias_.gyroscope();
-    const Eigen::Vector3d v = angular_velocity;
-    odometry.twist.twist.angular = eigenToVector3(v + w);
+    odometry.twist.twist = makeTwist(
+      eigenToVector3(angular_velocity + prev_odom_bias_.gyroscope()),
+      eigenToVector3(current_imu.velocity())
+    );
     pubImuOdometry.publish(odometry);
   }
 };
