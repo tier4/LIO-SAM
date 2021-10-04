@@ -460,7 +460,7 @@ public:
       // reset bias use the newly optimized bias
       imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
       // integrate imu message from the beginning of this optimization
-      for (int i = 0; i < (int)imuQueImu.size(); ++i) {
+      for (unsigned int i = 0; i < imuQueImu.size(); ++i) {
         const sensor_msgs::Imu & msg = imuQueImu[i];
         const double imuTime = timeInSec(msg.header);
         const double dt = (lastImuQT < 0) ? (1.0 / 500.0) : (imuTime - lastImuQT);
@@ -481,7 +481,7 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    const sensor_msgs::Imu thisImu = [&] {
+    const sensor_msgs::Imu imu = [&] {
         try {
           return imu_converter_.imuConverter(*imu_raw);
         } catch (const std::runtime_error & e) {
@@ -491,19 +491,19 @@ public:
         }
       } ();
 
-    imuQueOpt.push_back(thisImu);
-    imuQueImu.push_back(thisImu);
+    imuQueOpt.push_back(imu);
+    imuQueImu.push_back(imu);
 
     if (!doneFirstOpt) {
       return;
     }
 
-    const double imuTime = timeInSec(thisImu.header);
+    const double imuTime = timeInSec(imu.header);
     const double dt = (lastImuT_imu < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_imu);
     lastImuT_imu = imuTime;
 
-    const Eigen::Vector3d linear_acceleration = vector3ToEigen(thisImu.linear_acceleration);
-    const Eigen::Vector3d angular_velocity = vector3ToEigen(thisImu.angular_velocity);
+    const Eigen::Vector3d linear_acceleration = vector3ToEigen(imu.linear_acceleration);
+    const Eigen::Vector3d angular_velocity = vector3ToEigen(imu.angular_velocity);
     imuIntegratorImu_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
 
     // predict odometry
@@ -511,7 +511,7 @@ public:
 
     // publish odometry
     nav_msgs::Odometry odometry;
-    odometry.header.stamp = thisImu.header.stamp;
+    odometry.header.stamp = imu.header.stamp;
     odometry.header.frame_id = odometryFrame;
     odometry.child_frame_id = "odom_imu";
 
