@@ -128,62 +128,33 @@ int findIndex(const std::vector<double> & imu_timestamps, const double point_tim
   return imu_timestamps.size() - 1;
 }
 
-class RotationFinder
+Eigen::Vector3d calcRotation(
+  const double scan_start_time,
+  const std::vector<Eigen::Vector3d> & angles,
+  const std::vector<double> & imu_timestamps,
+  const double time_from_start)
 {
-public:
-  RotationFinder(
-    const double scan_start_time,
-    const std::vector<Eigen::Vector3d> & angles,
-    const std::vector<double> & imu_timestamps)
-  : scan_start_time(scan_start_time), angles(angles), imu_timestamps(imu_timestamps)
-  {
+  const double point_time = scan_start_time + time_from_start;
+
+  const int index = findIndex(imu_timestamps, point_time);
+
+  if (index == 0 || index == static_cast<int>(imu_timestamps.size()) - 1) {
+    return angles[index];
   }
 
-  Eigen::Vector3d operator()(const double time_from_start) const
-  {
-    const double point_time = scan_start_time + time_from_start;
+  return interpolatePose(
+    angles[index - 1], angles[index - 0],
+    imu_timestamps[index - 1], imu_timestamps[index - 0],
+    point_time
+  );
+}
 
-    const int index = findIndex(imu_timestamps, point_time);
-
-    if (index == 0 || index == static_cast<int>(imu_timestamps.size()) - 1) {
-      return angles[index];
-    }
-
-    return interpolatePose(
-      angles[index - 1], angles[index - 0],
-      imu_timestamps[index - 1], imu_timestamps[index - 0],
-      point_time
-    );
-  }
-
-private:
-  const double scan_start_time;
-  const std::vector<Eigen::Vector3d> angles;
-  const std::vector<double> imu_timestamps;
-};
-
-class PositionFinder
+Eigen::Vector3d calcPosition(
+  const Eigen::Vector3d & odomInc,
+  const double scan_start_time, const double scan_end_time, const double time)
 {
-public:
-  PositionFinder(
-    const Eigen::Vector3d & odomInc,
-    const double scan_start_time,
-    const double scan_end_time)
-  : odomInc(odomInc),
-    scan_start_time(scan_start_time),
-    scan_end_time(scan_end_time) {}
-
-  Eigen::Vector3d operator()(const double time) const
-  {
-    const float ratio = time / (scan_end_time - scan_start_time);
-    return ratio * odomInc;
-  }
-
-private:
-  const Eigen::Vector3d & odomInc;
-  const double scan_start_time;
-  const double scan_end_time;
-};
+  return odomInc * time / (scan_end_time - scan_start_time);
+}
 
 std::tuple<Eigen::MatrixXd, Points<PointType>::type>
 projectPointCloud(
@@ -194,8 +165,11 @@ projectPointCloud(
   const int N_SCAN,
   const int Horizon_SCAN,
   const bool imuAvailable,
-  const RotationFinder & calc_rotation,
-  const PositionFinder & calc_position)
+  const double scan_start_time,
+  const double scan_end_time,
+  const Eigen::Vector3d & odomInc,
+  const std::vector<Eigen::Vector3d> & angles,
+  const std::vector<double> & imu_timestamps)
 {
   bool firstPointFlag = true;
   Eigen::Affine3d start_inverse;
@@ -236,7 +210,10 @@ projectPointCloud(
       continue;
     }
 
-    const Eigen::Affine3d transform = makeAffine(calc_rotation(p.time), calc_position(p.time));
+    const Eigen::Affine3d transform = makeAffine(
+      calcRotation(scan_start_time, angles, imu_timestamps, p.time),
+      calcPosition(odomInc, scan_start_time, scan_end_time, p.time)
+    );
 
     if (firstPointFlag) {
       start_inverse = transform.inverse();
@@ -490,13 +467,12 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imu_timestamps.size() > 1;
 
-    const RotationFinder calc_rotation(scan_start_time, angles, imu_timestamps);
-    const PositionFinder calc_position(odomInc, scan_start_time, scan_end_time);
-
     const auto [rangeMat, output_points] = projectPointCloud(
       input_cloud, range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
-      cloudInfo.imuAvailable, calc_rotation, calc_position
+      cloudInfo.imuAvailable,
+      scan_start_time, scan_end_time, odomInc,
+      angles, imu_timestamps
     );
 
     pcl::PointCloud<PointType> extractedCloud;
