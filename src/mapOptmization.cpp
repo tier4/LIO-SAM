@@ -360,9 +360,6 @@ public:
   CornerSurfaceDict corner_surface_dict;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
 
-  pcl::KdTreeFLANN<PointType> kdtreeCornerFromMap;
-  pcl::KdTreeFLANN<PointType> kdtreeSurfFromMap;
-
   ros::Time timestamp;
 
   std::mutex mtx;
@@ -615,6 +612,8 @@ public:
   optimization(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
+    const pcl::KdTreeFLANN<PointType> & kdtreeCornerFromMap,
+    const pcl::KdTreeFLANN<PointType> & kdtreeSurfFromMap,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
   {
     const Eigen::Affine3d point_to_map = getTransformation(posevec);
@@ -866,12 +865,16 @@ public:
       return;
     }
 
+    pcl::KdTreeFLANN<PointType> kdtreeCornerFromMap;
+    pcl::KdTreeFLANN<PointType> kdtreeSurfFromMap;
     kdtreeCornerFromMap.setInputCloud(laserCloudCornerFromMapDS);
     kdtreeSurfFromMap.setInputCloud(laserCloudSurfFromMapDS);
 
     for (int iterCount = 0; iterCount < 30; iterCount++) {
       const auto [laserCloudOri, coeffSel] = optimization(
-        laserCloudCornerLastDS, laserCloudSurfLastDS, laserCloudSurfFromMapDS
+        laserCloudCornerLastDS, laserCloudSurfLastDS,
+        kdtreeCornerFromMap, kdtreeSurfFromMap,
+        laserCloudSurfFromMapDS
       );
 
       if (LMOptimization(laserCloudOri, coeffSel, iterCount)) {

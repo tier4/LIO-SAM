@@ -129,9 +129,9 @@ public:
   {
   }
 
-  Eigen::Vector3d operator()(const double relTime) const
+  Eigen::Vector3d operator()(const double time_from_start) const
   {
-    const double point_time = scan_start_time + relTime;
+    const double point_time = scan_start_time + time_from_start;
 
     int index = timestamps.size() - 1;
     for (unsigned int i = 0; i < timestamps.size() - 1; i++) {
@@ -449,8 +449,6 @@ public:
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
 
-    Eigen::Vector3d odomInc = Eigen::Vector3d::Zero();
-
     {
       std::lock_guard<std::mutex> lock1(imuLock);
       dropBefore(scan_start_time - 0.01, imu_buffer);
@@ -466,6 +464,8 @@ public:
     }
 
     const bool odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
+
+    Eigen::Vector3d odomInc = Eigen::Vector3d::Zero();
 
     if (odomAvailable) {
       const unsigned int index0 = indexNextTimeOf(odomQueue, scan_start_time);
