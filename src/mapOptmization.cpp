@@ -967,13 +967,10 @@ public:
 
     gtSAMgraph.resize(0);
 
-    //save key poses
-    gtsam::Pose3 latestEstimate;
-
-    gtsam::Values isamCurrentEstimate = isam->calculateEstimate();
-    latestEstimate = isamCurrentEstimate.at<gtsam::Pose3>(isamCurrentEstimate.size() - 1);
+    const gtsam::Values estimate = isam->calculateEstimate();
+    const gtsam::Pose3 latestEstimate = estimate.at<gtsam::Pose3>(estimate.size() - 1);
     // std::cout << "****************************************************" << std::endl;
-    // isamCurrentEstimate.print("Current estimate: ");
+    // estimate.print("Current estimate: ");
 
     // size can be used as index
     const PointType position = makePoint(latestEstimate.translation(), cloudKeyPoses3D->size());
@@ -987,8 +984,8 @@ public:
 
     // std::cout << "****************************************************" << std::endl;
     // std::cout << "Pose covariance:" << std::endl;
-    // std::cout << isam->marginalCovariance(isamCurrentEstimate.size()-1) << std::endl << std::endl;
-    poseCovariance = isam->marginalCovariance(isamCurrentEstimate.size() - 1);
+    // std::cout << isam->marginalCovariance(estimate.size()-1) << std::endl << std::endl;
+    poseCovariance = isam->marginalCovariance(estimate.size() - 1);
 
     // save updated transform
     posevec = getPoseVec(latestEstimate);
@@ -1015,9 +1012,10 @@ public:
       // clear path
       path_poses_.clear();
       // update key poses
-      for (unsigned int i = 0; i < isamCurrentEstimate.size(); ++i) {
-        const Eigen::Vector3d xyz = isamCurrentEstimate.at<gtsam::Pose3>(i).translation();
-        const Eigen::Vector3d rpy = isamCurrentEstimate.at<gtsam::Pose3>(i).rotation().rpy();
+      for (unsigned int i = 0; i < estimate.size(); ++i) {
+        const gtsam::Pose3 pose = estimate.at<gtsam::Pose3>(i);
+        const Eigen::Vector3d xyz = pose.translation();
+        const Eigen::Vector3d rpy = pose.rotation().rpy();
 
         cloudKeyPoses3D->at(i) = makePoint(xyz, cloudKeyPoses3D->at(i).intensity);
 
