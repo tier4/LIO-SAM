@@ -156,6 +156,15 @@ Eigen::Vector3d calcPosition(
   return odomInc * time / (scan_end_time - scan_start_time);
 }
 
+int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
+{
+  const float angle = rad2deg(atan2(x, y));
+  const int f = static_cast<int>(Horizon_SCAN * (angle - 90.0) / 360.0);
+  const int c = Horizon_SCAN / 2 - f;
+  const int column_index = c % Horizon_SCAN;
+  return column_index;
+}
+
 std::tuple<Eigen::MatrixXd, Points<PointType>::type>
 projectPointCloud(
   const pcl::PointCloud<PointXYZIRT> & input_points,
@@ -192,10 +201,7 @@ projectPointCloud(
       continue;
     }
 
-    const float angle = rad2deg(atan2(q.x(), q.y()));
-    const int f = static_cast<int>(Horizon_SCAN * (angle - 90.0) / 360.0);
-    const int c = Horizon_SCAN / 2 - f;
-    const int column_index = c % Horizon_SCAN;
+    const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
 
     if (rangeMat(row_index, column_index) >= 0) {
       continue;
