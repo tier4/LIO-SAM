@@ -579,11 +579,11 @@ public:
         *surface += corner_surface_dict[index].second;
         continue;
       }
+
       // transformed cloud not available
-      pcl::PointCloud<PointType> c = transform(
-        corner_cloud[index], makePosevec(cloudKeyPoses6D.at(index)));
-      pcl::PointCloud<PointType> s = transform(
-        surface_cloud[index], makePosevec(cloudKeyPoses6D.at(index)));
+      const Vector6d v = makePosevec(cloudKeyPoses6D.at(index));
+      const pcl::PointCloud<PointType> c = transform(corner_cloud[index], v);
+      const pcl::PointCloud<PointType> s = transform(surface_cloud[index], v);
       *corner += c;
       *surface += s;
       corner_surface_dict[index] = std::make_pair(c, s);
@@ -914,9 +914,9 @@ public:
     CornerSurfaceDict & corner_surface_dict)
   {
     if (!cloudKeyPoses3D->empty()) {
-      Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
-      Eigen::Affine3d transFinal = getTransformation(posevec);
-      const auto [xyz, rpy] = getXYZRPY(transStart.inverse() * transFinal);
+      const Eigen::Affine3d affine0 = getTransformation(makePosevec(cloudKeyPoses6D.back()));
+      const Eigen::Affine3d affine1 = getTransformation(posevec);
+      const auto [xyz, rpy] = getXYZRPY(affine0.inverse() * affine1);
 
       if (
         (rpy.array() < surroundingkeyframeAddingAngleThreshold).all() &&
