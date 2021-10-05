@@ -199,7 +199,7 @@ gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
 }
 
 std::optional<gtsam::GPSFactor> makeGPSFactor(
-  const pcl::PointCloud<PointType> & cloudKeyPoses3D,
+  const pcl::PointCloud<PointType>::Ptr & cloudKeyPoses3D,
   const float gpsCovThreshold, const bool useGpsElevation,
   const Vector6d & posevec, const Eigen::Vector3d & last_gps_position,
   const ros::Time & timestamp,
@@ -211,7 +211,7 @@ std::optional<gtsam::GPSFactor> makeGPSFactor(
   }
 
   const double distance =
-    (getXYZ(cloudKeyPoses3D.front()) - getXYZ(cloudKeyPoses3D.back())).norm();
+    (getXYZ(cloudKeyPoses3D->front()) - getXYZ(cloudKeyPoses3D->back())).norm();
   if (distance < 5.0) {
     return std::nullopt;
   }
@@ -254,7 +254,7 @@ std::optional<gtsam::GPSFactor> makeGPSFactor(
     const auto gps_noise = gtsam::noiseModel::Diagonal::Variances(
       position_variances.cwiseMax(1.0f)
     );
-    return std::make_optional<gtsam::GPSFactor>(cloudKeyPoses3D.size(), gps_position, gps_noise);
+    return std::make_optional<gtsam::GPSFactor>(cloudKeyPoses3D->size(), gps_position, gps_noise);
   }
 
   return std::nullopt;
@@ -269,7 +269,7 @@ public:
   }
 
   std::optional<gtsam::GPSFactor> make(
-    const pcl::PointCloud<PointType> & cloudKeyPoses3D,
+    const pcl::PointCloud<PointType>::Ptr & cloudKeyPoses3D,
     const float gpsCovThreshold, const bool useGpsElevation,
     const Vector6d & posevec, const Eigen::Vector3d & last_gps_position,
     const ros::Time & timestamp)
@@ -354,7 +354,7 @@ public:
   std::vector<pcl::PointCloud<PointType>> corner_cloud;
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
 
-  pcl::PointCloud<PointType> cloudKeyPoses3D;
+  pcl::PointCloud<PointType>::Ptr cloudKeyPoses3D;
   pcl::PointCloud<StampedPose> cloudKeyPoses6D;
 
   CornerSurfaceDict corner_surface_dict;
@@ -402,6 +402,7 @@ public:
     posevec(Vector6d::Zero()),
     isam(std::make_shared<gtsam::ISAM2>(
         gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
+    cloudKeyPoses3D(new pcl::PointCloud<PointType>()),
     isDegenerate(false),
     aLoopIsClosed(false),
     lastImuPreTransAvailable(false),
@@ -477,7 +478,7 @@ public:
     const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
 
     // initialization
-    if (cloudKeyPoses3D.empty()) {
+    if (cloudKeyPoses3D->empty()) {
       posevec.head(3) = vector3ToEigen(msgIn_->initialIMU);
 
       if (!useImuHeadingInitialization) {
@@ -526,7 +527,7 @@ public:
     CornerSurfaceDict & corner_surface_dict,
     pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
   {
-    if (cloudKeyPoses3D.empty()) {
+    if (cloudKeyPoses3D->empty()) {
       return;
     }
 
@@ -537,24 +538,24 @@ public:
     pcl::KdTreeFLANN<PointType> kdtree;
 
     // extract all the nearby key poses and downsample them
-    kdtree.setInputCloud(cloudKeyPoses3D.makeShared()); // create kd-tree
+    kdtree.setInputCloud(cloudKeyPoses3D->makeShared()); // create kd-tree
     kdtree.radiusSearch(
-      cloudKeyPoses3D.back(),
+      cloudKeyPoses3D->back(),
       (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
     for (unsigned int index : indices) {
-      poses->push_back(cloudKeyPoses3D.at(index));
+      poses->push_back(cloudKeyPoses3D->at(index));
     }
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled.points) {
       kdtree.nearestKSearch(pt, 1, indices, pointSearchSqDis);
-      pt.intensity = cloudKeyPoses3D.at(indices[0]).intensity;
+      pt.intensity = cloudKeyPoses3D->at(indices[0]).intensity;
     }
 
     // also extract some latest key frames in case the robot rotates in one position
-    for (int i = cloudKeyPoses3D.size() - 1; i >= 0; --i) {
+    for (int i = cloudKeyPoses3D->size() - 1; i >= 0; --i) {
       if (timestamp.toSec() - cloudKeyPoses6D.at(i).time < 10.0) {
-        downsampled.push_back(cloudKeyPoses3D.at(i));
+        downsampled.push_back(cloudKeyPoses3D->at(i));
       } else {
         break;
       }
@@ -566,7 +567,7 @@ public:
 
     for (unsigned int i = 0; i < downsampled.size(); ++i) {
       const double distance =
-        (getXYZ(downsampled.at(i)) - getXYZ(cloudKeyPoses3D.back())).norm();
+        (getXYZ(downsampled.at(i)) - getXYZ(cloudKeyPoses3D->back())).norm();
       if (distance > surroundingKeyframeSearchRadius) {
         continue;
       }
@@ -855,7 +856,7 @@ public:
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
   {
-    if (cloudKeyPoses3D.empty()) {
+    if (cloudKeyPoses3D->empty()) {
       return;
     }
 
@@ -912,7 +913,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     CornerSurfaceDict & corner_surface_dict)
   {
-    if (!cloudKeyPoses3D.empty()) {
+    if (!cloudKeyPoses3D->empty()) {
       Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
       Eigen::Affine3d transFinal = getTransformation(posevec);
       const auto [xyz, rpy] = getXYZRPY(transStart.inverse() * transFinal);
@@ -932,7 +933,7 @@ public:
     }
 
     if (
-      !cloudKeyPoses3D.empty() &&
+      !cloudKeyPoses3D->empty() &&
       (poseCovariance(3, 3) >= poseCovThreshold || poseCovariance(4, 4) >= poseCovThreshold))
     {
       const std::optional<gtsam::GPSFactor> gps_factor = gps_factor_.make(
@@ -975,8 +976,8 @@ public:
     // isamCurrentEstimate.print("Current estimate: ");
 
     // size can be used as index
-    const PointType position = makePoint(latestEstimate.translation(), cloudKeyPoses3D.size());
-    cloudKeyPoses3D.push_back(position);
+    const PointType position = makePoint(latestEstimate.translation(), cloudKeyPoses3D->size());
+    cloudKeyPoses3D->push_back(position);
 
     const Eigen::Vector3d xyz = latestEstimate.translation();
     const Eigen::Vector3d rpy = latestEstimate.rotation().rpy();
@@ -1003,7 +1004,7 @@ public:
     pose_stamped.pose = makePose(rpy, xyz);
     path_poses_.push_back(pose_stamped);
 
-    if (cloudKeyPoses3D.empty()) {
+    if (cloudKeyPoses3D->empty()) {
       return;
     }
 
@@ -1018,7 +1019,7 @@ public:
         const Eigen::Vector3d xyz = isamCurrentEstimate.at<gtsam::Pose3>(i).translation();
         const Eigen::Vector3d rpy = isamCurrentEstimate.at<gtsam::Pose3>(i).rotation().rpy();
 
-        cloudKeyPoses3D.at(i) = makePoint(xyz, cloudKeyPoses3D.at(i).intensity);
+        cloudKeyPoses3D->at(i) = makePoint(xyz, cloudKeyPoses3D->at(i).intensity);
 
         const auto point6d = cloudKeyPoses6D.at(i);
         cloudKeyPoses6D.at(i) = makeStampedPose(xyz, rpy, point6d.time);
@@ -1098,11 +1099,11 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
   {
-    if (cloudKeyPoses3D.empty()) {
+    if (cloudKeyPoses3D->empty()) {
       return;
     }
     // publish key poses
-    publishCloud(pubKeyPoses, cloudKeyPoses3D, timestamp, odometryFrame);
+    publishCloud(pubKeyPoses, *cloudKeyPoses3D, timestamp, odometryFrame);
     // Publish surrounding key frames
     publishCloud(
       pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp,
