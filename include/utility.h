@@ -427,11 +427,10 @@ template < typename T >
 void dropBefore(const double time_second, std::deque < T > & buffer)
 {
   while (!buffer.empty()) {
-    if (timeInSec(buffer.front().header) < time_second) {
-      buffer.pop_front();
-    } else {
+    if (timeInSec(buffer.front().header) >= time_second) {
       break;
     }
+    buffer.pop_front();
   }
 }
 

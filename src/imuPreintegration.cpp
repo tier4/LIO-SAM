@@ -349,12 +349,11 @@ public:
     if (!systemInitialized) {
       // pop old IMU message
       while (!imuQueOpt.empty()) {
-        if (timeInSec(imuQueOpt.front().header) < currentCorrectionTime - delta_t) {
-          lastImuT_opt = timeInSec(imuQueOpt.front().header);
-          imuQueOpt.pop_front();
-        } else {
+        if (timeInSec(imuQueOpt.front().header) >= currentCorrectionTime - delta_t) {
           break;
         }
+        lastImuT_opt = timeInSec(imuQueOpt.front().header);
+        imuQueOpt.pop_front();
       }
 
       optimizer = initOptimizer(lidar2Imu, lidar_pose);
@@ -379,20 +378,19 @@ public:
       // pop and integrate imu data that is between two optimizations
       sensor_msgs::Imu & front = imuQueOpt.front();
       const double imuTime = timeInSec(front.header);
-      if (imuTime < currentCorrectionTime - delta_t) {
-        const double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
-
-        imuIntegratorOpt_.integrateMeasurement(
-          vector3ToEigen(front.linear_acceleration),
-          vector3ToEigen(front.angular_velocity),
-          dt
-        );
-
-        lastImuT_opt = imuTime;
-        imuQueOpt.pop_front();
-      } else {
+      if (imuTime >= currentCorrectionTime - delta_t) {
         break;
       }
+      const double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
+
+      imuIntegratorOpt_.integrateMeasurement(
+        vector3ToEigen(front.linear_acceleration),
+        vector3ToEigen(front.angular_velocity),
+        dt
+      );
+
+      lastImuT_opt = imuTime;
+      imuQueOpt.pop_front();
     }
 
     // add imu factor to graph

@@ -553,11 +553,10 @@ public:
 
     // also extract some latest key frames in case the robot rotates in one position
     for (int i = cloudKeyPoses3D->size() - 1; i >= 0; --i) {
-      if (timestamp.toSec() - cloudKeyPoses6D.at(i).time < 10.0) {
-        downsampled.push_back(cloudKeyPoses3D->at(i));
-      } else {
+      if (timestamp.toSec() - cloudKeyPoses6D.at(i).time >= 10.0) {
         break;
       }
+      downsampled.push_back(cloudKeyPoses3D->at(i));
     }
 
     // fuse the map
