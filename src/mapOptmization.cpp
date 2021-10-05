@@ -458,7 +458,10 @@ public:
       downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
       downSizeFilterSurf.filter(laserCloudSurfLastDS);
 
-      scan2MapOptimization(laserCloudCornerLastDS, laserCloudSurfLastDS, laserCloudSurfFromMapDS);
+      scan2MapOptimization(
+        laserCloudCornerLastDS, laserCloudSurfLastDS,
+        laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
+      );
 
       saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, corner_surface_dict);
 
@@ -849,7 +852,8 @@ public:
   void scan2MapOptimization(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-    pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
+    const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
+    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
   {
     if (cloudKeyPoses3D.points.empty()) {
       return;
