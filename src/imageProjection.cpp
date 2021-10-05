@@ -165,7 +165,7 @@ int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
   return column_index;
 }
 
-std::tuple<Eigen::MatrixXd, Points<PointType>::type>
+std::tuple<Eigen::MatrixXd, std::vector<PointType>>
 projectPointCloud(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const float range_min,
@@ -183,9 +183,9 @@ projectPointCloud(
   bool firstPointFlag = true;
   Eigen::Affine3d start_inverse;
 
-  Eigen::MatrixXd rangeMat = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
+  Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
 
-  Points<PointType>::type output_points(N_SCAN * Horizon_SCAN);
+  std::vector<PointType> output_points(N_SCAN * Horizon_SCAN);
 
   for (const PointXYZIRT & p : input_points) {
     const Eigen::Vector3d q(p.x, p.y, p.z);
@@ -203,11 +203,11 @@ projectPointCloud(
 
     const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
 
-    if (rangeMat(row_index, column_index) >= 0) {
+    if (range_matrix(row_index, column_index) >= 0) {
       continue;
     }
 
-    rangeMat(row_index, column_index) = range;
+    range_matrix(row_index, column_index) = range;
 
     const int index = column_index + row_index * Horizon_SCAN;
 
@@ -231,7 +231,7 @@ projectPointCloud(
     output_points[index] = makePoint(transBt * q, p.intensity);
   }
 
-  return {rangeMat, output_points};
+  return {range_matrix, output_points};
 }
 
 bool odometryIsAvailable(
@@ -473,7 +473,7 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imu_timestamps.size() > 1;
 
-    const auto [rangeMat, output_points] = projectPointCloud(
+    const auto [range_matrix, output_points] = projectPointCloud(
       input_cloud, range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable,
@@ -488,7 +488,7 @@ public:
       cloudInfo.startRingIndex[i] = count + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
-        const float range = rangeMat(i, j);
+        const float range = range_matrix(i, j);
         if (range < 0) {
           continue;
         }
