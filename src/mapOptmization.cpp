@@ -531,17 +531,16 @@ public:
       return;
     }
 
-    pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
     std::vector<int> indices;
     std::vector<float> pointSearchSqDis;
-
     pcl::KdTreeFLANN<PointType> kdtree;
 
+    const double radius = (double)surroundingKeyframeSearchRadius;
     // extract all the nearby key poses and downsample them
     kdtree.setInputCloud(cloudKeyPoses3D->makeShared()); // create kd-tree
-    kdtree.radiusSearch(
-      cloudKeyPoses3D->back(),
-      (double)surroundingKeyframeSearchRadius, indices, pointSearchSqDis);
+    kdtree.radiusSearch(cloudKeyPoses3D->back(), radius, indices, pointSearchSqDis);
+
+    pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
     for (unsigned int index : indices) {
       poses->push_back(cloudKeyPoses3D->at(index));
     }
@@ -568,11 +567,11 @@ public:
     for (unsigned int i = 0; i < downsampled.size(); ++i) {
       const double distance =
         (getXYZ(downsampled.at(i)) - getXYZ(cloudKeyPoses3D->back())).norm();
-      if (distance > surroundingKeyframeSearchRadius) {
+      if (distance > radius) {
         continue;
       }
 
-      int index = static_cast<int>(downsampled.at(i).intensity);
+      const int index = static_cast<int>(downsampled.at(i).intensity);
       if (corner_surface_dict.find(index) != corner_surface_dict.end()) {
         // transformed cloud available
         *corner += corner_surface_dict[index].first;
