@@ -118,14 +118,14 @@ Eigen::Vector3d interpolatePose(
   return rot1 * (t - t0) / (t1 - t0) + rot0 * (t1 - t) / (t1 - t0);
 }
 
-int findIndex(const std::vector<double> & timestamps, const double point_time)
+int findIndex(const std::vector<double> & imu_timestamps, const double point_time)
 {
-  for (unsigned int i = 0; i < timestamps.size() - 1; i++) {
-    if (point_time < timestamps[i]) {
+  for (unsigned int i = 0; i < imu_timestamps.size() - 1; i++) {
+    if (point_time < imu_timestamps[i]) {
       return i;
     }
   }
-  return timestamps.size() - 1;
+  return imu_timestamps.size() - 1;
 }
 
 class RotationFinder
@@ -134,8 +134,8 @@ public:
   RotationFinder(
     const double scan_start_time,
     const std::vector<Eigen::Vector3d> & angles,
-    const std::vector<double> & timestamps)
-  : scan_start_time(scan_start_time), angles(angles), timestamps(timestamps)
+    const std::vector<double> & imu_timestamps)
+  : scan_start_time(scan_start_time), angles(angles), imu_timestamps(imu_timestamps)
   {
   }
 
@@ -143,15 +143,15 @@ public:
   {
     const double point_time = scan_start_time + time_from_start;
 
-    const int index = findIndex(timestamps, point_time);
+    const int index = findIndex(imu_timestamps, point_time);
 
-    if (point_time > timestamps[index] || index == 0) {
+    if (index == 0 || index == static_cast<int>(imu_timestamps.size()) - 1) {
       return angles[index];
     }
 
     return interpolatePose(
       angles[index - 1], angles[index - 0],
-      timestamps[index - 1], timestamps[index - 0],
+      imu_timestamps[index - 1], imu_timestamps[index - 0],
       point_time
     );
   }
@@ -159,7 +159,7 @@ public:
 private:
   const double scan_start_time;
   const std::vector<Eigen::Vector3d> angles;
-  const std::vector<double> timestamps;
+  const std::vector<double> imu_timestamps;
 };
 
 class PositionFinder
@@ -198,7 +198,7 @@ projectPointCloud(
   const PositionFinder & calc_position)
 {
   bool firstPointFlag = true;
-  Eigen::Affine3d transStartInverse;
+  Eigen::Affine3d start_inverse;
 
   Eigen::MatrixXd rangeMat = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
 
@@ -239,12 +239,12 @@ projectPointCloud(
     const Eigen::Affine3d transform = makeAffine(calc_rotation(p.time), calc_position(p.time));
 
     if (firstPointFlag) {
-      transStartInverse = transform.inverse();
+      start_inverse = transform.inverse();
       firstPointFlag = false;
     }
 
     // transform points to start
-    const Eigen::Affine3d transBt = transStartInverse * transform;
+    const Eigen::Affine3d transBt = start_inverse * transform;
     output_points[index] = makePoint(transBt * q, p.intensity);
   }
 
@@ -460,7 +460,7 @@ public:
 
     cloudInfo.initialIMU = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
 
-    const auto [timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
+    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);
@@ -488,9 +488,9 @@ public:
     }
 
     cloudInfo.odomAvailable = odomAvailable;
-    cloudInfo.imuAvailable = timestamps.size() > 1;
+    cloudInfo.imuAvailable = imu_timestamps.size() > 1;
 
-    const RotationFinder calc_rotation(scan_start_time, angles, timestamps);
+    const RotationFinder calc_rotation(scan_start_time, angles, imu_timestamps);
     const PositionFinder calc_position(odomInc, scan_start_time, scan_end_time);
 
     const auto [rangeMat, output_points] = projectPointCloud(
