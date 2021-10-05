@@ -183,7 +183,7 @@ private:
 
 std::tuple<Eigen::MatrixXd, Points<PointType>::type>
 projectPointCloud(
-  const Points<PointXYZIRT>::type & input_points,
+  const pcl::PointCloud<PointXYZIRT> & input_points,
   const float range_min,
   const float range_max,
   const int downsampleRate,
@@ -436,7 +436,7 @@ public:
     }
 
     const double scan_start_time = timeInSec(cloud_msg.header);
-    const double scan_end_time = scan_start_time + input_cloud.points.back().time;
+    const double scan_end_time = scan_start_time + input_cloud.back().time;
 
     if (!checkImuTime(imu_buffer, scan_start_time, scan_end_time)) {
       return;
@@ -490,8 +490,7 @@ public:
     const PositionFinder calc_position(odomInc, scan_start_time, scan_end_time);
 
     const auto [rangeMat, output_points] = projectPointCloud(
-      input_cloud.points,
-      range_min, range_max,
+      input_cloud, range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
       cloudInfo.imuAvailable, calc_rotation, calc_position
     );
