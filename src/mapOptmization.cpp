@@ -477,7 +477,7 @@ public:
     const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
 
     // initialization
-    if (cloudKeyPoses3D.points.empty()) {
+    if (cloudKeyPoses3D.empty()) {
       posevec.head(3) = vector3ToEigen(msgIn_->initialIMU);
 
       if (!useImuHeadingInitialization) {
@@ -526,7 +526,7 @@ public:
     CornerSurfaceDict & corner_surface_dict,
     pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
   {
-    if (cloudKeyPoses3D.points.empty()) {
+    if (cloudKeyPoses3D.empty()) {
       return;
     }
 
@@ -855,7 +855,7 @@ public:
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
   {
-    if (cloudKeyPoses3D.points.empty()) {
+    if (cloudKeyPoses3D.empty()) {
       return;
     }
 
@@ -912,7 +912,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     CornerSurfaceDict & corner_surface_dict)
   {
-    if (!cloudKeyPoses3D.points.empty()) {
+    if (!cloudKeyPoses3D.empty()) {
       Eigen::Affine3d transStart = getTransformation(makePosevec(cloudKeyPoses6D.back()));
       Eigen::Affine3d transFinal = getTransformation(posevec);
       const auto [xyz, rpy] = getXYZRPY(transStart.inverse() * transFinal);
@@ -932,7 +932,7 @@ public:
     }
 
     if (
-      !cloudKeyPoses3D.points.empty() &&
+      !cloudKeyPoses3D.empty() &&
       (poseCovariance(3, 3) >= poseCovThreshold || poseCovariance(4, 4) >= poseCovThreshold))
     {
       const std::optional<gtsam::GPSFactor> gps_factor = gps_factor_.make(
@@ -1003,7 +1003,7 @@ public:
     pose_stamped.pose = makePose(rpy, xyz);
     path_poses_.push_back(pose_stamped);
 
-    if (cloudKeyPoses3D.points.empty()) {
+    if (cloudKeyPoses3D.empty()) {
       return;
     }
 
@@ -1098,7 +1098,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
   {
-    if (cloudKeyPoses3D.points.empty()) {
+    if (cloudKeyPoses3D.empty()) {
       return;
     }
     // publish key poses
