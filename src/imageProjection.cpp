@@ -180,7 +180,7 @@ projectPointCloud(
   const std::vector<Eigen::Vector3d> & angles,
   const std::vector<double> & imu_timestamps)
 {
-  bool firstPointFlag = true;
+  bool is_first_point = true;
   Eigen::Affine3d start_inverse;
 
   Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
@@ -221,14 +221,13 @@ projectPointCloud(
       calcPosition(odomInc, scan_start_time, scan_end_time, p.time)
     );
 
-    if (firstPointFlag) {
+    if (is_first_point) {
       start_inverse = transform.inverse();
-      firstPointFlag = false;
+      is_first_point = false;
     }
 
     // transform points to start
-    const Eigen::Affine3d transBt = start_inverse * transform;
-    output_points[index] = makePoint(transBt * q, p.intensity);
+    output_points[index] = makePoint((start_inverse * transform) * q, p.intensity);
   }
 
   return {range_matrix, output_points};
