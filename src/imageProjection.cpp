@@ -118,6 +118,16 @@ Eigen::Vector3d interpolatePose(
   return rot1 * (t - t0) / (t1 - t0) + rot0 * (t1 - t) / (t1 - t0);
 }
 
+int findIndex(const std::vector<double> & timestamps, const double point_time)
+{
+  for (unsigned int i = 0; i < timestamps.size() - 1; i++) {
+    if (point_time < timestamps[i]) {
+      return i;
+    }
+  }
+  return timestamps.size() - 1;
+}
+
 class RotationFinder
 {
 public:
@@ -133,13 +143,7 @@ public:
   {
     const double point_time = scan_start_time + time_from_start;
 
-    int index = timestamps.size() - 1;
-    for (unsigned int i = 0; i < timestamps.size() - 1; i++) {
-      if (timestamps[i] > point_time) {
-        index = i;
-        break;
-      }
-    }
+    const int index = findIndex(timestamps, point_time);
 
     if (point_time > timestamps[index] || index == 0) {
       return angles[index];
