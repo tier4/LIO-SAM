@@ -432,44 +432,46 @@ public:
     std::lock_guard<std::mutex> lock(mtx);
 
     static double timeLastProcessing = -1;
-    if (timestamp.toSec() - timeLastProcessing >= mappingProcessInterval) {
-      timeLastProcessing = timestamp.toSec();
-
-      // save current transformation before any processing
-      Eigen::Affine3d incrementalOdometryAffineFront = getTransformation(posevec);
-      updateInitialGuess();
-
-      extractSurroundingKeyFrames(cloudKeyPoses6D, corner_surface_dict, laserCloudSurfFromMapDS);
-
-      pcl::VoxelGrid<PointType> downSizeFilterCorner;
-      downSizeFilterCorner.setLeafSize(
-        mappingCornerLeafSize,
-        mappingCornerLeafSize,
-        mappingCornerLeafSize);
-      pcl::PointCloud<PointType> laserCloudCornerLastDS;
-      downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
-      downSizeFilterCorner.filter(laserCloudCornerLastDS);
-
-      pcl::VoxelGrid<PointType> downSizeFilterSurf;
-      downSizeFilterSurf.setLeafSize(
-        mappingSurfLeafSize,
-        mappingSurfLeafSize,
-        mappingSurfLeafSize);
-      pcl::PointCloud<PointType> laserCloudSurfLastDS;
-      downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
-      downSizeFilterSurf.filter(laserCloudSurfLastDS);
-
-      scan2MapOptimization(
-        laserCloudCornerLastDS, laserCloudSurfLastDS,
-        laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
-      );
-
-      saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, corner_surface_dict);
-
-      publishOdometry(incrementalOdometryAffineFront);
-
-      publishFrames(laserCloudCornerLastDS, laserCloudSurfLastDS, laserCloudSurfFromMapDS);
+    if (timestamp.toSec() - timeLastProcessing < mappingProcessInterval) {
+      return;
     }
+
+    timeLastProcessing = timestamp.toSec();
+
+    // save current transformation before any processing
+    Eigen::Affine3d incrementalOdometryAffineFront = getTransformation(posevec);
+    updateInitialGuess();
+
+    extractSurroundingKeyFrames(cloudKeyPoses6D, corner_surface_dict, laserCloudSurfFromMapDS);
+
+    pcl::VoxelGrid<PointType> downSizeFilterCorner;
+    downSizeFilterCorner.setLeafSize(
+      mappingCornerLeafSize,
+      mappingCornerLeafSize,
+      mappingCornerLeafSize);
+    pcl::PointCloud<PointType> laserCloudCornerLastDS;
+    downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
+    downSizeFilterCorner.filter(laserCloudCornerLastDS);
+
+    pcl::VoxelGrid<PointType> downSizeFilterSurf;
+    downSizeFilterSurf.setLeafSize(
+      mappingSurfLeafSize,
+      mappingSurfLeafSize,
+      mappingSurfLeafSize);
+    pcl::PointCloud<PointType> laserCloudSurfLastDS;
+    downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
+    downSizeFilterSurf.filter(laserCloudSurfLastDS);
+
+    scan2MapOptimization(
+      laserCloudCornerLastDS, laserCloudSurfLastDS,
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
+    );
+
+    saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, corner_surface_dict);
+
+    publishOdometry(incrementalOdometryAffineFront);
+
+    publishFrames(laserCloudCornerLastDS, laserCloudSurfLastDS, laserCloudSurfFromMapDS);
   }
 
   void updateInitialGuess()
