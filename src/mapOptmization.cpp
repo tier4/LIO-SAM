@@ -349,7 +349,7 @@ public:
   std::shared_ptr<gtsam::ISAM2> isam;
 
   GPSFactor gps_factor_;
-  lio_sam::cloud_info cloudInfo;
+  lio_sam::cloud_infoConstPtr msgIn_;
 
   std::vector<pcl::PointCloud<PointType>> corner_cloud;
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
@@ -417,11 +417,10 @@ public:
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
+    msgIn_ = msgIn;
+
     // extract time stamp
     timestamp = msgIn->header.stamp;
-
-    // extract info and feature cloud
-    cloudInfo = *msgIn;
 
     // corner feature set from odoOptimization
     pcl::PointCloud<PointType>::Ptr laserCloudCornerLast(new pcl::PointCloud<PointType>());
@@ -475,11 +474,11 @@ public:
   void updateInitialGuess()
   {
 
-    const Eigen::Vector3d rpy = vector3ToEigen(cloudInfo.initialIMU);
+    const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
 
     // initialization
     if (cloudKeyPoses3D.points.empty()) {
-      posevec.head(3) = vector3ToEigen(cloudInfo.initialIMU);
+      posevec.head(3) = vector3ToEigen(msgIn_->initialIMU);
 
       if (!useImuHeadingInitialization) {
         posevec(2) = 0;
@@ -491,8 +490,8 @@ public:
     }
 
     // use imu pre-integration estimation for pose guess
-    if (cloudInfo.odomAvailable) {
-      const Eigen::Affine3d back = poseToAffine(cloudInfo.initial_pose);
+    if (msgIn_->odomAvailable) {
+      const Eigen::Affine3d back = poseToAffine(msgIn_->initial_pose);
       if (lastImuPreTransAvailable) {
         const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
         const Eigen::Affine3d tobe = getTransformation(posevec);
@@ -509,7 +508,7 @@ public:
     }
 
     // use imu incremental estimation for pose guess (only rotation)
-    if (cloudInfo.imuAvailable) {
+    if (msgIn_->imuAvailable) {
       const Eigen::Affine3d back = makeAffine(rpy, Eigen::Vector3d::Zero());
       const Eigen::Affine3d incre = lastImuTransformation.inverse() * back;
 
@@ -880,16 +879,16 @@ public:
       }
     }
 
-    if (cloudInfo.imuAvailable) {
-      if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
+    if (msgIn_->imuAvailable) {
+      if (std::abs(msgIn_->initialIMU.y) < 1.4) {
         // slerp roll
         const tf::Quaternion qr0 = tfQuaternionFromRPY(posevec(0), 0, 0);
-        const tf::Quaternion qr1 = tfQuaternionFromRPY(cloudInfo.initialIMU.x, 0, 0);
+        const tf::Quaternion qr1 = tfQuaternionFromRPY(msgIn_->initialIMU.x, 0, 0);
         posevec(0) = getRPY(interpolate(qr0, qr1, imuRPYWeight))(0);
 
         // slerp pitch
         const tf::Quaternion qp0 = tfQuaternionFromRPY(0, posevec(1), 0);
-        const tf::Quaternion qp1 = tfQuaternionFromRPY(0, cloudInfo.initialIMU.y, 0);
+        const tf::Quaternion qp1 = tfQuaternionFromRPY(0, msgIn_->initialIMU.y, 0);
         posevec(1) = getRPY(interpolate(qp0, qp1, imuRPYWeight))(1);
       }
     }
@@ -1057,20 +1056,20 @@ public:
         incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
       Vector6d odometry = getPoseVec(increOdomAffine);
-      if (cloudInfo.imuAvailable) {
-        if (std::abs(cloudInfo.initialIMU.y) < 1.4) {
+      if (msgIn_->imuAvailable) {
+        if (std::abs(msgIn_->initialIMU.y) < 1.4) {
           double imuWeight = 0.1;
           tf::Quaternion imuQuaternion;
           tf::Quaternion transformQuaternion;
 
           // slerp roll
           transformQuaternion.setRPY(odometry(0), 0, 0);
-          imuQuaternion.setRPY(cloudInfo.initialIMU.x, 0, 0);
+          imuQuaternion.setRPY(msgIn_->initialIMU.x, 0, 0);
           odometry(0) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
 
           // slerp pitch
           transformQuaternion.setRPY(0, odometry(1), 0);
-          imuQuaternion.setRPY(0, cloudInfo.initialIMU.y, 0);
+          imuQuaternion.setRPY(0, msgIn_->initialIMU.y, 0);
           odometry(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
         }
       }
