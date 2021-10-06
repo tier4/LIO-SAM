@@ -369,7 +369,6 @@ public:
 
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
-  Eigen::Affine3d incrementalOdometryAffineFront;
   Eigen::Affine3d incrementalOdometryAffineBack;
   Eigen::Affine3d lastImuTransformation;
   Eigen::Vector3d last_gps_position;
@@ -438,7 +437,7 @@ public:
     timeLastProcessing = timestamp.toSec();
 
     // save current transformation before any processing
-    Eigen::Affine3d incrementalOdometryAffineFront = getTransformation(posevec);
+    const Vector6d front_posevec = posevec;
     updateInitialGuess();
 
     extractSurroundingKeyFrames(cloudKeyPoses6D, corner_surface_dict, laserCloudSurfFromMapDS);
@@ -468,7 +467,7 @@ public:
 
     saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, corner_surface_dict);
 
-    publishOdometry(incrementalOdometryAffineFront);
+    publishOdometry(front_posevec);
 
     publishFrames(laserCloudCornerLastDS, laserCloudSurfLastDS, laserCloudSurfFromMapDS);
   }
@@ -1033,7 +1032,7 @@ public:
     }
   }
 
-  void publishOdometry(const Eigen::Affine3d & incrementalOdometryAffineFront)
+  void publishOdometry(const Vector6d & front_posevec)
   {
     // Publish odometry for ROS (global)
     nav_msgs::Odometry odometry;
@@ -1058,8 +1057,8 @@ public:
       laserOdomIncremental = odometry;
       increOdomAffine = getTransformation(posevec);
     } else {
-      Eigen::Affine3d affineIncre = incrementalOdometryAffineFront.inverse() *
-        incrementalOdometryAffineBack;
+      const Eigen::Affine3d front = getTransformation(front_posevec);
+      Eigen::Affine3d affineIncre = front.inverse() * incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
       Vector6d odometry = getPoseVec(increOdomAffine);
       if (msgIn_->imuAvailable) {
