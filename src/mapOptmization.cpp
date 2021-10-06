@@ -469,7 +469,18 @@ public:
 
     publishOdometry(front_posevec);
 
-    publishFrames(laserCloudCornerLastDS, laserCloudSurfLastDS, laserCloudSurfFromMapDS);
+    if (!cloudKeyPoses3D->empty()) {
+      // publish key poses
+      publishCloud(pubKeyPoses, *cloudKeyPoses3D, timestamp, odometryFrame);
+      // Publish surrounding key frames
+      publishCloud(
+        pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp,
+        odometryFrame);
+      publishDownsampledCloud(
+        pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
+        odometryFrame, timestamp, posevec);
+      publishPath(pubPath, odometryFrame, timestamp, path_poses_);
+    }
   }
 
   void updateInitialGuess()
@@ -1089,26 +1100,6 @@ public:
       }
     }
     pubLaserOdometryIncremental.publish(laserOdomIncremental);
-  }
-
-  void publishFrames(
-    const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
-    const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
-  {
-    if (cloudKeyPoses3D->empty()) {
-      return;
-    }
-    // publish key poses
-    publishCloud(pubKeyPoses, *cloudKeyPoses3D, timestamp, odometryFrame);
-    // Publish surrounding key frames
-    publishCloud(
-      pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp,
-      odometryFrame);
-    publishDownsampledCloud(
-      pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
-      odometryFrame, timestamp, posevec);
-    publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
 };
 
