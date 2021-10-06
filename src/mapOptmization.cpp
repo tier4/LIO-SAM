@@ -380,7 +380,6 @@ public:
   bool lastIncreOdomPubFlag;
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
-  nav_msgs::Odometry laserOdomIncremental; // incremental odometry msg
   Eigen::Affine3d increOdomAffine; // incremental odometry in affine
 
   mapOptimization()
@@ -1037,13 +1036,13 @@ public:
   void publishOdometry(const Eigen::Affine3d & incrementalOdometryAffineFront)
   {
     // Publish odometry for ROS (global)
-    nav_msgs::Odometry laserOdometryROS;
-    laserOdometryROS.header.stamp = timestamp;
-    laserOdometryROS.header.frame_id = odometryFrame;
-    laserOdometryROS.child_frame_id = "odom_mapping";
-    laserOdometryROS.pose.pose = makePose(posevec);
+    nav_msgs::Odometry odometry;
+    odometry.header.stamp = timestamp;
+    odometry.header.frame_id = odometryFrame;
+    odometry.child_frame_id = "odom_mapping";
+    odometry.pose.pose = makePose(posevec);
     // geometry_msgs/Quaternion
-    pubLaserOdometryGlobal.publish(laserOdometryROS);
+    pubLaserOdometryGlobal.publish(odometry);
 
     // Publish TF
     tf::TransformBroadcaster br;
@@ -1052,10 +1051,11 @@ public:
       t_odom_to_lidar, timestamp, odometryFrame, "lidar_link");
     br.sendTransform(trans_odom_to_lidar);
 
+    nav_msgs::Odometry laserOdomIncremental;
     // Publish odometry for ROS (incremental)
     if (!lastIncreOdomPubFlag) {
       lastIncreOdomPubFlag = true;
-      laserOdomIncremental = laserOdometryROS;
+      laserOdomIncremental = odometry;
       increOdomAffine = getTransformation(posevec);
     } else {
       Eigen::Affine3d affineIncre = incrementalOdometryAffineFront.inverse() *
