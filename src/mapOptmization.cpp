@@ -388,7 +388,7 @@ public:
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
   Eigen::Affine3d increOdomAffine; // incremental odometry in affine
-  double timeLastProcessing;
+  double last_time_sec;
 
   mapOptimization()
   : pubLaserCloudSurround(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1)),
@@ -415,7 +415,7 @@ public:
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
     laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>()),
-    timeLastProcessing(-1.0)
+    last_time_sec(-1.0)
   {
 
     laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
@@ -439,11 +439,11 @@ public:
 
     std::lock_guard<std::mutex> lock(mtx);
 
-    if (timestamp.toSec() - timeLastProcessing < mappingProcessInterval) {
+    if (timestamp.toSec() - last_time_sec < mappingProcessInterval) {
       return;
     }
 
-    timeLastProcessing = timestamp.toSec();
+    last_time_sec = timestamp.toSec();
 
     // save current transformation before any processing
     const Vector6d front_posevec = posevec;
@@ -461,10 +461,7 @@ public:
     downSizeFilterCorner.filter(laserCloudCornerLastDS);
 
     pcl::VoxelGrid<PointType> downSizeFilterSurf;
-    downSizeFilterSurf.setLeafSize(
-      mappingSurfLeafSize,
-      mappingSurfLeafSize,
-      mappingSurfLeafSize);
+    downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
     pcl::PointCloud<PointType> laserCloudSurfLastDS;
     downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
     downSizeFilterSurf.filter(laserCloudSurfLastDS);
@@ -482,9 +479,7 @@ public:
       // publish key poses
       publishCloud(pubKeyPoses, *cloudKeyPoses3D, timestamp, odometryFrame);
       // Publish surrounding key frames
-      publishCloud(
-        pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp,
-        odometryFrame);
+      publishCloud(pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp, odometryFrame);
       publishDownsampledCloud(
         pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
         odometryFrame, timestamp, posevec);
@@ -985,16 +980,16 @@ public:
     gtSAMgraph.resize(0);
 
     const gtsam::Values estimate = isam->calculateEstimate();
-    const gtsam::Pose3 latestEstimate = estimate.at<gtsam::Pose3>(estimate.size() - 1);
+    const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
     // std::cout << "****************************************************" << std::endl;
     // estimate.print("Current estimate: ");
 
     // size can be used as index
-    const PointType position = makePoint(latestEstimate.translation(), cloudKeyPoses3D->size());
+    const PointType position = makePoint(latest.translation(), cloudKeyPoses3D->size());
     cloudKeyPoses3D->push_back(position);
 
-    const Eigen::Vector3d xyz = latestEstimate.translation();
-    const Eigen::Vector3d rpy = latestEstimate.rotation().rpy();
+    const Eigen::Vector3d xyz = latest.translation();
+    const Eigen::Vector3d rpy = latest.rotation().rpy();
     // intensity can be used as index
     const StampedPose pose6dof = makeStampedPose(xyz, rpy, timestamp.toSec());
     cloudKeyPoses6D.push_back(pose6dof);
@@ -1005,7 +1000,7 @@ public:
     poseCovariance = isam->marginalCovariance(estimate.size() - 1);
 
     // save updated transform
-    posevec = getPoseVec(latestEstimate);
+    posevec = getPoseVec(latest);
 
     // save key frame cloud
     corner_cloud.push_back(laserCloudCornerLastDS);
