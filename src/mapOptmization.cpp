@@ -40,10 +40,11 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     float, pitch, pitch)(float, yaw, yaw)(double, time, time)
 )
 
-StampedPose makeStampedPose(
-  const Eigen::Vector3d & xyz, const Eigen::Vector3d & rpy,
-  const double time)
+StampedPose makeStampedPose(const gtsam::Pose3 & pose, const double time)
 {
+  const Eigen::Vector3d xyz = pose.translation();
+  const Eigen::Vector3d rpy = pose.rotation().rpy();
+
   StampedPose pose6dof;
   pose6dof.x = xyz(0);
   pose6dof.y = xyz(1);
@@ -988,10 +989,8 @@ public:
     const PointType position = makePoint(latest.translation(), cloudKeyPoses3D->size());
     cloudKeyPoses3D->push_back(position);
 
-    const Eigen::Vector3d xyz = latest.translation();
-    const Eigen::Vector3d rpy = latest.rotation().rpy();
     // intensity can be used as index
-    const StampedPose pose6dof = makeStampedPose(xyz, rpy, timestamp.toSec());
+    const StampedPose pose6dof = makeStampedPose(latest, timestamp.toSec());
     cloudKeyPoses6D.push_back(pose6dof);
 
     // std::cout << "****************************************************" << std::endl;
@@ -1010,7 +1009,7 @@ public:
     geometry_msgs::PoseStamped pose_stamped;
     pose_stamped.header.stamp = ros::Time().fromSec(pose6dof.time);
     pose_stamped.header.frame_id = odometryFrame;
-    pose_stamped.pose = makePose(rpy, xyz);
+    pose_stamped.pose = makePose(latest.rotation().rpy(), latest.translation());
     path_poses_.push_back(pose_stamped);
 
     if (cloudKeyPoses3D->empty()) {
@@ -1032,7 +1031,7 @@ public:
         cloudKeyPoses3D->at(i) = makePoint(xyz, cloudKeyPoses3D->at(i).intensity);
 
         const auto point6d = cloudKeyPoses6D.at(i);
-        cloudKeyPoses6D.at(i) = makeStampedPose(xyz, rpy, point6d.time);
+        cloudKeyPoses6D.at(i) = makeStampedPose(pose, point6d.time);
 
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
