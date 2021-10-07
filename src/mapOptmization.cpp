@@ -76,6 +76,14 @@ tf::Quaternion interpolate(
   return q0.slerp(q1, weight);
 }
 
+Eigen::Vector3d interpolate(
+  const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight)
+{
+  const tf::Quaternion q0 = tfQuaternionFromRPY(rpy0(0), rpy0(1), rpy0(2));
+  const tf::Quaternion q1 = tfQuaternionFromRPY(rpy1(0), rpy1(1), rpy1(2));
+  return getRPY(interpolate(q0, q1, weight));
+}
+
 float constraintTransformation(const float value, const float limit)
 {
   if (value < -limit) {
@@ -898,15 +906,14 @@ public:
 
     if (msgIn_->imuAvailable) {
       if (std::abs(msgIn_->initialIMU.y) < 1.4) {
-        // slerp roll
-        const tf::Quaternion qr0 = tfQuaternionFromRPY(posevec(0), 0, 0);
-        const tf::Quaternion qr1 = tfQuaternionFromRPY(msgIn_->initialIMU.x, 0, 0);
-        posevec(0) = getRPY(interpolate(qr0, qr1, imuRPYWeight))(0);
-
-        // slerp pitch
-        const tf::Quaternion qp0 = tfQuaternionFromRPY(0, posevec(1), 0);
-        const tf::Quaternion qp1 = tfQuaternionFromRPY(0, msgIn_->initialIMU.y, 0);
-        posevec(1) = getRPY(interpolate(qp0, qp1, imuRPYWeight))(1);
+        posevec(0) = interpolate(
+          Eigen::Vector3d(posevec(0), 0, 0),
+          Eigen::Vector3d(msgIn_->initialIMU.x, 0, 0),
+          imuRPYWeight)(0);
+        posevec(1) = interpolate(
+          Eigen::Vector3d(0, posevec(1), 0),
+          Eigen::Vector3d(0, msgIn_->initialIMU.y, 0),
+          imuRPYWeight)(1);
       }
     }
 
