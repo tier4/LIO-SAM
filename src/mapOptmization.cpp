@@ -388,6 +388,7 @@ public:
   pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
   Eigen::Affine3d increOdomAffine; // incremental odometry in affine
+  double timeLastProcessing;
 
   mapOptimization()
   : pubLaserCloudSurround(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_global", 1)),
@@ -413,7 +414,8 @@ public:
     aLoopIsClosed(false),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
-    laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>())
+    laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>()),
+    timeLastProcessing(-1.0)
   {
 
     laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
@@ -437,7 +439,6 @@ public:
 
     std::lock_guard<std::mutex> lock(mtx);
 
-    static double timeLastProcessing = -1;
     if (timestamp.toSec() - timeLastProcessing < mappingProcessInterval) {
       return;
     }
