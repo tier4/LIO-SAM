@@ -369,7 +369,6 @@ public:
 
   std::mutex mtx;
 
-  bool isDegenerate;
   bool aLoopIsClosed;
 
   std::vector<geometry_msgs::PoseStamped> path_poses_;
@@ -406,7 +405,6 @@ public:
     isam(std::make_shared<gtsam::ISAM2>(
         gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
     points3d(new pcl::PointCloud<PointType>()),
-    isDegenerate(false),
     aLoopIsClosed(false),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
@@ -465,9 +463,10 @@ public:
     downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
     downSizeFilterSurf.filter(laserCloudSurfLastDS);
 
+    bool isDegenerate = false;
     scan2MapOptimization(
       laserCloudCornerLastDS, laserCloudSurfLastDS,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, isDegenerate
     );
 
     saveKeyFramesAndFactor(
@@ -475,7 +474,7 @@ public:
       corner_surface_dict
     );
 
-    publishOdometry(timestamp, front_posevec);
+    publishOdometry(timestamp, front_posevec, isDegenerate);
 
     if (!points3d->empty()) {
       // publish key poses
@@ -787,7 +786,7 @@ public:
   bool LMOptimization(
     const pcl::PointCloud<PointType> & laserCloudOri,
     const pcl::PointCloud<PointType> & coeffSel,
-    const int iterCount)
+    const int iterCount, bool & isDegenerate)
   {
     // This optimization is from the original loam_velodyne by Ji Zhang,
     // need to cope with coordinate transformation
@@ -872,7 +871,8 @@ public:
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
-    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
+    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
+    bool & isDegenerate)
   {
     if (points3d->empty()) {
       return;
@@ -898,7 +898,7 @@ public:
         laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
       );
 
-      if (LMOptimization(laserCloudOri, coeffSel, iterCount)) {
+      if (LMOptimization(laserCloudOri, coeffSel, iterCount, isDegenerate)) {
         break;
       }
     }
@@ -1048,7 +1048,9 @@ public:
     }
   }
 
-  void publishOdometry(const ros::Time & timestamp, const Vector6d & front_posevec)
+  void publishOdometry(
+    const ros::Time & timestamp, const Vector6d & front_posevec,
+    const bool isDegenerate)
   {
     // Publish odometry for ROS (global)
     nav_msgs::Odometry odometry;
