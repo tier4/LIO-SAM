@@ -1080,18 +1080,20 @@ public:
       if (msgIn_->imuAvailable) {
         if (std::abs(msgIn_->initialIMU.y) < 1.4) {
           double imuWeight = 0.1;
-          tf::Quaternion imuQuaternion;
-          tf::Quaternion transformQuaternion;
 
-          // slerp roll
-          transformQuaternion.setRPY(odometry(0), 0, 0);
-          imuQuaternion.setRPY(msgIn_->initialIMU.x, 0, 0);
-          odometry(0) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(0);
+          const Eigen::Vector3d r = interpolate(
+            Eigen::Vector3d(odometry(0), 0, 0),
+            Eigen::Vector3d(msgIn_->initialIMU.x, 0, 0),
+            imuWeight
+          );
+          odometry(0) = r(0);
 
-          // slerp pitch
-          transformQuaternion.setRPY(0, odometry(1), 0);
-          imuQuaternion.setRPY(0, msgIn_->initialIMU.y, 0);
-          odometry(1) = getRPY(interpolate(transformQuaternion, imuQuaternion, imuWeight))(1);
+          const Eigen::Vector3d p = interpolate(
+            Eigen::Vector3d(0, odometry(1), 0),
+            Eigen::Vector3d(0, msgIn_->initialIMU.y, 0),
+            imuWeight
+          );
+          odometry(1) = p(1);
         }
       }
       laserOdomIncremental.header.stamp = timestamp;
