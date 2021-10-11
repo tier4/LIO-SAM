@@ -547,13 +547,13 @@ public:
     }
 
     std::vector<int> indices;
-    std::vector<float> pointSearchSqDis;
+    std::vector<float> squared_distances;
     pcl::KdTreeFLANN<PointType> kdtree;
 
     const double radius = (double)surroundingKeyframeSearchRadius;
     // extract all the nearby key poses and downsample them
     kdtree.setInputCloud(points3d); // create kd-tree
-    kdtree.radiusSearch(points3d->back(), radius, indices, pointSearchSqDis);
+    kdtree.radiusSearch(points3d->back(), radius, indices, squared_distances);
 
     pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
     for (unsigned int index : indices) {
@@ -562,7 +562,7 @@ public:
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled.points) {
-      kdtree.nearestKSearch(pt, 1, indices, pointSearchSqDis);
+      kdtree.nearestKSearch(pt, 1, indices, squared_distances);
       pt.intensity = points3d->at(indices[0]).intensity;
     }
 
@@ -642,14 +642,14 @@ public:
     #pragma omp parallel for num_threads(numberOfCores)
     for (unsigned int i = 0; i < laserCloudCornerLastDS.size(); i++) {
       std::vector<int> indices;
-      std::vector<float> pointSearchSqDis;
+      std::vector<float> squared_distances;
 
       const PointType point = laserCloudCornerLastDS.at(i);
       const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
-      kdtreeCornerFromMap.nearestKSearch(
-        makePoint(map_point, point.intensity), 5, indices, pointSearchSqDis);
+      const PointType p = makePoint(map_point, point.intensity);
+      kdtreeCornerFromMap.nearestKSearch(p, 5, indices, squared_distances);
 
-      if (pointSearchSqDis[4] < 1.0) {
+      if (squared_distances[4] < 1.0) {
         Eigen::Vector3d c = Eigen::Vector3d::Zero();
         for (int j = 0; j < 5; j++) {
           c += getXYZ(laserCloudCornerFromMapDS->at(indices[j]));
@@ -682,7 +682,8 @@ public:
           // const Eigen::Vector3d d012(d01(0) * d02(1) - d02(0) * d01(1),
           //                            d01(0) * d02(2) - d02(0) * d01(2),
           //                            d01(1) * d02(2) - d02(1) * d01(2));
-          const Eigen::Vector3d cross(d01(1) * d02(2) - d01(2) * d02(1),
+          const Eigen::Vector3d cross(
+            d01(1) * d02(2) - d01(2) * d02(1),
             d01(2) * d02(0) - d01(0) * d02(2),
             d01(0) * d02(1) - d01(1) * d02(0));
 
@@ -728,8 +729,8 @@ public:
 
       const PointType point = laserCloudSurfLastDS.at(i);
       const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
-      kdtreeSurfFromMap.nearestKSearch(
-        makePoint(map_point, point.intensity), 5, indices, squared_distances);
+      const PointType p = makePoint(map_point, point.intensity);
+      kdtreeSurfFromMap.nearestKSearch(p, 5, indices, squared_distances);
 
       if (squared_distances[4] >= 1.0) {
         continue;
