@@ -1,6 +1,7 @@
 #include "utility.h"
 #include "jacobian.h"
 #include "homogeneous.h"
+#include "param_server.h"
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/save_map.h"
 

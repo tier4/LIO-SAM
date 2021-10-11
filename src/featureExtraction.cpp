@@ -1,4 +1,5 @@
 #include "utility.h"
+#include "param_server.h"
 #include "lio_sam/cloud_info.h"
 
 struct smoothness_t
