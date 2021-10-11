@@ -194,15 +194,15 @@ gtsam::PriorFactor<gtsam::Pose3> makePriorFactor(const Vector6d & posevec)
 }
 
 gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
-  const pcl::PointCloud<StampedPose> & cloudKeyPoses6D, const Vector6d & posevec)
+  const pcl::PointCloud<StampedPose> & poses6dof, const Vector6d & posevec)
 {
-  const gtsam::Pose3 src = posevecToGtsamPose(makePosevec(cloudKeyPoses6D.points.back()));
+  const gtsam::Pose3 src = posevecToGtsamPose(makePosevec(poses6dof.points.back()));
   const gtsam::Pose3 dst = posevecToGtsamPose(posevec);
 
   const Vector6d v = (Vector6d() << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
   const auto noise = gtsam::noiseModel::Diagonal::Variances(v);
 
-  const unsigned int size = cloudKeyPoses6D.size();
+  const unsigned int size = poses6dof.size();
 
   return gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), noise);
 }
@@ -363,7 +363,7 @@ public:
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
 
   pcl::PointCloud<PointType>::Ptr points3d;
-  pcl::PointCloud<StampedPose> cloudKeyPoses6D;
+  pcl::PointCloud<StampedPose> poses6dof;
 
   CornerSurfaceDict corner_surface_dict;
   pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
@@ -449,7 +449,7 @@ public:
     const Vector6d front_posevec = posevec;
     updateInitialGuess();
 
-    extractSurroundingKeyFrames(cloudKeyPoses6D, corner_surface_dict, laserCloudSurfFromMapDS);
+    extractSurroundingKeyFrames(poses6dof, corner_surface_dict, laserCloudSurfFromMapDS);
 
     pcl::VoxelGrid<PointType> downSizeFilterCorner;
     downSizeFilterCorner.setLeafSize(
@@ -538,7 +538,7 @@ public:
   }
 
   void extractSurroundingKeyFrames(
-    const pcl::PointCloud<StampedPose> & cloudKeyPoses6D,
+    const pcl::PointCloud<StampedPose> & poses6dof,
     CornerSurfaceDict & corner_surface_dict,
     pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
   {
@@ -568,7 +568,7 @@ public:
 
     // also extract some latest key frames in case the robot rotates in one position
     for (int i = points3d->size() - 1; i >= 0; --i) {
-      if (timestamp.toSec() - cloudKeyPoses6D.at(i).time >= 10.0) {
+      if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
         break;
       }
       downsampled.push_back(points3d->at(i));
@@ -593,7 +593,7 @@ public:
       }
 
       // transformed cloud not available
-      const Vector6d v = makePosevec(cloudKeyPoses6D.at(index));
+      const Vector6d v = makePosevec(poses6dof.at(index));
       const pcl::PointCloud<PointType> c = transform(corner_cloud[index], v);
       const pcl::PointCloud<PointType> s = transform(surface_cloud[index], v);
       *corner += c;
@@ -925,7 +925,7 @@ public:
     CornerSurfaceDict & corner_surface_dict)
   {
     if (!points3d->empty()) {
-      const Eigen::Affine3d affine0 = getTransformation(makePosevec(cloudKeyPoses6D.back()));
+      const Eigen::Affine3d affine0 = getTransformation(makePosevec(poses6dof.back()));
       const Eigen::Affine3d affine1 = getTransformation(posevec);
       const auto [xyz, rpy] = getXYZRPY(affine0.inverse() * affine1);
 
@@ -937,10 +937,10 @@ public:
       }
     }
 
-    if (cloudKeyPoses6D.empty()) {
+    if (poses6dof.empty()) {
       gtSAMgraph.add(makePriorFactor(posevec));
     } else {
-      gtSAMgraph.add(makeOdomFactor(cloudKeyPoses6D, posevec));
+      gtSAMgraph.add(makeOdomFactor(poses6dof, posevec));
     }
 
     if (
@@ -964,7 +964,7 @@ public:
 
     // update iSAM
     gtsam::Values initial;
-    initial.insert(cloudKeyPoses6D.size(), posevecToGtsamPose(posevec));
+    initial.insert(poses6dof.size(), posevecToGtsamPose(posevec));
     isam->update(gtSAMgraph, initial);
     isam->update();
 
@@ -989,7 +989,7 @@ public:
 
     // intensity can be used as index
     const StampedPose pose6dof = makeStampedPose(latest, timestamp.toSec());
-    cloudKeyPoses6D.push_back(pose6dof);
+    poses6dof.push_back(pose6dof);
 
     // std::cout << "****************************************************" << std::endl;
     // std::cout << "Pose covariance:" << std::endl;
@@ -1028,8 +1028,8 @@ public:
 
         points3d->at(i) = makePoint(xyz, points3d->at(i).intensity);
 
-        const auto point6d = cloudKeyPoses6D.at(i);
-        cloudKeyPoses6D.at(i) = makeStampedPose(pose, point6d.time);
+        const auto point6d = poses6dof.at(i);
+        poses6dof.at(i) = makeStampedPose(pose, point6d.time);
 
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
