@@ -452,17 +452,7 @@ Eigen::MatrixXd rad2deg(const Eigen::MatrixXd & x)
 }
 
 pcl::PointCloud < PointType > downsample(
-  const pcl::PointCloud < PointType > ::Ptr & input_cloud, const int leaf_size)
-{
-  pcl::VoxelGrid < PointType > filter;
-  pcl::PointCloud < PointType > downsampled;
-
-  filter.setLeafSize(leaf_size, leaf_size, leaf_size);
-  filter.setInputCloud(input_cloud);
-  filter.filter(downsampled);
-
-  return downsampled;
-}
+  const pcl::PointCloud < PointType > ::Ptr & input_cloud, const int leaf_size);
 
 template < typename T >
 pcl::KdTreeFLANN < T > makeKDTree(const typename pcl::PointCloud < T > ::Ptr & pointcloud) {

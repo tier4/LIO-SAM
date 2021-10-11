@@ -61,21 +61,16 @@ catkin_package(
 )
 
 # include directories
-include_directories(include)
-
-include_directories(
-  SYSTEM
-	${catkin_INCLUDE_DIRS}
-	${PCL_INCLUDE_DIRS}
-	${GTSAM_INCLUDE_DIR}
-)
+include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS} ${GTSAM_INCLUDE_DIR})
 
 # link directories
 link_directories(
-	include
 	${PCL_LIBRARY_DIRS}
   ${GTSAM_LIBRARY_DIRS}
 )
+
+include_directories(include)
+add_library(util SHARED src/utility.cpp include/utility.h)
 
 ###########
 ## Build ##
@@ -95,7 +90,9 @@ target_link_libraries(${PROJECT_NAME}_featureExtraction ${catkin_LIBRARIES} ${PC
 add_executable(${PROJECT_NAME}_mapOptmization src/mapOptmization.cpp)
 add_dependencies(${PROJECT_NAME}_mapOptmization ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
 target_compile_options(${PROJECT_NAME}_mapOptmization PRIVATE ${OpenMP_CXX_FLAGS})
-target_link_libraries(${PROJECT_NAME}_mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenMP_CXX_FLAGS} gtsam)
+target_link_libraries(
+  ${PROJECT_NAME}_mapOptmization ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES} ${OpenMP_CXX_FLAGS} gtsam util)
 
 # IMU Preintegration
 add_executable(${PROJECT_NAME}_imuPreintegration src/imuPreintegration.cpp)
