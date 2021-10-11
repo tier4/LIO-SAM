@@ -553,7 +553,7 @@ public:
 
     const double radius = (double)surroundingKeyframeSearchRadius;
     // extract all the nearby key poses and downsample them
-    kdtree.setInputCloud(cloudKeyPoses3D->makeShared()); // create kd-tree
+    kdtree.setInputCloud(cloudKeyPoses3D); // create kd-tree
     kdtree.radiusSearch(cloudKeyPoses3D->back(), radius, indices, pointSearchSqDis);
 
     pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
