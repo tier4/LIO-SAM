@@ -883,10 +883,8 @@ public:
       return;
     }
 
-    pcl::KdTreeFLANN<PointType> kdtreeCornerFromMap;
-    pcl::KdTreeFLANN<PointType> kdtreeSurfFromMap;
-    kdtreeCornerFromMap.setInputCloud(laserCloudCornerFromMapDS);
-    kdtreeSurfFromMap.setInputCloud(laserCloudSurfFromMapDS);
+    const auto kdtreeCornerFromMap = makeKDTree<PointType>(laserCloudCornerFromMapDS);
+    const auto kdtreeSurfFromMap = makeKDTree<PointType>(laserCloudSurfFromMapDS);
 
     for (int iterCount = 0; iterCount < 30; iterCount++) {
       const auto [laserCloudOri, coeffSel] = optimization(

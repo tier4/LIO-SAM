@@ -464,6 +464,13 @@ pcl::PointCloud < PointType > downsample(
   return downsampled;
 }
 
+template < typename T >
+pcl::KdTreeFLANN < T > makeKDTree(const typename pcl::PointCloud < T > ::Ptr & pointcloud) {
+  pcl::KdTreeFLANN < T > kdtree;
+  kdtree.setInputCloud(pointcloud);
+  return kdtree;
+}
+
 class IMUConverter {
 public:
   IMUConverter() {
