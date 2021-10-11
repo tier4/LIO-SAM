@@ -366,7 +366,6 @@ public:
   pcl::PointCloud<StampedPose> poses6dof;
 
   CornerSurfaceDict corner_surface_dict;
-  pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS;
 
   ros::Time timestamp;
 
@@ -385,7 +384,6 @@ public:
   Eigen::Affine3d lastImuPreTransformation;
 
   bool lastIncreOdomPubFlag;
-  pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS;
 
   Eigen::Affine3d increOdomAffine; // incremental odometry in affine
   double last_time_sec;
@@ -414,11 +412,8 @@ public:
     aLoopIsClosed(false),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
-    laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>()),
     last_time_sec(-1.0)
   {
-
-    laserCloudCornerFromMapDS.reset(new pcl::PointCloud<PointType>());
   }
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
@@ -433,6 +428,9 @@ public:
 
     // surf feature set from odoOptimization
     pcl::PointCloud<PointType>::Ptr laserCloudSurfLast(new pcl::PointCloud<PointType>());
+
+    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
 
     pcl::fromROSMsg(msgIn->cloud_corner, *laserCloudCornerLast);
     pcl::fromROSMsg(msgIn->cloud_surface, *laserCloudSurfLast);
@@ -449,7 +447,12 @@ public:
     const Vector6d front_posevec = posevec;
     updateInitialGuess();
 
-    extractSurroundingKeyFrames(poses6dof, corner_surface_dict, laserCloudSurfFromMapDS);
+    extractSurroundingKeyFrames(
+      poses6dof,
+      corner_surface_dict,
+      laserCloudCornerFromMapDS,
+      laserCloudSurfFromMapDS
+    );
 
     pcl::VoxelGrid<PointType> downSizeFilterCorner;
     downSizeFilterCorner.setLeafSize(
@@ -540,6 +543,7 @@ public:
   void extractSurroundingKeyFrames(
     const pcl::PointCloud<StampedPose> & poses6dof,
     CornerSurfaceDict & corner_surface_dict,
+    pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
   {
     if (points3d->empty()) {
@@ -630,6 +634,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::KdTreeFLANN<PointType> & kdtreeCornerFromMap,
     const pcl::KdTreeFLANN<PointType> & kdtreeSurfFromMap,
+    const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
   {
     const Eigen::Affine3d point_to_map = getTransformation(posevec);
@@ -890,7 +895,7 @@ public:
       const auto [laserCloudOri, coeffSel] = optimization(
         laserCloudCornerLastDS, laserCloudSurfLastDS,
         kdtreeCornerFromMap, kdtreeSurfFromMap,
-        laserCloudSurfFromMapDS
+        laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
       );
 
       if (LMOptimization(laserCloudOri, coeffSel, iterCount)) {
