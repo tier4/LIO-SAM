@@ -367,8 +367,6 @@ public:
 
   CornerSurfaceDict corner_surface_dict;
 
-  ros::Time timestamp;
-
   std::mutex mtx;
 
   bool isDegenerate;
@@ -421,7 +419,7 @@ public:
     msgIn_ = msgIn;
 
     // extract time stamp
-    timestamp = msgIn->header.stamp;
+    const ros::Time timestamp = msgIn->header.stamp;
 
     // corner feature set from odoOptimization
     pcl::PointCloud<PointType>::Ptr laserCloudCornerLast(new pcl::PointCloud<PointType>());
@@ -448,10 +446,8 @@ public:
     updateInitialGuess();
 
     extractSurroundingKeyFrames(
-      poses6dof,
-      corner_surface_dict,
-      laserCloudCornerFromMapDS,
-      laserCloudSurfFromMapDS
+      timestamp, poses6dof, corner_surface_dict,
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
     );
 
     pcl::VoxelGrid<PointType> downSizeFilterCorner;
@@ -474,9 +470,12 @@ public:
       laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
     );
 
-    saveKeyFramesAndFactor(laserCloudCornerLastDS, laserCloudSurfLastDS, corner_surface_dict);
+    saveKeyFramesAndFactor(
+      timestamp, laserCloudCornerLastDS, laserCloudSurfLastDS,
+      corner_surface_dict
+    );
 
-    publishOdometry(front_posevec);
+    publishOdometry(timestamp, front_posevec);
 
     if (!points3d->empty()) {
       // publish key poses
@@ -541,6 +540,7 @@ public:
   }
 
   void extractSurroundingKeyFrames(
+    const ros::Time & timestamp,
     const pcl::PointCloud<StampedPose> & poses6dof,
     CornerSurfaceDict & corner_surface_dict,
     pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
@@ -924,6 +924,7 @@ public:
   }
 
   void saveKeyFramesAndFactor(
+    const ros::Time & timestamp,
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     CornerSurfaceDict & corner_surface_dict)
@@ -1047,7 +1048,7 @@ public:
     }
   }
 
-  void publishOdometry(const Vector6d & front_posevec)
+  void publishOdometry(const ros::Time & timestamp, const Vector6d & front_posevec)
   {
     // Publish odometry for ROS (global)
     nav_msgs::Odometry odometry;
