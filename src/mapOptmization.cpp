@@ -329,6 +329,17 @@ void publishPath(
   publisher.publish(path);
 }
 
+Vector6d initPosevec(const Eigen::Vector3d & rpy, const bool useImuHeadingInitialization)
+{
+  Vector6d posevec = Vector6d::Zero();
+  posevec.head(3) = rpy;
+
+  if (!useImuHeadingInitialization) {
+    posevec(2) = 0;
+  }
+  return posevec;
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -444,6 +455,8 @@ public:
     const Vector6d front_posevec = posevec;
     updateInitialGuess();
 
+    lastImuTransformation = makeAffine(vector3ToEigen(msgIn_->initialIMU));
+
     extractSurroundingKeyFrames(
       timestamp, poses6dof, corner_surface_dict,
       laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
@@ -495,34 +508,26 @@ public:
     if (points3d->empty()) {
       const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
 
-      posevec = Vector6d::Zero();
-      posevec.head(3) = rpy;
+      posevec = initPosevec(rpy, useImuHeadingInitialization);
 
-      if (!useImuHeadingInitialization) {
-        posevec(2) = 0;
-      }
-
-      lastImuTransformation = makeAffine(rpy);
       // save imu before return;
       return;
     }
 
     // use imu pre-integration estimation for pose guess
-    if (msgIn_->odomAvailable) {
-      const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
+    if (msgIn_->odomAvailable && lastImuPreTransAvailable) {
       const Eigen::Affine3d back = poseToAffine(msgIn_->initial_pose);
-      if (lastImuPreTransAvailable) {
-        const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
-        const Eigen::Affine3d tobe = getTransformation(posevec);
-        posevec = getPoseVec(tobe * incre);
+      const Eigen::Affine3d tobe = getTransformation(posevec);
+      const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
+      posevec = getPoseVec(tobe * incre);
 
-        lastImuPreTransformation = back;
+      lastImuPreTransformation = poseToAffine(msgIn_->initial_pose);
 
-        // save imu before return;
-        lastImuTransformation = makeAffine(rpy);
-        return;
-      }
-      lastImuPreTransformation = back;
+      return;
+    }
+
+    if (msgIn_->odomAvailable) {
+      lastImuPreTransformation = poseToAffine(msgIn_->initial_pose);
       lastImuPreTransAvailable = true;
     }
 
@@ -535,8 +540,6 @@ public:
       const Eigen::Affine3d tobe = getTransformation(posevec);
       posevec = getPoseVec(tobe * incre);
 
-      // save imu before return;
-      lastImuTransformation = makeAffine(rpy);
       return;
     }
   }
