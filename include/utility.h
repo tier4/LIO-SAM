@@ -102,7 +102,9 @@ PointType makePoint(const Eigen::Vector3d & point, const float intensity = 0.0)
   return p;
 }
 
-Eigen::Affine3d makeAffine(const Eigen::Vector3d & rpy, const Eigen::Vector3d & point)
+Eigen::Affine3d makeAffine(
+  const Eigen::Vector3d & rpy = Eigen::Vector3d::Zero(),
+  const Eigen::Vector3d & point = Eigen::Vector3d::Zero())
 {
   Eigen::Affine3d transform;
   pcl::getTransformation(point(0), point(1), point(2), rpy(0), rpy(1), rpy(2), transform);

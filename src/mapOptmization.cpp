@@ -491,24 +491,25 @@ public:
 
   void updateInitialGuess()
   {
-
-    const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
-
     // initialization
     if (points3d->empty()) {
-      posevec.head(3) = vector3ToEigen(msgIn_->initialIMU);
+      const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
+
+      posevec = Vector6d::Zero();
+      posevec.head(3) = rpy;
 
       if (!useImuHeadingInitialization) {
         posevec(2) = 0;
       }
 
-      lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
+      lastImuTransformation = makeAffine(rpy);
       // save imu before return;
       return;
     }
 
     // use imu pre-integration estimation for pose guess
     if (msgIn_->odomAvailable) {
+      const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
       const Eigen::Affine3d back = poseToAffine(msgIn_->initial_pose);
       if (lastImuPreTransAvailable) {
         const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
@@ -518,7 +519,7 @@ public:
         lastImuPreTransformation = back;
 
         // save imu before return;
-        lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
+        lastImuTransformation = makeAffine(rpy);
         return;
       }
       lastImuPreTransformation = back;
@@ -527,14 +528,15 @@ public:
 
     // use imu incremental estimation for pose guess (only rotation)
     if (msgIn_->imuAvailable) {
-      const Eigen::Affine3d back = makeAffine(rpy, Eigen::Vector3d::Zero());
+      const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
+      const Eigen::Affine3d back = makeAffine(rpy);
       const Eigen::Affine3d incre = lastImuTransformation.inverse() * back;
 
       const Eigen::Affine3d tobe = getTransformation(posevec);
       posevec = getPoseVec(tobe * incre);
 
       // save imu before return;
-      lastImuTransformation = makeAffine(rpy, Eigen::Vector3d::Zero());
+      lastImuTransformation = makeAffine(rpy);
       return;
     }
   }
