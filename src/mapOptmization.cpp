@@ -570,7 +570,7 @@ public:
     }
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
-    for (auto & pt : downsampled.points) {
+    for (auto & pt : downsampled) {
       kdtree.nearestKSearch(pt, 1, indices, squared_distances);
       pt.intensity = points3d->at(indices[0]).intensity;
     }
@@ -587,13 +587,13 @@ public:
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    for (unsigned int i = 0; i < downsampled.size(); ++i) {
-      const double distance = (getXYZ(downsampled.at(i)) - getXYZ(points3d->back())).norm();
+    for (auto & pt  : downsampled) {
+      const double distance = (getXYZ(pt) - getXYZ(points3d->back())).norm();
       if (distance > radius) {
         continue;
       }
 
-      const int index = static_cast<int>(downsampled.at(i).intensity);
+      const int index = static_cast<int>(pt.intensity);
       if (corner_surface_dict.find(index) != corner_surface_dict.end()) {
         // transformed cloud available
         *corner += corner_surface_dict[index].first;
