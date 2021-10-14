@@ -70,18 +70,23 @@ class OdomToBaselinkBroadcaster
 private:
   tf::TransformBroadcaster broadcaster;
   const tf::Transform lidar_to_baselink;
+  const std::string odometryFrame;
+  const std::string baselinkFrame;
 
 public:
-  OdomToBaselinkBroadcaster(const tf::Transform lidar_to_baselink)
-  : lidar_to_baselink(lidar_to_baselink)
+  OdomToBaselinkBroadcaster(
+    const std::string & lidarFrame,
+    const std::string & odometryFrame,
+    const std::string & baselinkFrame)
+  : lidar_to_baselink(getLidarToBaseLink(lidarFrame, baselinkFrame)),
+    odometryFrame(odometryFrame),
+    baselinkFrame(baselinkFrame)
   {
   }
 
   void broadcast(
     const geometry_msgs::Pose & odometry,
-    const ros::Time & timestamp,
-    const std::string & odometryFrame,
-    const std::string & baselinkFrame)
+    const ros::Time & timestamp)
   {
     const tf::Transform lidar_odometry = poseMsgToTF(odometry);
     const tf::StampedTransform transform = tf::StampedTransform(
@@ -157,7 +162,7 @@ public:
         ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
     pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
-    odom_to_baselink(OdomToBaselinkBroadcaster(getLidarToBaseLink(lidarFrame, baselinkFrame)))
+    odom_to_baselink(OdomToBaselinkBroadcaster(lidarFrame, odometryFrame, baselinkFrame))
   {
   }
 
@@ -195,9 +200,7 @@ public:
     laserOdometry.pose.pose = affineToPose(last);
     pubImuOdometry.publish(laserOdometry);
 
-    odom_to_baselink.broadcast(
-      laserOdometry.pose.pose,
-      odom_msg->header.stamp, odometryFrame, baselinkFrame);
+    odom_to_baselink.broadcast(laserOdometry.pose.pose, odom_msg->header.stamp);
 
     const auto imuPath = imu_path.make(
       imuOdomQueue.back(), odometryFrame, laserOdometry.pose.pose, lidarOdomTime);
