@@ -65,6 +65,32 @@ tf::Transform getLidarToBaseLink(
   return transform;
 }
 
+class OdomToBaselinkBroadcaster
+{
+private:
+  tf::TransformBroadcaster broadcaster;
+  const tf::Transform lidar_to_baselink;
+
+public:
+  OdomToBaselinkBroadcaster(const tf::Transform lidar_to_baselink)
+  : lidar_to_baselink(lidar_to_baselink)
+  {
+  }
+
+  void broadcast(
+    const geometry_msgs::Pose & odometry,
+    const ros::Time & timestamp,
+    const std::string & odometryFrame,
+    const std::string & baselinkFrame)
+  {
+    const tf::Transform lidar_odometry = poseMsgToTF(odometry);
+    const tf::StampedTransform transform = tf::StampedTransform(
+      lidar_odometry * lidar_to_baselink,
+      timestamp, odometryFrame, baselinkFrame);
+    broadcaster.sendTransform(transform);
+  }
+};
+
 class ImuPath
 {
 private:
@@ -111,6 +137,7 @@ public:
   Eigen::Affine3d lidarOdomAffine;
 
   const tf::Transform lidar_to_baselink;
+  OdomToBaselinkBroadcaster odom_to_baselink;
 
   double lidarOdomTime = -1;
   std::deque<nav_msgs::Odometry> imuOdomQueue;
@@ -130,7 +157,7 @@ public:
         ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
     pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
-    lidar_to_baselink(getLidarToBaseLink(lidarFrame, baselinkFrame))
+    odom_to_baselink(OdomToBaselinkBroadcaster(getLidarToBaseLink(lidarFrame, baselinkFrame)))
   {
   }
 
@@ -168,13 +195,9 @@ public:
     laserOdometry.pose.pose = affineToPose(last);
     pubImuOdometry.publish(laserOdometry);
 
-    // publish tf
-    tf::TransformBroadcaster broadcaster;
-    const tf::Transform lidar_odometry = poseMsgToTF(laserOdometry.pose.pose);
-    const tf::StampedTransform transform = tf::StampedTransform(
-      lidar_odometry * lidar_to_baselink,
+    odom_to_baselink.broadcast(
+      laserOdometry.pose.pose,
       odom_msg->header.stamp, odometryFrame, baselinkFrame);
-    broadcaster.sendTransform(transform);
 
     const auto imuPath = imu_path.make(
       imuOdomQueue.back(), odometryFrame, laserOdometry.pose.pose, lidarOdomTime);
