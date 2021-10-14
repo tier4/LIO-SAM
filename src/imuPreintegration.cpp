@@ -98,17 +98,19 @@ class ImuPath
 private:
   nav_msgs::Path imuPath;
 
+  const std::string odometryFrame;
+
 public:
-  ImuPath() {}
+  ImuPath(const std::string odometryFrame)
+  : odometryFrame(odometryFrame) {}
 
   nav_msgs::Path make(
-    const nav_msgs::Odometry & imu_odometry,
-    const std::string & odometryFrame,
+    const ros::Time & timestamp,
     const geometry_msgs::Pose & pose,
     const double lidarOdomTime)
   {
     geometry_msgs::PoseStamped pose_stamped;
-    pose_stamped.header.stamp = imu_odometry.header.stamp;
+    pose_stamped.header.stamp = timestamp;
     pose_stamped.header.frame_id = odometryFrame;
     pose_stamped.pose = pose;
     imuPath.poses.push_back(pose_stamped);
@@ -118,7 +120,7 @@ public:
     {
       imuPath.poses.erase(imuPath.poses.begin());
     }
-    imuPath.header.stamp = imu_odometry.header.stamp;
+    imuPath.header.stamp = timestamp;
     imuPath.header.frame_id = odometryFrame;
 
     return imuPath;
@@ -160,7 +162,8 @@ public:
         ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
     pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
-    odom_to_baselink(OdomToBaselink(lidarFrame, odometryFrame, baselinkFrame))
+    odom_to_baselink(OdomToBaselink(lidarFrame, odometryFrame, baselinkFrame)),
+    imu_path(ImuPath(odometryFrame))
   {
   }
 
@@ -202,8 +205,7 @@ public:
       odom_to_baselink.get(laserOdometry.pose.pose, odom_msg->header.stamp));
 
     const auto imuPath = imu_path.make(
-      imuOdomQueue.back(), odometryFrame, laserOdometry.pose.pose, lidarOdomTime);
-    // publish IMU path
+      imuOdomQueue.back().header.stamp, laserOdometry.pose.pose, lidarOdomTime);
 
     if (pubImuPath.getNumSubscribers() != 0) {
       pubImuPath.publish(imuPath);
