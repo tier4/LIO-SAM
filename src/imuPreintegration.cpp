@@ -65,6 +65,38 @@ tf::Transform getLidarToBaseLink(
   return transform;
 }
 
+class ImuPath
+{
+private:
+  nav_msgs::Path imuPath;
+
+public:
+  ImuPath() {}
+
+  nav_msgs::Path make(
+    const nav_msgs::Odometry & imu_odometry,
+    const std::string & odometryFrame,
+    const geometry_msgs::Pose & pose,
+    const double lidarOdomTime)
+  {
+    geometry_msgs::PoseStamped pose_stamped;
+    pose_stamped.header.stamp = imu_odometry.header.stamp;
+    pose_stamped.header.frame_id = odometryFrame;
+    pose_stamped.pose = pose;
+    imuPath.poses.push_back(pose_stamped);
+    while (
+      !imuPath.poses.empty() &&
+      imuPath.poses.front().header.stamp.toSec() < lidarOdomTime - 1.0)
+    {
+      imuPath.poses.erase(imuPath.poses.begin());
+    }
+    imuPath.header.stamp = imu_odometry.header.stamp;
+    imuPath.header.frame_id = odometryFrame;
+
+    return imuPath;
+  }
+};
+
 class TransformFusion : public ParamServer
 {
 public:
@@ -84,6 +116,8 @@ public:
   std::deque<nav_msgs::Odometry> imuOdomQueue;
 
   tf::TransformBroadcaster tfMap2Odom;
+
+  ImuPath imu_path;
 
   TransformFusion()
   : subLaserOdometry(nh.subscribe<nav_msgs::Odometry>(
@@ -142,27 +176,12 @@ public:
       odom_msg->header.stamp, odometryFrame, baselinkFrame);
     broadcaster.sendTransform(transform);
 
+    const auto imuPath = imu_path.make(
+      imuOdomQueue.back(), odometryFrame, laserOdometry.pose.pose, lidarOdomTime);
     // publish IMU path
-    static nav_msgs::Path imuPath;
-    static double last_path_time = -1;
-    const double imuTime = imuOdomQueue.back().header.stamp.toSec();
-    if (imuTime - last_path_time > 0.1) {
-      last_path_time = imuTime;
-      geometry_msgs::PoseStamped pose_stamped;
-      pose_stamped.header.stamp = imuOdomQueue.back().header.stamp;
-      pose_stamped.header.frame_id = odometryFrame;
-      pose_stamped.pose = laserOdometry.pose.pose;
-      imuPath.poses.push_back(pose_stamped);
-      while (!imuPath.poses.empty() &&
-        imuPath.poses.front().header.stamp.toSec() < lidarOdomTime - 1.0)
-      {
-        imuPath.poses.erase(imuPath.poses.begin());
-      }
-      if (pubImuPath.getNumSubscribers() != 0) {
-        imuPath.header.stamp = imuOdomQueue.back().header.stamp;
-        imuPath.header.frame_id = odometryFrame;
-        pubImuPath.publish(imuPath);
-      }
+
+    if (pubImuPath.getNumSubscribers() != 0) {
+      pubImuPath.publish(imuPath);
     }
   }
 };
