@@ -437,9 +437,6 @@ public:
     // surf feature set from odoOptimization
     pcl::PointCloud<PointType>::Ptr laserCloudSurfLast(new pcl::PointCloud<PointType>());
 
-    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
-
     pcl::fromROSMsg(msgIn->cloud_corner, *laserCloudCornerLast);
     pcl::fromROSMsg(msgIn->cloud_surface, *laserCloudSurfLast);
 
@@ -453,9 +450,15 @@ public:
 
     // save current transformation before any processing
     const Vector6d front_posevec = posevec;
-    updateInitialGuess();
+    updateInitialGuess(
+      lastImuTransformation, msgIn->odomAvailable, msgIn->imuAvailable,
+      msgIn->initialIMU, msgIn->initial_pose
+    );
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn_->initialIMU));
+
+    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
 
     extractSurroundingKeyFrames(
       timestamp, poses6dof, corner_surface_dict,
@@ -502,11 +505,15 @@ public:
     }
   }
 
-  void updateInitialGuess()
+  void updateInitialGuess(
+    const Eigen::Affine3d & lastImuTransformation,
+    const bool odomAvailable, const bool imuAvailable,
+    const geometry_msgs::Vector3 & initialIMU,
+    const geometry_msgs::Pose & initial_pose)
   {
     // initialization
     if (points3d->empty()) {
-      const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
+      const Eigen::Vector3d rpy = vector3ToEigen(initialIMU);
 
       posevec = initPosevec(rpy, useImuHeadingInitialization);
 
@@ -515,29 +522,30 @@ public:
     }
 
     // use imu pre-integration estimation for pose guess
-    if (msgIn_->odomAvailable && lastImuPreTransAvailable) {
-      const Eigen::Affine3d back = poseToAffine(msgIn_->initial_pose);
-      const Eigen::Affine3d tobe = getTransformation(posevec);
+    if (odomAvailable && lastImuPreTransAvailable) {
+      const Eigen::Affine3d back = poseToAffine(initial_pose);
       const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
-      posevec = getPoseVec(tobe * incre);
 
-      lastImuPreTransformation = poseToAffine(msgIn_->initial_pose);
+      lastImuPreTransformation = poseToAffine(initial_pose);
+
+      const Eigen::Affine3d tobe = getTransformation(posevec);
+      posevec = getPoseVec(tobe * incre);
 
       return;
     }
 
-    if (msgIn_->odomAvailable) {
-      lastImuPreTransformation = poseToAffine(msgIn_->initial_pose);
+    if (odomAvailable) {
+      lastImuPreTransformation = poseToAffine(initial_pose);
       lastImuPreTransAvailable = true;
     }
 
     // use imu incremental estimation for pose guess (only rotation)
-    if (msgIn_->imuAvailable) {
-      const Eigen::Vector3d rpy = vector3ToEigen(msgIn_->initialIMU);
+    if (imuAvailable) {
+      const Eigen::Vector3d rpy = vector3ToEigen(initialIMU);
       const Eigen::Affine3d back = makeAffine(rpy);
       const Eigen::Affine3d incre = lastImuTransformation.inverse() * back;
-
       const Eigen::Affine3d tobe = getTransformation(posevec);
+
       posevec = getPoseVec(tobe * incre);
 
       return;
