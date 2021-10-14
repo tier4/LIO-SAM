@@ -56,7 +56,6 @@ tf::Transform getLidarToBaseLink(
   tf::StampedTransform transform;
   try {
     tf::TransformListener listener;
-    listener.waitForTransform(lidarFrame, baselinkFrame, ros::Time(0), ros::Duration(3.0));
     listener.lookupTransform(lidarFrame, baselinkFrame, ros::Time(0), transform);
   } catch (tf::TransformException ex) {
     ROS_ERROR("%s", ex.what());
@@ -65,16 +64,15 @@ tf::Transform getLidarToBaseLink(
   return transform;
 }
 
-class OdomToBaselinkBroadcaster
+class OdomToBaselink
 {
 private:
-  tf::TransformBroadcaster broadcaster;
   const tf::Transform lidar_to_baselink;
   const std::string odometryFrame;
   const std::string baselinkFrame;
 
 public:
-  OdomToBaselinkBroadcaster(
+  OdomToBaselink(
     const std::string & lidarFrame,
     const std::string & odometryFrame,
     const std::string & baselinkFrame)
@@ -84,15 +82,14 @@ public:
   {
   }
 
-  void broadcast(
+  tf::StampedTransform get(
     const geometry_msgs::Pose & odometry,
-    const ros::Time & timestamp)
+    const ros::Time & timestamp) const
   {
     const tf::Transform lidar_odometry = poseMsgToTF(odometry);
-    const tf::StampedTransform transform = tf::StampedTransform(
+    return tf::StampedTransform(
       lidar_odometry * lidar_to_baselink,
       timestamp, odometryFrame, baselinkFrame);
-    broadcaster.sendTransform(transform);
   }
 };
 
@@ -142,7 +139,8 @@ public:
   Eigen::Affine3d lidarOdomAffine;
 
   const tf::Transform lidar_to_baselink;
-  OdomToBaselinkBroadcaster odom_to_baselink;
+  const OdomToBaselink odom_to_baselink;
+  tf::TransformBroadcaster broadcaster;
 
   double lidarOdomTime = -1;
   std::deque<nav_msgs::Odometry> imuOdomQueue;
@@ -162,7 +160,7 @@ public:
         ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
     pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
-    odom_to_baselink(OdomToBaselinkBroadcaster(lidarFrame, odometryFrame, baselinkFrame))
+    odom_to_baselink(OdomToBaselink(lidarFrame, odometryFrame, baselinkFrame))
   {
   }
 
@@ -200,7 +198,8 @@ public:
     laserOdometry.pose.pose = affineToPose(last);
     pubImuOdometry.publish(laserOdometry);
 
-    odom_to_baselink.broadcast(laserOdometry.pose.pose, odom_msg->header.stamp);
+    broadcaster.sendTransform(
+      odom_to_baselink.get(laserOdometry.pose.pose, odom_msg->header.stamp));
 
     const auto imuPath = imu_path.make(
       imuOdomQueue.back(), odometryFrame, laserOdometry.pose.pose, lidarOdomTime);
