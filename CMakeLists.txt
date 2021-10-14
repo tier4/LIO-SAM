@@ -71,6 +71,7 @@ link_directories(
 
 include_directories(include)
 add_library(util SHARED src/utility.cpp src/param_server.cpp)
+target_link_libraries(util ${catkin_LIBRARIES})
 
 ###########
 ## Build ##
