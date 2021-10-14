@@ -127,6 +127,17 @@ public:
   }
 };
 
+Eigen::Affine3d latestOdometry(
+  const geometry_msgs::Pose & front_pose,
+  const geometry_msgs::Pose & back_pose,
+  const geometry_msgs::Pose & lidar_odom)
+{
+  const Eigen::Affine3d front = poseToAffine(front_pose);
+  const Eigen::Affine3d back = poseToAffine(back_pose);
+  const Eigen::Affine3d incre = front.inverse() * back;
+  return poseToAffine(lidar_odom) * incre;
+}
+
 class TransformFusion : public ParamServer
 {
 public:
@@ -191,10 +202,8 @@ public:
     }
 
     dropBefore(lidarOdomTime, imuOdomQueue);
-    const Eigen::Affine3d front = poseToAffine(imuOdomQueue.front().pose.pose);
-    const Eigen::Affine3d back = poseToAffine(imuOdomQueue.back().pose.pose);
-    const Eigen::Affine3d incre = front.inverse() * back;
-    const Eigen::Affine3d last = poseToAffine(lidar_odom) * incre;
+    const Eigen::Affine3d last =
+      latestOdometry(imuOdomQueue.front().pose.pose, imuOdomQueue.back().pose.pose, lidar_odom);
 
     // publish latest odometry
     nav_msgs::Odometry laserOdometry = imuOdomQueue.back();
