@@ -138,7 +138,7 @@ public:
   const ros::Publisher pubImuOdometry;
   const ros::Publisher pubImuPath;
 
-  Eigen::Affine3d lidarOdomAffine;
+  geometry_msgs::Pose lidar_odom;
 
   const tf::Transform lidar_to_baselink;
   const OdomToBaselink odom_to_baselink;
@@ -171,7 +171,7 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    lidarOdomAffine = poseToAffine(odom_msg->pose.pose);
+    lidar_odom = odom_msg->pose.pose;
 
     lidarOdomTime = odom_msg->header.stamp.toSec();
   }
@@ -194,7 +194,7 @@ public:
     const Eigen::Affine3d front = poseToAffine(imuOdomQueue.front().pose.pose);
     const Eigen::Affine3d back = poseToAffine(imuOdomQueue.back().pose.pose);
     const Eigen::Affine3d incre = front.inverse() * back;
-    const Eigen::Affine3d last = lidarOdomAffine * incre;
+    const Eigen::Affine3d last = poseToAffine(lidar_odom) * incre;
 
     // publish latest odometry
     nav_msgs::Odometry laserOdometry = imuOdomQueue.back();
