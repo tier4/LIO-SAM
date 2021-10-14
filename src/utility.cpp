@@ -12,3 +12,10 @@ pcl::PointCloud<PointType> downsample(
 
   return downsampled;
 }
+
+tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg)
+{
+  tf::Pose pose;
+  tf::poseMsgToTF(msg, pose);
+  return pose;
+}

@@ -285,6 +285,8 @@ pcl::KdTreeFLANN < T > makeKDTree(const typename pcl::PointCloud < T > ::Ptr & p
   return kdtree;
 }
 
+tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg);
+
 class IMUConverter {
 public:
   IMUConverter() {

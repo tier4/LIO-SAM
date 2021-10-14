@@ -136,12 +136,11 @@ public:
 
     // publish tf
     tf::TransformBroadcaster broadcaster;
-    tf::Transform lidar_odometry;
-    tf::poseMsgToTF(laserOdometry.pose.pose, lidar_odometry);
-    broadcaster.sendTransform(
-      tf::StampedTransform(
-        lidar_odometry * lidar_to_baselink,
-        odom_msg->header.stamp, odometryFrame, baselinkFrame));
+    const tf::Transform lidar_odometry = poseMsgToTF(laserOdometry.pose.pose);
+    const tf::StampedTransform transform = tf::StampedTransform(
+      lidar_odometry * lidar_to_baselink,
+      odom_msg->header.stamp, odometryFrame, baselinkFrame);
+    broadcaster.sendTransform(transform);
 
     // publish IMU path
     static nav_msgs::Path imuPath;
