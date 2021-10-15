@@ -1026,12 +1026,7 @@ public:
     corner_cloud.push_back(laserCloudCornerLastDS);
     surface_cloud.push_back(laserCloudSurfLastDS);
 
-    // save path for visualization
-    geometry_msgs::PoseStamped pose_stamped;
-    pose_stamped.header.stamp = ros::Time().fromSec(pose6dof.time);
-    pose_stamped.header.frame_id = odometryFrame;
-    pose_stamped.pose = makePose(latest);
-    path_poses_.push_back(pose_stamped);
+    path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, pose6dof.time));
 
     // correct poses
     if (aLoopIsClosed) {

@@ -119,6 +119,11 @@ geometry_msgs::Pose makePose(const Vector6d & posevec);
 
 Eigen::Affine3d getTransformation(const Vector6d & posevec);
 
+geometry_msgs::PoseStamped makePoseStamped(
+  const geometry_msgs::Pose & pose,
+  const std::string & frame_id,
+  const double time);
+
 geometry_msgs::Pose affineToPose(const Eigen::Affine3d & affine);
 
 template < typename PointType >

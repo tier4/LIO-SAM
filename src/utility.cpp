@@ -149,6 +149,18 @@ Eigen::Affine3d getTransformation(const Vector6d & posevec)
   return transform;
 }
 
+geometry_msgs::PoseStamped makePoseStamped(
+  const geometry_msgs::Pose & pose,
+  const std::string & frame_id,
+  const double time)
+{
+  geometry_msgs::PoseStamped pose_stamped;
+  pose_stamped.header.stamp = ros::Time().fromSec(time);
+  pose_stamped.header.frame_id = frame_id;
+  pose_stamped.pose = pose;
+  return pose_stamped;
+}
+
 geometry_msgs::Pose makePose(const gtsam::Pose3 & pose)
 {
   const auto q = eigenToQuaternion(pose.rotation().toQuaternion());
