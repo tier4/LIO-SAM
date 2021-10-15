@@ -799,7 +799,7 @@ public:
   bool LMOptimization(
     const pcl::PointCloud<PointType> & laserCloudOri,
     const pcl::PointCloud<PointType> & coeffSel,
-    const int iterCount, bool & isDegenerate)
+    const int iterCount, bool & isDegenerate, Vector6d & posevec) const
   {
     // This optimization is from the original loam_velodyne by Ji Zhang,
     // need to cope with coordinate transformation
@@ -911,7 +911,7 @@ public:
         laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
       );
 
-      if (LMOptimization(laserCloudOri, coeffSel, iterCount, isDegenerate)) {
+      if (LMOptimization(laserCloudOri, coeffSel, iterCount, isDegenerate, posevec)) {
         break;
       }
     }
