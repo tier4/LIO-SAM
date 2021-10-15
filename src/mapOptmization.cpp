@@ -379,8 +379,6 @@ public:
 
   std::mutex mtx;
 
-  bool aLoopIsClosed;
-
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
   Eigen::Affine3d incrementalOdometryAffineBack;
@@ -415,7 +413,6 @@ public:
     isam(std::make_shared<gtsam::ISAM2>(
         gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
     points3d(new pcl::PointCloud<PointType>()),
-    aLoopIsClosed(false),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
     last_time_sec(-1.0)
@@ -967,6 +964,8 @@ public:
       gtSAMgraph.add(makeOdomFactor(poses6dof, posevec));
     }
 
+    bool aLoopIsClosed = false;
+
     if (
       !points3d->empty() &&
       (poseCovariance(3, 3) >= poseCovThreshold || poseCovariance(4, 4) >= poseCovThreshold))
@@ -1060,8 +1059,6 @@ public:
 
         path_poses_.push_back(pose_stamped);
       }
-
-      aLoopIsClosed = false;
     }
   }
 
