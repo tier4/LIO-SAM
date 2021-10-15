@@ -492,7 +492,9 @@ public:
       corner_surface_dict
     );
 
-    publishOdometry(timestamp, front_posevec, isDegenerate);
+    publishOdometry(
+      timestamp, front_posevec, isDegenerate, posevec,
+      lastIncreOdomPubFlag, increOdomAffine);
 
     if (!points3d->empty()) {
       // publish key poses
@@ -1063,7 +1065,8 @@ public:
 
   void publishOdometry(
     const ros::Time & timestamp, const Vector6d & front_posevec,
-    const bool isDegenerate)
+    const bool isDegenerate, const Vector6d & posevec,
+    bool & lastIncreOdomPubFlag, Eigen::Affine3d & increOdomAffine) const
   {
     // Publish odometry for ROS (global)
     nav_msgs::Odometry odometry;
