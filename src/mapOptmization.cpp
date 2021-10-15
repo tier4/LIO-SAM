@@ -956,9 +956,6 @@ public:
       }
     }
 
-    // std::cout << "****************************************************" << std::endl;
-    // gtSAMgraph.print("GTSAM Graph:\n");
-
     // update iSAM
     gtsam::Values initial;
     initial.insert(poses6dof.size(), posevecToGtsamPose(posevec));
@@ -970,8 +967,6 @@ public:
 
     const gtsam::Values estimate = isam->calculateEstimate();
     const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
-    // std::cout << "****************************************************" << std::endl;
-    // estimate.print("Current estimate: ");
 
     // size can be used as index
     points3d->push_back(makePoint(latest.translation(), points3d->size()));
@@ -979,9 +974,6 @@ public:
     // intensity can be used as index
     poses6dof.push_back(makeStampedPose(latest, timestamp.toSec()));
 
-    // std::cout << "****************************************************" << std::endl;
-    // std::cout << "Pose covariance:" << std::endl;
-    // std::cout << isam->marginalCovariance(estimate.size()-1) << std::endl << std::endl;
     poseCovariance = isam->marginalCovariance(estimate.size() - 1);
 
     // save updated transform
@@ -1008,12 +1000,7 @@ public:
         const auto point6d = poses6dof.at(i);
         poses6dof.at(i) = makeStampedPose(pose, point6d.time);
 
-        geometry_msgs::PoseStamped pose_stamped;
-        pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
-        pose_stamped.header.frame_id = odometryFrame;
-        pose_stamped.pose = makePose(pose);
-
-        path_poses_.push_back(pose_stamped);
+        path_poses_.push_back(makePoseStamped(makePose(pose), odometryFrame, point6d.time));
       }
     }
   }
