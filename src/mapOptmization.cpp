@@ -57,18 +57,6 @@ StampedPose makeStampedPose(const gtsam::Pose3 & pose, const double time)
   return pose6dof;
 }
 
-float constraintTransformation(const float value, const float limit)
-{
-  if (value < -limit) {
-    return -limit;
-  }
-  if (value > limit) {
-    return limit;
-  }
-
-  return value;
-}
-
 tf::Transform makeTransform(const Vector6d & posevec)
 {
   return tf::Transform(
@@ -916,9 +904,9 @@ public:
       }
     }
 
-    posevec(0) = constraintTransformation(posevec(0), rotation_tolerance);
-    posevec(1) = constraintTransformation(posevec(1), rotation_tolerance);
-    posevec(5) = constraintTransformation(posevec(5), z_tolerance);
+    posevec(0) = std::clamp(posevec(0), -rotation_tolerance, rotation_tolerance);
+    posevec(1) = std::clamp(posevec(1), -rotation_tolerance, rotation_tolerance);
+    posevec(5) = std::clamp(posevec(5), -z_tolerance, z_tolerance);
   }
 
   void saveKeyFramesAndFactor(

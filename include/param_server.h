@@ -60,8 +60,8 @@ public:
   float mappingCornerLeafSize;
   float mappingSurfLeafSize;
 
-  float z_tolerance;
-  float rotation_tolerance;
+  double z_tolerance;
+  double rotation_tolerance;
 
   // CPU Params
   int numberOfCores;
