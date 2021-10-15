@@ -901,11 +901,9 @@ public:
       }
     }
 
-    if (imuAvailable) {
-      if (std::abs(initialIMU.y) < 1.4) {
-        posevec(0) = interpolateRoll(posevec(0), initialIMU.x, imuRPYWeight);
-        posevec(1) = interpolatePitch(posevec(1), initialIMU.y, imuRPYWeight);
-      }
+    if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
+      posevec(0) = interpolateRoll(posevec(0), initialIMU.x, imuRPYWeight);
+      posevec(1) = interpolatePitch(posevec(1), initialIMU.y, imuRPYWeight);
     }
 
     posevec(0) = std::clamp(posevec(0), -rotation_tolerance, rotation_tolerance);
@@ -1051,13 +1049,13 @@ public:
       Eigen::Affine3d affineIncre = front.inverse() * incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
       Vector6d odometry = getPoseVec(increOdomAffine);
-      if (imuAvailable) {
-        if (std::abs(initialIMU.y) < 1.4) {
-          const double imuWeight = 0.1;
-          odometry(0) = interpolateRoll(odometry(0), initialIMU.x, imuWeight);
-          odometry(1) = interpolatePitch(odometry(1), initialIMU.y, imuWeight);
-        }
+
+      if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
+        const double imuWeight = 0.1;
+        odometry(0) = interpolateRoll(odometry(0), initialIMU.x, imuWeight);
+        odometry(1) = interpolatePitch(odometry(1), initialIMU.y, imuWeight);
       }
+
       laserOdomIncremental.header.stamp = timestamp;
       laserOdomIncremental.header.frame_id = odometryFrame;
       laserOdomIncremental.child_frame_id = "odom_mapping";
