@@ -350,7 +350,6 @@ class mapOptimization : public ParamServer
 
 public:
   // gtsam
-  gtsam::NonlinearFactorGraph gtSAMgraph;
   Eigen::MatrixXd poseCovariance;
 
   const ros::Publisher pubLaserCloudSurround;
@@ -956,6 +955,8 @@ public:
       }
     }
 
+    gtsam::NonlinearFactorGraph gtSAMgraph;
+
     if (poses6dof.empty()) {
       gtSAMgraph.add(makePriorFactor(posevec));
     } else {
@@ -994,8 +995,6 @@ public:
       isam->update();
       isam->update();
     }
-
-    gtSAMgraph.resize(0);
 
     const gtsam::Values estimate = isam->calculateEstimate();
     const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
