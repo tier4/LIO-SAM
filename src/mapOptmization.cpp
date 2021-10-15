@@ -340,6 +340,19 @@ Vector6d initPosevec(const Eigen::Vector3d & rpy, const bool useImuHeadingInitia
   return posevec;
 }
 
+bool checkPosesClose(
+  const Vector6d & posevec0, const Vector6d & posevec1,
+  const double angle_threshold, const double point_threshold)
+{
+  const Eigen::Affine3d affine0 = getTransformation(posevec0);
+  const Eigen::Affine3d affine1 = getTransformation(posevec1);
+  const auto [xyz, rpy] = getXYZRPY(affine0.inverse() * affine1);
+
+  const bool f1 = (rpy.array() < angle_threshold).all();
+  const bool f2 = xyz.norm() < point_threshold;
+  return f1 && f2;
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -945,17 +958,14 @@ public:
     Vector6d & posevec,
     CornerSurfaceDict & corner_surface_dict)
   {
-    if (!points3d->empty()) {
-      const Eigen::Affine3d affine0 = getTransformation(makePosevec(poses6dof.back()));
-      const Eigen::Affine3d affine1 = getTransformation(posevec);
-      const auto [xyz, rpy] = getXYZRPY(affine0.inverse() * affine1);
-
-      if (
-        (rpy.array() < surroundingkeyframeAddingAngleThreshold).all() &&
-        xyz.norm() < surroundingkeyframeAddingDistThreshold)
-      {
-        return;
-      }
+    if (
+      !poses6dof.empty() &&
+      checkPosesClose(
+        makePosevec(poses6dof.back()), posevec,
+        surroundingkeyframeAddingAngleThreshold,
+        surroundingkeyframeAddingDistThreshold))
+    {
+      return;
     }
 
     gtsam::NonlinearFactorGraph gtSAMgraph;
