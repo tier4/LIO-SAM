@@ -195,15 +195,15 @@ gtsam::PriorFactor<gtsam::Pose3> makePriorFactor(const Vector6d & posevec)
 }
 
 gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
-  const pcl::PointCloud<StampedPose> & poses6dof, const Vector6d & posevec)
+  const Vector6d & last_pose,
+  const Vector6d & posevec,
+  const int size)
 {
-  const gtsam::Pose3 src = posevecToGtsamPose(makePosevec(poses6dof.points.back()));
+  const gtsam::Pose3 src = posevecToGtsamPose(last_pose);
   const gtsam::Pose3 dst = posevecToGtsamPose(posevec);
 
   const Vector6d v = (Vector6d() << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished();
   const auto noise = gtsam::noiseModel::Diagonal::Variances(v);
-
-  const unsigned int size = poses6dof.size();
 
   return gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), noise);
 }
@@ -973,7 +973,8 @@ public:
     if (poses6dof.empty()) {
       gtSAMgraph.add(makePriorFactor(posevec));
     } else {
-      gtSAMgraph.add(makeOdomFactor(poses6dof, posevec));
+      const Vector6d last_pose = makePosevec(poses6dof.back());
+      gtSAMgraph.add(makeOdomFactor(last_pose, posevec, poses6dof.size()));
     }
 
     bool aLoopIsClosed = false;
