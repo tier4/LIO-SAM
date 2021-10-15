@@ -1013,12 +1013,10 @@ public:
     // estimate.print("Current estimate: ");
 
     // size can be used as index
-    const PointType position = makePoint(latest.translation(), points3d->size());
-    points3d->push_back(position);
+    points3d->push_back(makePoint(latest.translation(), points3d->size()));
 
     // intensity can be used as index
-    const StampedPose pose6dof = makeStampedPose(latest, timestamp.toSec());
-    poses6dof.push_back(pose6dof);
+    poses6dof.push_back(makeStampedPose(latest, timestamp.toSec()));
 
     // std::cout << "****************************************************" << std::endl;
     // std::cout << "Pose covariance:" << std::endl;
@@ -1032,7 +1030,7 @@ public:
     corner_cloud.push_back(laserCloudCornerLastDS);
     surface_cloud.push_back(laserCloudSurfLastDS);
 
-    path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, pose6dof.time));
+    path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, timestamp.toSec()));
 
     // correct poses
     if (aLoopIsClosed) {
