@@ -1030,7 +1030,7 @@ public:
     geometry_msgs::PoseStamped pose_stamped;
     pose_stamped.header.stamp = ros::Time().fromSec(pose6dof.time);
     pose_stamped.header.frame_id = odometryFrame;
-    pose_stamped.pose = makePose(latest.rotation().rpy(), latest.translation());
+    pose_stamped.pose = makePose(latest);
     path_poses_.push_back(pose_stamped);
 
     // correct poses
@@ -1042,10 +1042,8 @@ public:
       // update key poses
       for (unsigned int i = 0; i < estimate.size(); ++i) {
         const gtsam::Pose3 pose = estimate.at<gtsam::Pose3>(i);
-        const Eigen::Vector3d xyz = pose.translation();
-        const Eigen::Vector3d rpy = pose.rotation().rpy();
 
-        points3d->at(i) = makePoint(xyz, points3d->at(i).intensity);
+        points3d->at(i) = makePoint(pose.translation(), points3d->at(i).intensity);
 
         const auto point6d = poses6dof.at(i);
         poses6dof.at(i) = makeStampedPose(pose, point6d.time);
@@ -1053,7 +1051,7 @@ public:
         geometry_msgs::PoseStamped pose_stamped;
         pose_stamped.header.stamp = ros::Time().fromSec(point6d.time);
         pose_stamped.header.frame_id = odometryFrame;
-        pose_stamped.pose = makePose(rpy, xyz);
+        pose_stamped.pose = makePose(pose);
 
         path_poses_.push_back(pose_stamped);
       }

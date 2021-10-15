@@ -149,6 +149,13 @@ Eigen::Affine3d getTransformation(const Vector6d & posevec)
   return transform;
 }
 
+geometry_msgs::Pose makePose(const gtsam::Pose3 & pose)
+{
+  const auto q = eigenToQuaternion(pose.rotation().toQuaternion());
+  const auto p = eigenToPoint(pose.translation());
+  return makePose(q, p);
+}
+
 geometry_msgs::Pose makePose(const Eigen::Vector3d & rpy, const Eigen::Vector3d & xyz)
 {
   const auto orientation = tf::createQuaternionMsgFromRollPitchYaw(rpy(0), rpy(1), rpy(2));

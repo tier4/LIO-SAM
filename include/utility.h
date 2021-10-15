@@ -34,6 +34,7 @@
 #include <tf/transform_broadcaster.h>
 
 #include <eigen_conversions/eigen_msg.h>
+#include <gtsam/geometry/Pose3.h>
 
 #include <vector>
 #include <cmath>
@@ -109,6 +110,8 @@ geometry_msgs::Pose makePose(
 geometry_msgs::Twist makeTwist(
   const geometry_msgs::Vector3 & angular,
   const geometry_msgs::Vector3 & linear);
+
+geometry_msgs::Pose makePose(const gtsam::Pose3 & pose);
 
 geometry_msgs::Pose makePose(const Eigen::Vector3d & rpy, const Eigen::Vector3d & xyz);
 
