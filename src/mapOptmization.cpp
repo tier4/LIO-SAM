@@ -1002,13 +1002,8 @@ public:
     gtsam::Values initial;
     initial.insert(poses6dof.size(), posevecToGtsamPose(posevec));
     isam->update(gtSAMgraph, initial);
-    isam->update();
 
     if (aLoopIsClosed) {
-      isam->update();
-      isam->update();
-      isam->update();
-      isam->update();
       isam->update();
     }
 
