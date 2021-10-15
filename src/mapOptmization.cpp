@@ -57,7 +57,7 @@ StampedPose makeStampedPose(const gtsam::Pose3 & pose, const double time)
   return pose6dof;
 }
 
-tf::Quaternion tfQuaternionFromRPY(const Eigen::Vector3d & rpy)
+tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy)
 {
   tf::Quaternion q;
   q.setRPY(rpy(0), rpy(1), rpy(2));
@@ -81,8 +81,8 @@ tf::Quaternion interpolate(
 Eigen::Vector3d interpolate(
   const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight)
 {
-  const tf::Quaternion q0 = tfQuaternionFromRPY(rpy0);
-  const tf::Quaternion q1 = tfQuaternionFromRPY(rpy1);
+  const tf::Quaternion q0 = rpyToTfQuaternion(rpy0);
+  const tf::Quaternion q1 = rpyToTfQuaternion(rpy1);
   return getRPY(interpolate(q0, q1, weight));
 }
 
