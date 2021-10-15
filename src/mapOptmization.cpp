@@ -312,6 +312,16 @@ bool checkPosesClose(
   return f1 && f2;
 }
 
+double interpolateRoll(const double r0, const double r1, const double weight)
+{
+  return interpolate(Eigen::Vector3d(r0, 0, 0), Eigen::Vector3d(r1, 0, 0), weight)(0);
+}
+
+double interpolatePitch(const double p0, const double p1, const double weight)
+{
+  return interpolate(Eigen::Vector3d(0, p0, 0), Eigen::Vector3d(0, p1, 0), weight)(1);
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -893,14 +903,8 @@ public:
 
     if (imuAvailable) {
       if (std::abs(initialIMU.y) < 1.4) {
-        posevec(0) = interpolate(
-          Eigen::Vector3d(posevec(0), 0, 0),
-          Eigen::Vector3d(initialIMU.x, 0, 0),
-          imuRPYWeight)(0);
-        posevec(1) = interpolate(
-          Eigen::Vector3d(0, posevec(1), 0),
-          Eigen::Vector3d(0, initialIMU.y, 0),
-          imuRPYWeight)(1);
+        posevec(0) = interpolateRoll(posevec(0), initialIMU.x, imuRPYWeight);
+        posevec(1) = interpolatePitch(posevec(1), initialIMU.y, imuRPYWeight);
       }
     }
 
@@ -1049,21 +1053,9 @@ public:
       Vector6d odometry = getPoseVec(increOdomAffine);
       if (imuAvailable) {
         if (std::abs(initialIMU.y) < 1.4) {
-          double imuWeight = 0.1;
-
-          const Eigen::Vector3d r = interpolate(
-            Eigen::Vector3d(odometry(0), 0, 0),
-            Eigen::Vector3d(initialIMU.x, 0, 0),
-            imuWeight
-          );
-          odometry(0) = r(0);
-
-          const Eigen::Vector3d p = interpolate(
-            Eigen::Vector3d(0, odometry(1), 0),
-            Eigen::Vector3d(0, initialIMU.y, 0),
-            imuWeight
-          );
-          odometry(1) = p(1);
+          const double imuWeight = 0.1;
+          odometry(0) = interpolateRoll(odometry(0), initialIMU.x, imuWeight);
+          odometry(1) = interpolatePitch(odometry(1), initialIMU.y, imuWeight);
         }
       }
       laserOdomIncremental.header.stamp = timestamp;
