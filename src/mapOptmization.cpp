@@ -1033,10 +1033,6 @@ public:
     pose_stamped.pose = makePose(latest.rotation().rpy(), latest.translation());
     path_poses_.push_back(pose_stamped);
 
-    if (points3d->empty()) {
-      return;
-    }
-
     // correct poses
     if (aLoopIsClosed) {
       // clear map cache
