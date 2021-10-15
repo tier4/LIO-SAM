@@ -482,8 +482,10 @@ public:
     bool isDegenerate = false;
     scan2MapOptimization(
       laserCloudCornerLastDS, laserCloudSurfLastDS,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, isDegenerate
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, isDegenerate, posevec
     );
+
+    incrementalOdometryAffineBack = getTransformation(posevec);
 
     saveKeyFramesAndFactor(
       timestamp, laserCloudCornerLastDS, laserCloudSurfLastDS,
@@ -885,7 +887,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
-    bool & isDegenerate)
+    bool & isDegenerate, Vector6d & posevec) const
   {
     if (points3d->empty()) {
       return;
@@ -932,8 +934,6 @@ public:
     posevec(0) = constraintTransformation(posevec(0), rotation_tolerance);
     posevec(1) = constraintTransformation(posevec(1), rotation_tolerance);
     posevec(5) = constraintTransformation(posevec(5), z_tolerance);
-
-    incrementalOdometryAffineBack = getTransformation(posevec);
   }
 
   void saveKeyFramesAndFactor(
