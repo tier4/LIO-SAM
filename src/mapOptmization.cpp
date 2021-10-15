@@ -485,7 +485,7 @@ public:
 
     saveKeyFramesAndFactor(
       timestamp, laserCloudCornerLastDS, laserCloudSurfLastDS,
-      corner_surface_dict
+      isam, posevec, corner_surface_dict
     );
 
     publishOdometry(
@@ -941,6 +941,8 @@ public:
     const ros::Time & timestamp,
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
+    std::shared_ptr<gtsam::ISAM2> & isam,
+    Vector6d & posevec,
     CornerSurfaceDict & corner_surface_dict)
   {
     if (!points3d->empty()) {
