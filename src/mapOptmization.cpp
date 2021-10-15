@@ -1076,10 +1076,8 @@ public:
 
     // Publish TF
     tf::TransformBroadcaster br;
-    tf::Transform t_odom_to_lidar = makeTransform(posevec);
-    tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(
-      t_odom_to_lidar, timestamp, odometryFrame, "lidar_link");
-    br.sendTransform(trans_odom_to_lidar);
+    br.sendTransform(
+      tf::StampedTransform(makeTransform(posevec), timestamp, odometryFrame, "lidar_link"));
 
     nav_msgs::Odometry laserOdomIncremental;
     // Publish odometry for ROS (incremental)
