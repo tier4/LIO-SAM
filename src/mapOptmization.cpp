@@ -322,6 +322,44 @@ double interpolatePitch(const double p0, const double p1, const double weight)
   return interpolate(Eigen::Vector3d(0, p0, 0), Eigen::Vector3d(0, p1, 0), weight)(1);
 }
 
+void update3DPoints(
+  const gtsam::Values & estimate,
+  pcl::PointCloud<PointType>::Ptr & points3d)
+{
+  assert(points3d->size() == estimate.size());
+  for (unsigned int i = 0; i < estimate.size(); ++i) {
+    const gtsam::Point3 t = estimate.at<gtsam::Pose3>(i).translation();
+    const float intensity = points3d->at(i).intensity;
+    points3d->at(i) = makePoint(t, intensity);
+  }
+}
+
+void update6DofPoses(
+  const gtsam::Values & estimate,
+  pcl::PointCloud<StampedPose> & poses6dof)
+{
+  assert(poses6dof.size() == estimate.size());
+  for (unsigned int i = 0; i < estimate.size(); ++i) {
+    const gtsam::Pose3 pose = estimate.at<gtsam::Pose3>(i);
+    const double time = poses6dof.at(i).time;
+    poses6dof.at(i) = makeStampedPose(pose, time);
+  }
+}
+
+void updatePath(
+  const gtsam::Values & estimate,
+  const std::string & odometryFrame,
+  const pcl::PointCloud<StampedPose> & poses6dof,
+  std::vector<geometry_msgs::PoseStamped> path_poses)
+{
+  assert(path_poses.size() == estimate.size());
+  for (unsigned int i = 0; i < estimate.size(); ++i) {
+    const gtsam::Pose3 pose = estimate.at<gtsam::Pose3>(i);
+    const double time = poses6dof.at(i).time;
+    path_poses[i] = makePoseStamped(makePose(pose), odometryFrame, time);
+  }
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -985,23 +1023,14 @@ public:
 
     path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, timestamp.toSec()));
 
-    // correct poses
     if (aLoopIsClosed) {
-      // clear map cache
       corner_surface_dict.clear();
-      // clear path
-      path_poses_.clear();
-      // update key poses
-      for (unsigned int i = 0; i < estimate.size(); ++i) {
-        const gtsam::Pose3 pose = estimate.at<gtsam::Pose3>(i);
 
-        points3d->at(i) = makePoint(pose.translation(), points3d->at(i).intensity);
+      update3DPoints(estimate, points3d);
 
-        const auto point6d = poses6dof.at(i);
-        poses6dof.at(i) = makeStampedPose(pose, point6d.time);
+      update6DofPoses(estimate, poses6dof);
 
-        path_poses_.push_back(makePoseStamped(makePose(pose), odometryFrame, point6d.time));
-      }
+      updatePath(estimate, odometryFrame, poses6dof, path_poses_);
     }
   }
 
