@@ -496,16 +496,17 @@ public:
       timestamp, front_posevec, isDegenerate, posevec,
       lastIncreOdomPubFlag, increOdomAffine);
 
-    if (!points3d->empty()) {
-      // publish key poses
-      publishCloud(pubKeyPoses, *points3d, timestamp, odometryFrame);
-      // Publish surrounding key frames
-      publishCloud(pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp, odometryFrame);
-      publishDownsampledCloud(
-        pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
-        odometryFrame, timestamp, posevec);
-      publishPath(pubPath, odometryFrame, timestamp, path_poses_);
+    if (points3d->empty()) {
+      return;
     }
+    // publish key poses
+    publishCloud(pubKeyPoses, *points3d, timestamp, odometryFrame);
+    // Publish surrounding key frames
+    publishCloud(pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp, odometryFrame);
+    publishDownsampledCloud(
+      pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
+      odometryFrame, timestamp, posevec);
+    publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
 
   void updateInitialGuess(
