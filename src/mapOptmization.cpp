@@ -460,8 +460,8 @@ public:
     pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
 
     extractSurroundingKeyFrames(
-      timestamp, poses6dof, corner_surface_dict,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
+      timestamp, poses6dof,
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, corner_surface_dict
     );
 
     pcl::VoxelGrid<PointType> downSizeFilterCorner;
@@ -559,9 +559,9 @@ public:
   void extractSurroundingKeyFrames(
     const ros::Time & timestamp,
     const pcl::PointCloud<StampedPose> & poses6dof,
-    CornerSurfaceDict & corner_surface_dict,
-    pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
-    pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS)
+    const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
+    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
+    CornerSurfaceDict & corner_surface_dict)
   {
     if (points3d->empty()) {
       return;
