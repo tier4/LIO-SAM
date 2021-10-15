@@ -185,6 +185,8 @@ pcl::KdTreeFLANN < T > makeKDTree(const typename pcl::PointCloud < T > ::Ptr & p
 
 tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg);
 
+tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy);
+
 class IMUConverter {
 public:
   IMUConverter();

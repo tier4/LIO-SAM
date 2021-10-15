@@ -20,6 +20,13 @@ tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg)
   return pose;
 }
 
+tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy)
+{
+  tf::Quaternion q;
+  q.setRPY(rpy(0), rpy(1), rpy(2));
+  return q;
+}
+
 sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud)
 {
   sensor_msgs::PointCloud2 msg;

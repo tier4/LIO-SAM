@@ -57,13 +57,6 @@ StampedPose makeStampedPose(const gtsam::Pose3 & pose, const double time)
   return pose6dof;
 }
 
-tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy)
-{
-  tf::Quaternion q;
-  q.setRPY(rpy(0), rpy(1), rpy(2));
-  return q;
-}
-
 Eigen::Vector3d getRPY(const tf::Quaternion & q)
 {
   double roll, pitch, yaw;
