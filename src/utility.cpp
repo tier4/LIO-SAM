@@ -27,6 +27,28 @@ tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy)
   return q;
 }
 
+Eigen::Vector3d getRPY(const tf::Quaternion & q)
+{
+  double roll, pitch, yaw;
+  tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+  return Eigen::Vector3d(roll, pitch, yaw);
+}
+
+tf::Quaternion interpolate(
+  const tf::Quaternion & q0, const tf::Quaternion & q1,
+  const tfScalar weight)
+{
+  return q0.slerp(q1, weight);
+}
+
+Eigen::Vector3d interpolate(
+  const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight)
+{
+  const tf::Quaternion q0 = rpyToTfQuaternion(rpy0);
+  const tf::Quaternion q1 = rpyToTfQuaternion(rpy1);
+  return getRPY(interpolate(q0, q1, weight));
+}
+
 sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud)
 {
   sensor_msgs::PointCloud2 msg;

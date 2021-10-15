@@ -187,6 +187,9 @@ tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg);
 
 tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy);
 
+Eigen::Vector3d interpolate(
+  const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight);
+
 class IMUConverter {
 public:
   IMUConverter();
