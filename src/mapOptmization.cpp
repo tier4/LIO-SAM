@@ -368,7 +368,6 @@ public:
   std::shared_ptr<gtsam::ISAM2> isam;
 
   GPSFactor gps_factor_;
-  lio_sam::cloud_infoConstPtr msgIn_;
 
   std::vector<pcl::PointCloud<PointType>> corner_cloud;
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
@@ -425,8 +424,6 @@ public:
 
   void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
   {
-    msgIn_ = msgIn;
-
     // extract time stamp
     const ros::Time timestamp = msgIn->header.stamp;
 
@@ -454,7 +451,7 @@ public:
       msgIn->initialIMU, msgIn->initial_pose
     );
 
-    lastImuTransformation = makeAffine(vector3ToEigen(msgIn_->initialIMU));
+    lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
     pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
@@ -482,7 +479,9 @@ public:
     bool isDegenerate = false;
     scan2MapOptimization(
       laserCloudCornerLastDS, laserCloudSurfLastDS,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, isDegenerate, posevec
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS,
+      msgIn->imuAvailable, msgIn->initialIMU,
+      isDegenerate, posevec
     );
 
     incrementalOdometryAffineBack = getTransformation(posevec);
@@ -494,6 +493,7 @@ public:
 
     publishOdometry(
       timestamp, front_posevec, isDegenerate, posevec,
+      msgIn->imuAvailable, msgIn->initialIMU,
       lastIncreOdomPubFlag, increOdomAffine);
 
     if (points3d->empty()) {
@@ -890,6 +890,7 @@ public:
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
+    const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
     bool & isDegenerate, Vector6d & posevec) const
   {
     if (points3d->empty()) {
@@ -921,15 +922,15 @@ public:
       }
     }
 
-    if (msgIn_->imuAvailable) {
-      if (std::abs(msgIn_->initialIMU.y) < 1.4) {
+    if (imuAvailable) {
+      if (std::abs(initialIMU.y) < 1.4) {
         posevec(0) = interpolate(
           Eigen::Vector3d(posevec(0), 0, 0),
-          Eigen::Vector3d(msgIn_->initialIMU.x, 0, 0),
+          Eigen::Vector3d(initialIMU.x, 0, 0),
           imuRPYWeight)(0);
         posevec(1) = interpolate(
           Eigen::Vector3d(0, posevec(1), 0),
-          Eigen::Vector3d(0, msgIn_->initialIMU.y, 0),
+          Eigen::Vector3d(0, initialIMU.y, 0),
           imuRPYWeight)(1);
       }
     }
@@ -1067,6 +1068,7 @@ public:
   void publishOdometry(
     const ros::Time & timestamp, const Vector6d & front_posevec,
     const bool isDegenerate, const Vector6d & posevec,
+    const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
     bool & lastIncreOdomPubFlag, Eigen::Affine3d & increOdomAffine) const
   {
     // Publish odometry for ROS (global)
@@ -1094,20 +1096,20 @@ public:
       Eigen::Affine3d affineIncre = front.inverse() * incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
       Vector6d odometry = getPoseVec(increOdomAffine);
-      if (msgIn_->imuAvailable) {
-        if (std::abs(msgIn_->initialIMU.y) < 1.4) {
+      if (imuAvailable) {
+        if (std::abs(initialIMU.y) < 1.4) {
           double imuWeight = 0.1;
 
           const Eigen::Vector3d r = interpolate(
             Eigen::Vector3d(odometry(0), 0, 0),
-            Eigen::Vector3d(msgIn_->initialIMU.x, 0, 0),
+            Eigen::Vector3d(initialIMU.x, 0, 0),
             imuWeight
           );
           odometry(0) = r(0);
 
           const Eigen::Vector3d p = interpolate(
             Eigen::Vector3d(0, odometry(1), 0),
-            Eigen::Vector3d(0, msgIn_->initialIMU.y, 0),
+            Eigen::Vector3d(0, initialIMU.y, 0),
             imuWeight
           );
           odometry(1) = p(1);
