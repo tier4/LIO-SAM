@@ -230,7 +230,16 @@ std::optional<gtsam::GPSFactor> makeGPSFactor(
 
 class GPSFactor
 {
+private:
+  const bool useGpsElevation;
+  const float gpsCovThreshold;
+
 public:
+  GPSFactor(const bool useGpsElevation, const float gpsCovThreshold)
+  : useGpsElevation(useGpsElevation), gpsCovThreshold(gpsCovThreshold)
+  {
+  }
+
   void handler(const nav_msgs::Odometry::ConstPtr & gpsMsg)
   {
     gpsQueue.push_back(*gpsMsg);
@@ -238,7 +247,6 @@ public:
 
   std::optional<gtsam::GPSFactor> make(
     const pcl::PointCloud<PointType>::Ptr & points3d,
-    const float gpsCovThreshold, const bool useGpsElevation,
     const Vector6d & posevec, const Eigen::Vector3d & last_gps_position,
     const ros::Time & timestamp)
   {
@@ -432,6 +440,7 @@ public:
     posevec(Vector6d::Zero()),
     isam(std::make_shared<gtsam::ISAM2>(
         gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
+    gps_factor_(GPSFactor(useGpsElevation, gpsCovThreshold)),
     points3d(new pcl::PointCloud<PointType>()),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
@@ -982,10 +991,7 @@ public:
       !points3d->empty() &&
       (poseCovariance(3, 3) >= poseCovThreshold || poseCovariance(4, 4) >= poseCovThreshold))
     {
-      const std::optional<gtsam::GPSFactor> gps_factor = gps_factor_.make(
-        points3d, gpsCovThreshold, useGpsElevation,
-        posevec, last_gps_position, timestamp
-      );
+      const auto gps_factor = gps_factor_.make(points3d, posevec, last_gps_position, timestamp);
 
       if (gps_factor.has_value()) {
         gtSAMgraph.add(gps_factor.value());
