@@ -333,6 +333,12 @@ bool checkImuTime(
   return true;
 }
 
+nav_msgs::Odometry odomNextOf(const std::deque<nav_msgs::Odometry> & odomQueue, const double time)
+{
+  const unsigned int index = indexNextTimeOf(odomQueue, time);
+  return odomQueue[index];
+}
+
 class ImageProjection : public ParamServer
 {
 private:
@@ -455,11 +461,8 @@ public:
     Eigen::Vector3d odomInc = Eigen::Vector3d::Zero();
 
     if (odomAvailable) {
-      const unsigned int index0 = indexNextTimeOf(odomQueue, scan_start_time);
-      const nav_msgs::Odometry msg0 = odomQueue[index0];
-
-      const unsigned int index1 = indexNextTimeOf(odomQueue, scan_end_time);
-      const nav_msgs::Odometry msg1 = odomQueue[index1];
+      const nav_msgs::Odometry msg0 = odomNextOf(odomQueue, scan_start_time);
+      const nav_msgs::Odometry msg1 = odomNextOf(odomQueue, scan_end_time);
 
       cloudInfo.initial_pose = msg0.pose.pose;
 
