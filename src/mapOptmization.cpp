@@ -273,23 +273,11 @@ void updatePath(
   }
 }
 
-bool xyPositionIsUncertain(const Eigen::MatrixXd & poseCovariance, const double threshold)
-{
-  const double x_variance = poseCovariance(3, 3);
-  const double y_variance = poseCovariance(4, 4);
-  return x_variance >= threshold || y_variance >= threshold;
-}
-
 void isamUpdate(
   const pcl::PointCloud<StampedPose> & poses6dof,
   const Vector6d & posevec,
-  const double poseCovThreshold,
-  const Eigen::MatrixXd & poseCovariance,
-  const ros::Time & timestamp,
-  pcl::PointCloud<PointType>::Ptr & points3d,
   std::shared_ptr<gtsam::ISAM2> & isam)
 {
-
   gtsam::NonlinearFactorGraph gtSAMgraph;
 
   if (poses6dof.empty()) {
@@ -315,8 +303,6 @@ class mapOptimization : public ParamServer
 
 public:
   // gtsam
-  Eigen::MatrixXd poseCovariance;
-
   const ros::Publisher pubLaserCloudSurround;
   const ros::Publisher pubLaserOdometryGlobal;
   const ros::Publisher pubLaserOdometryIncremental;
@@ -443,8 +429,8 @@ public:
 
     saveKeyFramesAndFactor(
       timestamp, laserCloudCornerLastDS, laserCloudSurfLastDS,
-      isam, poses6dof, posevec, poseCovariance,
-      corner_cloud, surface_cloud, path_poses_, points3d, corner_surface_dict
+      isam, poses6dof, posevec,
+      corner_cloud, surface_cloud, path_poses_, points3d
     );
 
     publishOdometry(
@@ -895,12 +881,10 @@ public:
     std::shared_ptr<gtsam::ISAM2> & isam,
     pcl::PointCloud<StampedPose> & poses6dof,
     Vector6d & posevec,
-    Eigen::MatrixXd & poseCovariance,
     std::vector<pcl::PointCloud<PointType>> & corner_cloud,
     std::vector<pcl::PointCloud<PointType>> & surface_cloud,
     std::vector<geometry_msgs::PoseStamped> & path_poses_,
-    pcl::PointCloud<PointType>::Ptr & points3d,
-    CornerSurfaceDict & corner_surface_dict) const
+    pcl::PointCloud<PointType>::Ptr & points3d) const
   {
     if (
       !poses6dof.empty() &&
@@ -912,10 +896,7 @@ public:
       return;
     }
 
-    isamUpdate(
-      poses6dof, posevec, poseCovThreshold, poseCovariance, timestamp,
-      points3d, isam
-    );
+    isamUpdate(poses6dof, posevec, isam);
 
     const gtsam::Values estimate = isam->calculateEstimate();
     const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
@@ -925,8 +906,6 @@ public:
 
     // intensity can be used as index
     poses6dof.push_back(makeStampedPose(latest, timestamp.toSec()));
-
-    poseCovariance = isam->marginalCovariance(estimate.size() - 1);
 
     // save updated transform
     posevec = getPoseVec(latest);
