@@ -72,6 +72,20 @@ sensor_msgs::PointCloud2 publishCloud(
   return tempCloud;
 }
 
+nav_msgs::Odometry makeOdometry(
+  const ros::Time & timestamp,
+  const std::string & frame_id,
+  const std::string & child_frame_id,
+  const geometry_msgs::Pose & pose)
+{
+  nav_msgs::Odometry odometry;
+  odometry.header.stamp = timestamp;
+  odometry.header.frame_id = frame_id;
+  odometry.child_frame_id = child_frame_id;
+  odometry.pose.pose = pose;
+  return odometry;
+}
+
 PointType makePoint(const Eigen::Vector3d & point, const float intensity)
 {
   const Eigen::Vector3f q = point.cast<float>();

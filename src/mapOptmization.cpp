@@ -902,13 +902,9 @@ public:
     const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
     bool & lastIncreOdomPubFlag, Eigen::Affine3d & increOdomAffine) const
   {
-    // Publish odometry for ROS (global)
-    nav_msgs::Odometry odometry;
-    odometry.header.stamp = timestamp;
-    odometry.header.frame_id = odometryFrame;
-    odometry.child_frame_id = "odom_mapping";
-    odometry.pose.pose = makePose(posevec);
-    // geometry_msgs/Quaternion
+    const nav_msgs::Odometry odometry = makeOdometry(
+      timestamp, odometryFrame, "odom_mapping", makePose(posevec));
+
     pubLaserOdometryGlobal.publish(odometry);
 
     // Publish TF

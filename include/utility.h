@@ -79,6 +79,12 @@ Eigen::Vector3d vector3ToEigen(const geometry_msgs::Vector3 & p)
 
 PointType makePoint(const Eigen::Vector3d & point, const float intensity = 0.0);
 
+nav_msgs::Odometry makeOdometry(
+  const ros::Time & timestamp,
+  const std::string & frame_id,
+  const std::string & child_frame_id,
+  const geometry_msgs::Pose & pose);
+
 Eigen::Affine3d makeAffine(
   const Eigen::Vector3d & rpy = Eigen::Vector3d::Zero(),
   const Eigen::Vector3d & point = Eigen::Vector3d::Zero());
