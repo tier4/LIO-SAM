@@ -427,11 +427,33 @@ public:
 
     incrementalOdometryAffineBack = getTransformation(posevec);
 
-    saveKeyFramesAndFactor(
-      timestamp, laserCloudCornerLastDS, laserCloudSurfLastDS,
-      isam, poses6dof, posevec,
-      corner_cloud, surface_cloud, path_poses_, points3d
-    );
+    if (
+      poses6dof.empty() ||
+      !checkPosesClose(
+        makePosevec(poses6dof.back()), posevec,
+        surroundingkeyframeAddingAngleThreshold,
+        surroundingkeyframeAddingDistThreshold))
+    {
+      isamUpdate(poses6dof, posevec, isam);
+
+      const gtsam::Values estimate = isam->calculateEstimate();
+      const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
+
+      // size can be used as index
+      points3d->push_back(makePoint(latest.translation(), points3d->size()));
+
+      // intensity can be used as index
+      poses6dof.push_back(makeStampedPose(latest, timestamp.toSec()));
+
+      // save updated transform
+      posevec = getPoseVec(latest);
+
+      // save key frame cloud
+      corner_cloud.push_back(laserCloudCornerLastDS);
+      surface_cloud.push_back(laserCloudSurfLastDS);
+
+      path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, timestamp.toSec()));
+    }
 
     publishOdometry(
       timestamp, front_posevec, isDegenerate, posevec,
@@ -872,49 +894,6 @@ public:
     posevec(0) = std::clamp(posevec(0), -rotation_tolerance, rotation_tolerance);
     posevec(1) = std::clamp(posevec(1), -rotation_tolerance, rotation_tolerance);
     posevec(5) = std::clamp(posevec(5), -z_tolerance, z_tolerance);
-  }
-
-  void saveKeyFramesAndFactor(
-    const ros::Time & timestamp,
-    const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
-    const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-    std::shared_ptr<gtsam::ISAM2> & isam,
-    pcl::PointCloud<StampedPose> & poses6dof,
-    Vector6d & posevec,
-    std::vector<pcl::PointCloud<PointType>> & corner_cloud,
-    std::vector<pcl::PointCloud<PointType>> & surface_cloud,
-    std::vector<geometry_msgs::PoseStamped> & path_poses_,
-    pcl::PointCloud<PointType>::Ptr & points3d) const
-  {
-    if (
-      !poses6dof.empty() &&
-      checkPosesClose(
-        makePosevec(poses6dof.back()), posevec,
-        surroundingkeyframeAddingAngleThreshold,
-        surroundingkeyframeAddingDistThreshold))
-    {
-      return;
-    }
-
-    isamUpdate(poses6dof, posevec, isam);
-
-    const gtsam::Values estimate = isam->calculateEstimate();
-    const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
-
-    // size can be used as index
-    points3d->push_back(makePoint(latest.translation(), points3d->size()));
-
-    // intensity can be used as index
-    poses6dof.push_back(makeStampedPose(latest, timestamp.toSec()));
-
-    // save updated transform
-    posevec = getPoseVec(latest);
-
-    // save key frame cloud
-    corner_cloud.push_back(laserCloudCornerLastDS);
-    surface_cloud.push_back(laserCloudSurfLastDS);
-
-    path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, timestamp.toSec()));
   }
 
   void publishOdometry(
