@@ -329,7 +329,6 @@ public:
 
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
-  Eigen::Affine3d incrementalOdometryAffineBack;
   Eigen::Affine3d lastImuTransformation;
 
   bool lastImuPreTransAvailable;
@@ -425,7 +424,7 @@ public:
       isDegenerate, posevec
     );
 
-    incrementalOdometryAffineBack = getTransformation(posevec);
+    const Vector6d back_posevec = posevec;
 
     if (
       poses6dof.empty() ||
@@ -475,8 +474,8 @@ public:
       pubLaserOdometryIncremental.publish(odometry);
     } else {
       const Eigen::Affine3d front = getTransformation(front_posevec);
-      Eigen::Affine3d affineIncre = front.inverse() * incrementalOdometryAffineBack;
-      increOdomAffine = increOdomAffine * affineIncre;
+      const Eigen::Affine3d back = getTransformation(back_posevec);
+      increOdomAffine = increOdomAffine * (front.inverse() * back);
       Vector6d incre_pose = getPoseVec(increOdomAffine);
 
       if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
