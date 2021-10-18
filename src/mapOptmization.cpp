@@ -486,10 +486,8 @@ public:
         odometry(1) = interpolatePitch(odometry(1), initialIMU.y, imuWeight);
       }
 
-      laserOdomIncremental.header.stamp = timestamp;
-      laserOdomIncremental.header.frame_id = odometryFrame;
-      laserOdomIncremental.child_frame_id = "odom_mapping";
-      laserOdomIncremental.pose.pose = makePose(odometry);
+      laserOdomIncremental = makeOdometry(
+        timestamp, odometryFrame, "odom_mapping", makePose(odometry));
       if (isDegenerate) {
         laserOdomIncremental.pose.covariance[0] = 1;
       } else {
