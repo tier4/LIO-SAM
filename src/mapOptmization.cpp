@@ -368,6 +368,55 @@ void updatePath(
   }
 }
 
+bool xyPositionIsUncertain(const Eigen::MatrixXd & poseCovariance, const double threshold)
+{
+  const double x_variance = poseCovariance(3, 3);
+  const double y_variance = poseCovariance(4, 4);
+  return x_variance >= threshold || y_variance >= threshold;
+}
+
+void isamUpdate(
+  const pcl::PointCloud<StampedPose> & poses6dof,
+  const Vector6d & posevec,
+  const double poseCovThreshold,
+  const Eigen::MatrixXd & poseCovariance,
+  const ros::Time & timestamp,
+  Eigen::Vector3d & last_gps_position,
+  pcl::PointCloud<PointType>::Ptr & points3d,
+  GPSFactor & gps_factor_,
+  std::shared_ptr<gtsam::ISAM2> & isam,
+  bool & aLoopIsClosed)
+{
+
+  gtsam::NonlinearFactorGraph gtSAMgraph;
+
+  if (poses6dof.empty()) {
+    gtSAMgraph.add(makePriorFactor(posevec));
+  } else {
+    const Vector6d last_pose = makePosevec(poses6dof.back());
+    gtSAMgraph.add(makeOdomFactor(last_pose, posevec, poses6dof.size()));
+  }
+
+  if (!points3d->empty() && xyPositionIsUncertain(poseCovariance, poseCovThreshold)) {
+    const auto gps_factor = gps_factor_.make(points3d, posevec, last_gps_position, timestamp);
+
+    if (gps_factor.has_value()) {
+      gtSAMgraph.add(gps_factor.value());
+      last_gps_position = gps_factor.value().measurementIn();
+      aLoopIsClosed = true;
+    }
+  }
+
+  // update iSAM
+  gtsam::Values initial;
+  initial.insert(poses6dof.size(), posevecToGtsamPose(posevec));
+  isam->update(gtSAMgraph, initial);
+
+  if (aLoopIsClosed) {
+    isam->update();
+  }
+}
+
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -985,38 +1034,12 @@ public:
       return;
     }
 
-    gtsam::NonlinearFactorGraph gtSAMgraph;
-
-    if (poses6dof.empty()) {
-      gtSAMgraph.add(makePriorFactor(posevec));
-    } else {
-      const Vector6d last_pose = makePosevec(poses6dof.back());
-      gtSAMgraph.add(makeOdomFactor(last_pose, posevec, poses6dof.size()));
-    }
-
     bool aLoopIsClosed = false;
 
-    if (
-      !points3d->empty() &&
-      (poseCovariance(3, 3) >= poseCovThreshold || poseCovariance(4, 4) >= poseCovThreshold))
-    {
-      const auto gps_factor = gps_factor_.make(points3d, posevec, last_gps_position, timestamp);
-
-      if (gps_factor.has_value()) {
-        gtSAMgraph.add(gps_factor.value());
-        last_gps_position = gps_factor.value().measurementIn();
-        aLoopIsClosed = true;
-      }
-    }
-
-    // update iSAM
-    gtsam::Values initial;
-    initial.insert(poses6dof.size(), posevecToGtsamPose(posevec));
-    isam->update(gtSAMgraph, initial);
-
-    if (aLoopIsClosed) {
-      isam->update();
-    }
+    isamUpdate(
+      poses6dof, posevec, poseCovThreshold, poseCovariance, timestamp,
+      last_gps_position, points3d, gps_factor_, isam, aLoopIsClosed
+    );
 
     const gtsam::Values estimate = isam->calculateEstimate();
     const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
