@@ -1,6 +1,8 @@
-#pragma once
 #ifndef _UTILITY_LIDAR_ODOMETRY_H_
 #define _UTILITY_LIDAR_ODOMETRY_H_
+
+#include "matrix_type.h"
+#include "point_type.hpp"
 
 #include <ros/ros.h>
 
@@ -18,7 +20,6 @@
 #include <pcl/point_types.h>
 #include <pcl/search/impl/search.hpp>
 #include <pcl/range_image/range_image.h>
-#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
 #include <pcl/registration/icp.h>
@@ -55,10 +56,6 @@
 #include <tuple>
 #include <mutex>
 
-typedef pcl::PointXYZI PointType;
-typedef Eigen::Matrix < double, -1, -1, Eigen::RowMajor > RowMajorMatrixXd;
-typedef Eigen::Matrix < double, 6, 1 > Vector6d;
-
 sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud < PointType > & pointcloud);
 
 sensor_msgs::PointCloud2 publishCloud(
@@ -67,12 +64,12 @@ sensor_msgs::PointCloud2 publishCloud(
   const ros::Time thisStamp,
   const std::string thisFrame);
 
-Eigen::Vector3d pointToEigen(const geometry_msgs::Point & p)
+inline Eigen::Vector3d pointToEigen(const geometry_msgs::Point & p)
 {
   return Eigen::Vector3d(p.x, p.y, p.z);
 }
 
-Eigen::Vector3d vector3ToEigen(const geometry_msgs::Vector3 & p)
+inline Eigen::Vector3d vector3ToEigen(const geometry_msgs::Vector3 & p)
 {
   return Eigen::Vector3d(p.x, p.y, p.z);
 }
@@ -146,7 +143,7 @@ pcl::PointCloud < PointType > getPointCloud(const sensor_msgs::PointCloud2 & ros
   return pclcloud;
 }
 
-double timeInSec(const std_msgs::Header & header)
+inline double timeInSec(const std_msgs::Header & header)
 {
   return header.stamp.toSec();
 }
@@ -162,19 +159,19 @@ void dropBefore(const double time_second, std::deque < T > & buffer)
   }
 }
 
-tf::Transform identityTransform()
+inline tf::Transform identityTransform()
 {
   tf::Transform identity;
   identity.setIdentity();
   return identity;
 }
 
-Eigen::Vector3d getXYZ(const PointType & point)
+inline Eigen::Vector3d getXYZ(const PointType & point)
 {
   return Eigen::Vector3d(point.x, point.y, point.z);
 }
 
-Eigen::MatrixXd rad2deg(const Eigen::MatrixXd & x)
+inline Eigen::MatrixXd rad2deg(const Eigen::MatrixXd & x)
 {
   return x * (180.0 / M_PI);
 }

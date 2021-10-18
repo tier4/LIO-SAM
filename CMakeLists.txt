@@ -70,7 +70,7 @@ link_directories(
 )
 
 include_directories(include)
-add_library(util SHARED src/utility.cpp src/param_server.cpp)
+add_library(util SHARED src/utility.cpp src/param_server.cpp src/pose_optimizer.cpp)
 target_link_libraries(util ${catkin_LIBRARIES} gtsam)
 
 ###########
