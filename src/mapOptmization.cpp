@@ -393,11 +393,10 @@ public:
     downSizeFilterSurf.filter(laserCloudSurfLastDS);
 
     bool isDegenerate = false;
-    scan2MapOptimization(
+    std::tie(posevec, isDegenerate) = scan2MapOptimization(
       laserCloudCornerLastDS, laserCloudSurfLastDS,
       laserCloudCornerFromMapDS, laserCloudSurfFromMapDS,
-      msgIn->imuAvailable, msgIn->initialIMU,
-      isDegenerate, posevec
+      msgIn->imuAvailable, msgIn->initialIMU, posevec
     );
 
     const Eigen::Affine3d back = getTransformation(posevec);
@@ -619,16 +618,16 @@ public:
     }
   }
 
-  void scan2MapOptimization(
+  std::tuple<Vector6d, bool> scan2MapOptimization(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
     const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
-    bool & isDegenerate, Vector6d & posevec) const
+    const Vector6d & initial_posevec) const
   {
     if (points3d->empty()) {
-      return;
+      return {initial_posevec, false};
     }
 
     if (
@@ -638,12 +637,12 @@ public:
       ROS_WARN(
         "Not enough features! Only %d edge and %d planar features available.",
         laserCloudCornerLastDS.size(), laserCloudSurfLastDS.size());
-      return;
+      return {initial_posevec, false};
     }
 
-    std::tie(posevec, isDegenerate) = pose_optimizer_.run(
+    auto [posevec, isDegenerate] = pose_optimizer_.run(
       laserCloudCornerLastDS, laserCloudSurfLastDS,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, posevec);
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, initial_posevec);
 
     if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
       posevec(0) = interpolateRoll(posevec(0), initialIMU.x, imuRPYWeight);
@@ -653,6 +652,7 @@ public:
     posevec(0) = std::clamp(posevec(0), -rotation_tolerance, rotation_tolerance);
     posevec(1) = std::clamp(posevec(1), -rotation_tolerance, rotation_tolerance);
     posevec(5) = std::clamp(posevec(5), -z_tolerance, z_tolerance);
+    return {posevec, isDegenerate};
   }
 };
 
