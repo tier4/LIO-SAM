@@ -233,7 +233,8 @@ class GPSFactor
 {
 public:
   GPSFactor(const bool useGpsElevation, const float gpsCovThreshold)
-  : useGpsElevation(useGpsElevation), gpsCovThreshold(gpsCovThreshold)
+  : useGpsElevation(useGpsElevation), gpsCovThreshold(gpsCovThreshold),
+    last_gps_position(std::numeric_limits<double>::max() * Eigen::Vector3d::Ones())
   {
   }
 
