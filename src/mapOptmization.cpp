@@ -9,7 +9,6 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/navigation/GPSFactor.h>
 #include <gtsam/navigation/ImuFactor.h>
 #include <gtsam/navigation/CombinedImuFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -23,7 +22,6 @@
 using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
-using gtsam::symbol_shorthand::G; // GPS pose
 
 struct StampedPose
 {
@@ -167,99 +165,6 @@ gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
   return gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), noise);
 }
 
-std::optional<gtsam::GPSFactor> makeGPSFactor(
-  const pcl::PointCloud<PointType>::Ptr & points3d,
-  const float gpsCovThreshold, const bool useGpsElevation,
-  const Vector6d & posevec, Eigen::Vector3d & last_gps_position,
-  const ros::Time & timestamp,
-  std::deque<nav_msgs::Odometry> & gpsQueue)
-{
-
-  if (gpsQueue.empty()) {
-    return std::nullopt;
-  }
-
-  const double distance = (getXYZ(points3d->front()) - getXYZ(points3d->back())).norm();
-  if (distance < 5.0) {
-    return std::nullopt;
-  }
-
-  dropBefore(timestamp.toSec() - 0.2, gpsQueue);
-
-  if (timeInSec(gpsQueue.front().header) > timestamp.toSec() + 0.2) {
-    // message too new
-    return std::nullopt;
-  }
-
-  while (!gpsQueue.empty()) {
-    const geometry_msgs::PoseWithCovariance pose = gpsQueue.front().pose;
-    gpsQueue.pop_front();
-
-    // GPS too noisy, skip
-    const Eigen::Map<const RowMajorMatrixXd> covariance(pose.covariance.data(), 6, 6);
-    Eigen::Vector3d position_variances = covariance.diagonal().head(3);
-
-    if (position_variances(0) > gpsCovThreshold || position_variances(1) > gpsCovThreshold) {
-      continue;
-    }
-
-    Eigen::Vector3d gps_position = pointToEigen(pose.pose.position);
-    if (!useGpsElevation) {
-      gps_position(2) = posevec(5);
-      position_variances(2) = 0.01;
-    }
-
-    // GPS not properly initialized (0,0,0)
-    if (abs(gps_position(0)) < 1e-6 && abs(gps_position(1)) < 1e-6) {
-      continue;
-    }
-
-    // Add GPS every a few meters
-    if ((gps_position - last_gps_position).norm() < 5.0) {
-      continue;
-    }
-
-    const auto gps_noise = gtsam::noiseModel::Diagonal::Variances(
-      position_variances.cwiseMax(1.0f)
-    );
-    last_gps_position = gps_position;
-    return std::make_optional<gtsam::GPSFactor>(points3d->size(), gps_position, gps_noise);
-  }
-
-  return std::nullopt;
-}
-
-class GPSFactor
-{
-public:
-  GPSFactor(const bool useGpsElevation, const float gpsCovThreshold)
-  : useGpsElevation(useGpsElevation), gpsCovThreshold(gpsCovThreshold),
-    last_gps_position(std::numeric_limits<double>::max() * Eigen::Vector3d::Ones())
-  {
-  }
-
-  void handler(const nav_msgs::Odometry::ConstPtr & gpsMsg)
-  {
-    gpsQueue.push_back(*gpsMsg);
-  }
-
-  std::optional<gtsam::GPSFactor> make(
-    const pcl::PointCloud<PointType>::Ptr & points3d,
-    const Vector6d & posevec, const ros::Time & timestamp)
-  {
-    return makeGPSFactor(
-      points3d, gpsCovThreshold, useGpsElevation,
-      posevec, last_gps_position, timestamp, gpsQueue
-    );
-  }
-
-private:
-  const bool useGpsElevation;
-  const float gpsCovThreshold;
-  std::deque<nav_msgs::Odometry> gpsQueue;
-  Eigen::Vector3d last_gps_position;
-};
-
 void publishDownsampledCloud(
   const ros::Publisher & publisher,
   const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
@@ -382,9 +287,7 @@ void isamUpdate(
   const Eigen::MatrixXd & poseCovariance,
   const ros::Time & timestamp,
   pcl::PointCloud<PointType>::Ptr & points3d,
-  GPSFactor & gps_factor_,
-  std::shared_ptr<gtsam::ISAM2> & isam,
-  bool & aLoopIsClosed)
+  std::shared_ptr<gtsam::ISAM2> & isam)
 {
 
   gtsam::NonlinearFactorGraph gtSAMgraph;
@@ -396,23 +299,10 @@ void isamUpdate(
     gtSAMgraph.add(makeOdomFactor(last_pose, posevec, poses6dof.size()));
   }
 
-  if (!points3d->empty() && xyPositionIsUncertain(poseCovariance, poseCovThreshold)) {
-    const auto gps_factor = gps_factor_.make(points3d, posevec, timestamp);
-
-    if (gps_factor.has_value()) {
-      gtSAMgraph.add(gps_factor.value());
-      aLoopIsClosed = true;
-    }
-  }
-
   // update iSAM
   gtsam::Values initial;
   initial.insert(poses6dof.size(), posevecToGtsamPose(posevec));
   isam->update(gtSAMgraph, initial);
-
-  if (aLoopIsClosed) {
-    isam->update();
-  }
 }
 
 class mapOptimization : public ParamServer
@@ -436,13 +326,10 @@ public:
   const ros::Publisher pubRecentKeyFrames;
   const ros::Publisher pubRecentKeyFrame;
   const ros::Subscriber subCloud;
-  const ros::Subscriber subGPS;
 
   Vector6d posevec;
 
   std::shared_ptr<gtsam::ISAM2> isam;
-
-  GPSFactor gps_factor_;
 
   std::vector<pcl::PointCloud<PointType>> corner_cloud;
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
@@ -480,13 +367,9 @@ public:
     subCloud(nh.subscribe<lio_sam::cloud_info>(
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
-    subGPS(nh.subscribe<nav_msgs::Odometry>(
-        gpsTopic, 200, &GPSFactor::handler, &gps_factor_,
-        ros::TransportHints().tcpNoDelay())),
     posevec(Vector6d::Zero()),
     isam(std::make_shared<gtsam::ISAM2>(
         gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
-    gps_factor_(GPSFactor(useGpsElevation, gpsCovThreshold)),
     points3d(new pcl::PointCloud<PointType>()),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
@@ -560,7 +443,7 @@ public:
 
     saveKeyFramesAndFactor(
       timestamp, laserCloudCornerLastDS, laserCloudSurfLastDS,
-      isam, poses6dof, posevec, gps_factor_, poseCovariance,
+      isam, poses6dof, posevec, poseCovariance,
       corner_cloud, surface_cloud, path_poses_, points3d, corner_surface_dict
     );
 
@@ -1012,7 +895,6 @@ public:
     std::shared_ptr<gtsam::ISAM2> & isam,
     pcl::PointCloud<StampedPose> & poses6dof,
     Vector6d & posevec,
-    GPSFactor & gps_factor_,
     Eigen::MatrixXd & poseCovariance,
     std::vector<pcl::PointCloud<PointType>> & corner_cloud,
     std::vector<pcl::PointCloud<PointType>> & surface_cloud,
@@ -1030,11 +912,9 @@ public:
       return;
     }
 
-    bool aLoopIsClosed = false;
-
     isamUpdate(
       poses6dof, posevec, poseCovThreshold, poseCovariance, timestamp,
-      points3d, gps_factor_, isam, aLoopIsClosed
+      points3d, isam
     );
 
     const gtsam::Values estimate = isam->calculateEstimate();
@@ -1056,14 +936,6 @@ public:
     surface_cloud.push_back(laserCloudSurfLastDS);
 
     path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, timestamp.toSec()));
-
-    if (aLoopIsClosed) {
-      corner_surface_dict.clear();
-
-      update3DPoints(estimate, points3d);
-      update6DofPoses(estimate, poses6dof);
-      updatePath(estimate, odometryFrame, poses6dof, path_poses_);
-    }
   }
 
   void publishOdometry(
