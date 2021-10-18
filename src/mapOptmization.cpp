@@ -385,7 +385,8 @@ public:
     last_time_sec = timestamp.toSec();
 
     // save current transformation before any processing
-    const Vector6d front_posevec = posevec;
+    const Eigen::Affine3d front = getTransformation(posevec);
+
     updateInitialGuess(
       lastImuTransformation, msgIn->odomAvailable, msgIn->imuAvailable,
       msgIn->initialIMU, msgIn->initial_pose
@@ -424,7 +425,8 @@ public:
       isDegenerate, posevec
     );
 
-    const Vector6d back_posevec = posevec;
+    const Eigen::Affine3d back = getTransformation(posevec);
+    const Eigen::Affine3d pose_increment = (front.inverse() * back);
 
     if (
       poses6dof.empty() ||
@@ -473,9 +475,7 @@ public:
       increOdomAffine = getTransformation(posevec);
       pubLaserOdometryIncremental.publish(odometry);
     } else {
-      const Eigen::Affine3d front = getTransformation(front_posevec);
-      const Eigen::Affine3d back = getTransformation(back_posevec);
-      increOdomAffine = increOdomAffine * (front.inverse() * back);
+      increOdomAffine = increOdomAffine * pose_increment;
       Vector6d incre_pose = getPoseVec(increOdomAffine);
 
       if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
