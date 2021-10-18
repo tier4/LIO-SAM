@@ -468,33 +468,32 @@ public:
     br.sendTransform(
       tf::StampedTransform(makeTransform(posevec), timestamp, odometryFrame, "lidar_link"));
 
-    nav_msgs::Odometry laserOdomIncremental;
     // Publish odometry for ROS (incremental)
     if (!lastIncreOdomPubFlag) {
       lastIncreOdomPubFlag = true;
-      laserOdomIncremental = odometry;
       increOdomAffine = getTransformation(posevec);
+      pubLaserOdometryIncremental.publish(odometry);
     } else {
       const Eigen::Affine3d front = getTransformation(front_posevec);
       Eigen::Affine3d affineIncre = front.inverse() * incrementalOdometryAffineBack;
       increOdomAffine = increOdomAffine * affineIncre;
-      Vector6d odometry = getPoseVec(increOdomAffine);
+      Vector6d incre_pose = getPoseVec(increOdomAffine);
 
       if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
         const double imuWeight = 0.1;
-        odometry(0) = interpolateRoll(odometry(0), initialIMU.x, imuWeight);
-        odometry(1) = interpolatePitch(odometry(1), initialIMU.y, imuWeight);
+        incre_pose(0) = interpolateRoll(incre_pose(0), initialIMU.x, imuWeight);
+        incre_pose(1) = interpolatePitch(incre_pose(1), initialIMU.y, imuWeight);
       }
 
-      laserOdomIncremental = makeOdometry(
-        timestamp, odometryFrame, "odom_mapping", makePose(odometry));
+      nav_msgs::Odometry laserOdomIncremental = makeOdometry(
+        timestamp, odometryFrame, "odom_mapping", makePose(incre_pose));
       if (isDegenerate) {
         laserOdomIncremental.pose.covariance[0] = 1;
       } else {
         laserOdomIncremental.pose.covariance[0] = 0;
       }
+      pubLaserOdometryIncremental.publish(laserOdomIncremental);
     }
-    pubLaserOdometryIncremental.publish(laserOdomIncremental);
 
     if (points3d->empty()) {
       return;
