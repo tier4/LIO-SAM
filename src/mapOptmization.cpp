@@ -377,20 +377,17 @@ public:
       laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, corner_surface_dict
     );
 
-    pcl::VoxelGrid<PointType> downSizeFilterCorner;
-    downSizeFilterCorner.setLeafSize(
-      mappingCornerLeafSize,
-      mappingCornerLeafSize,
-      mappingCornerLeafSize);
+    pcl::VoxelGrid<PointType> corner_filter;
+    corner_filter.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
     pcl::PointCloud<PointType> laserCloudCornerLastDS;
-    downSizeFilterCorner.setInputCloud(laserCloudCornerLast);
-    downSizeFilterCorner.filter(laserCloudCornerLastDS);
+    corner_filter.setInputCloud(laserCloudCornerLast);
+    corner_filter.filter(laserCloudCornerLastDS);
 
-    pcl::VoxelGrid<PointType> downSizeFilterSurf;
-    downSizeFilterSurf.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
+    pcl::VoxelGrid<PointType> surface_filter;
+    surface_filter.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
     pcl::PointCloud<PointType> laserCloudSurfLastDS;
-    downSizeFilterSurf.setInputCloud(laserCloudSurfLast);
-    downSizeFilterSurf.filter(laserCloudSurfLastDS);
+    surface_filter.setInputCloud(laserCloudSurfLast);
+    surface_filter.filter(laserCloudSurfLastDS);
 
     bool isDegenerate = false;
     std::tie(posevec, isDegenerate) = scan2MapOptimization(
@@ -595,22 +592,15 @@ public:
       corner_surface_dict[index] = std::make_pair(c, s);
     }
 
-    // Downsample the surrounding corner key frames (or map)
-    pcl::VoxelGrid<PointType> downSizeFilterCorner;
-    downSizeFilterCorner.setLeafSize(
-      mappingCornerLeafSize,
-      mappingCornerLeafSize,
-      mappingCornerLeafSize);
-    downSizeFilterCorner.setInputCloud(corner);
-    downSizeFilterCorner.filter(*laserCloudCornerFromMapDS);
-    // Downsample the surrounding surf key frames (or map)
-    pcl::VoxelGrid<PointType> downSizeFilterSurf;
-    downSizeFilterSurf.setLeafSize(
-      mappingSurfLeafSize,
-      mappingSurfLeafSize,
-      mappingSurfLeafSize);
-    downSizeFilterSurf.setInputCloud(surface);
-    downSizeFilterSurf.filter(*laserCloudSurfFromMapDS);
+    pcl::VoxelGrid<PointType> corner_filter;
+    corner_filter.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
+    corner_filter.setInputCloud(corner);
+    corner_filter.filter(*laserCloudCornerFromMapDS);
+
+    pcl::VoxelGrid<PointType> surface_filter;
+    surface_filter.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
+    surface_filter.setInputCloud(surface);
+    surface_filter.filter(*laserCloudSurfFromMapDS);
 
     // clear map cache if too large
     if (corner_surface_dict.size() > 1000) {
