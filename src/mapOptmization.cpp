@@ -514,7 +514,8 @@ public:
 
     saveKeyFramesAndFactor(
       timestamp, laserCloudCornerLastDS, laserCloudSurfLastDS,
-      isam, poses6dof, posevec, corner_surface_dict
+      isam, poses6dof, posevec, gps_factor_, poseCovariance, last_gps_position,
+      corner_cloud, surface_cloud, path_poses_, points3d, corner_surface_dict
     );
 
     publishOdometry(
@@ -965,7 +966,14 @@ public:
     std::shared_ptr<gtsam::ISAM2> & isam,
     pcl::PointCloud<StampedPose> & poses6dof,
     Vector6d & posevec,
-    CornerSurfaceDict & corner_surface_dict)
+    GPSFactor & gps_factor_,
+    Eigen::MatrixXd & poseCovariance,
+    Eigen::Vector3d & last_gps_position,
+    std::vector<pcl::PointCloud<PointType>> & corner_cloud,
+    std::vector<pcl::PointCloud<PointType>> & surface_cloud,
+    std::vector<geometry_msgs::PoseStamped> & path_poses_,
+    pcl::PointCloud<PointType>::Ptr & points3d,
+    CornerSurfaceDict & corner_surface_dict) const
   {
     if (
       !poses6dof.empty() &&
@@ -1034,9 +1042,7 @@ public:
       corner_surface_dict.clear();
 
       update3DPoints(estimate, points3d);
-
       update6DofPoses(estimate, poses6dof);
-
       updatePath(estimate, odometryFrame, poses6dof, path_poses_);
     }
   }
