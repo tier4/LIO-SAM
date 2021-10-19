@@ -40,11 +40,8 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     float, pitch, pitch)(float, yaw, yaw)(double, time, time)
 )
 
-StampedPose makeStampedPose(const gtsam::Pose3 & pose, const double time)
+StampedPose makeStampedPose(const Eigen::Vector3d rpy, const Eigen::Vector3d xyz, const double time)
 {
-  const Eigen::Vector3d xyz = pose.translation();
-  const Eigen::Vector3d rpy = pose.rotation().rpy();
-
   StampedPose pose6dof;
   pose6dof.x = xyz(0);
   pose6dof.y = xyz(1);
@@ -54,6 +51,16 @@ StampedPose makeStampedPose(const gtsam::Pose3 & pose, const double time)
   pose6dof.yaw = rpy(2);
   pose6dof.time = time;
   return pose6dof;
+}
+
+StampedPose makeStampedPose(const gtsam::Pose3 & pose, const double time)
+{
+  return makeStampedPose(pose.rotation().rpy(), pose.translation(), time);
+}
+
+StampedPose makeStampedPose(const Vector6d & posevec, const double time)
+{
+  return makeStampedPose(posevec.head(3), posevec.tail(3), time);
 }
 
 tf::Transform makeTransform(const Vector6d & posevec)
@@ -246,26 +253,6 @@ void updatePath(
   }
 }
 
-void isamUpdate(
-  const pcl::PointCloud<StampedPose> & poses6dof,
-  const Vector6d & posevec,
-  std::shared_ptr<gtsam::ISAM2> & isam)
-{
-  gtsam::NonlinearFactorGraph gtSAMgraph;
-
-  if (poses6dof.empty()) {
-    gtSAMgraph.add(makePriorFactor(posevec));
-  } else {
-    const Vector6d last_pose = makePosevec(poses6dof.back());
-    gtSAMgraph.add(makeOdomFactor(last_pose, posevec, poses6dof.size()));
-  }
-
-  // update iSAM
-  gtsam::Values initial;
-  initial.insert(poses6dof.size(), posevecToGtsamPose(posevec));
-  isam->update(gtSAMgraph, initial);
-}
-
 class mapOptimization : public ParamServer
 {
   using CornerSurfaceDict = std::map<
@@ -288,8 +275,6 @@ public:
   const PoseOptimizer pose_optimizer_;
 
   Vector6d posevec;
-
-  std::shared_ptr<gtsam::ISAM2> isam;
 
   std::vector<pcl::PointCloud<PointType>> corner_cloud;
   std::vector<pcl::PointCloud<PointType>> surface_cloud;
@@ -328,8 +313,6 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     pose_optimizer_(PoseOptimizer(N_SCAN, Horizon_SCAN, numberOfCores)),
     posevec(Vector6d::Zero()),
-    isam(std::make_shared<gtsam::ISAM2>(
-        gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
     points3d(new pcl::PointCloud<PointType>()),
     lastImuPreTransAvailable(false),
     lastIncreOdomPubFlag(false),
@@ -406,25 +389,16 @@ public:
         surroundingkeyframeAddingAngleThreshold,
         surroundingkeyframeAddingDistThreshold))
     {
-      isamUpdate(poses6dof, posevec, isam);
-
-      const gtsam::Values estimate = isam->calculateEstimate();
-      const gtsam::Pose3 latest = estimate.at<gtsam::Pose3>(estimate.size() - 1);
-
       // size can be used as index
-      points3d->push_back(makePoint(latest.translation(), points3d->size()));
+      points3d->push_back(makePoint(posevec.tail(3), points3d->size()));
 
-      // intensity can be used as index
-      poses6dof.push_back(makeStampedPose(latest, timestamp.toSec()));
-
-      // save updated transform
-      posevec = getPoseVec(latest);
+      poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
       corner_cloud.push_back(laserCloudCornerLastDS);
       surface_cloud.push_back(laserCloudSurfLastDS);
 
-      path_poses_.push_back(makePoseStamped(makePose(latest), odometryFrame, timestamp.toSec()));
+      path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
     }
 
     const bool imuAvailable = msgIn->imuAvailable;
