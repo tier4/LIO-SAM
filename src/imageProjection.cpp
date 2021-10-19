@@ -174,7 +174,6 @@ projectPointCloud(
   const int downsampleRate,
   const int N_SCAN,
   const int Horizon_SCAN,
-  const bool imuAvailable,
   const double scan_start_time,
   const double scan_end_time,
   const Eigen::Vector3d & odomInc,
@@ -212,7 +211,7 @@ projectPointCloud(
 
     const int index = column_index + row_index * Horizon_SCAN;
 
-    if (!imuAvailable) {
+    if (imu_timestamps.size() < 2) {
       output_points[index] = makePoint(q, p.intensity);
       continue;
     }
@@ -479,7 +478,6 @@ public:
     const auto [range_matrix, output_points] = projectPointCloud(
       input_cloud, range_min, range_max,
       downsampleRate, N_SCAN, Horizon_SCAN,
-      cloudInfo.imuAvailable,
       scan_start_time, scan_end_time, odomInc,
       angles, imu_timestamps
     );
