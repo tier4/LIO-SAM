@@ -127,8 +127,8 @@ std::tuple<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>
 PoseOptimizer::optimization(
   const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
   const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-  const pcl::KdTreeFLANN<PointType> & kdtreeCornerFromMap,
-  const pcl::KdTreeFLANN<PointType> & kdtreeSurfFromMap,
+  const KDTree<PointType> & kdtreeCornerFromMap,
+  const KDTree<PointType> & kdtreeSurfFromMap,
   const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
   const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
   const Vector6d & posevec) const
@@ -142,13 +142,10 @@ PoseOptimizer::optimization(
   // corner optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < laserCloudCornerLastDS.size(); i++) {
-    std::vector<int> indices;
-    std::vector<float> squared_distances;
-
     const PointType point = laserCloudCornerLastDS.at(i);
     const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
     const PointType p = makePoint(map_point, point.intensity);
-    kdtreeCornerFromMap.nearestKSearch(p, 5, indices, squared_distances);
+    const auto [indices, squared_distances] = kdtreeCornerFromMap.nearestKSearch(p, 5);
 
     if (squared_distances[4] < 1.0) {
       Eigen::Vector3d c = Eigen::Vector3d::Zero();
@@ -225,13 +222,10 @@ PoseOptimizer::optimization(
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < laserCloudSurfLastDS.size(); i++) {
-    std::vector<int> indices;
-    std::vector<float> squared_distances;
-
     const PointType point = laserCloudSurfLastDS.at(i);
     const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
     const PointType p = makePoint(map_point, point.intensity);
-    kdtreeSurfFromMap.nearestKSearch(p, 5, indices, squared_distances);
+    const auto [indices, squared_distances] = kdtreeSurfFromMap.nearestKSearch(p, 5);
 
     if (squared_distances[4] >= 1.0) {
       continue;
@@ -289,8 +283,8 @@ std::tuple<Vector6d, bool> PoseOptimizer::run(
 {
   Vector6d posevec = initial_posevec;
 
-  const auto kdtreeCornerFromMap = makeKDTree<PointType>(laserCloudCornerFromMapDS);
-  const auto kdtreeSurfFromMap = makeKDTree<PointType>(laserCloudSurfFromMapDS);
+  const KDTree<PointType> kdtreeCornerFromMap(laserCloudCornerFromMapDS);
+  const KDTree<PointType> kdtreeSurfFromMap(laserCloudSurfFromMapDS);
 
   bool isDegenerate = false;
   for (int iterCount = 0; iterCount < 30; iterCount++) {

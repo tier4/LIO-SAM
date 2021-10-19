@@ -5,6 +5,7 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include "point_type.hpp"
 #include "matrix_type.h"
+#include "kdtree.hpp"
 
 class PoseOptimizer
 {
@@ -20,8 +21,8 @@ public:
   optimization(
     const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
     const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-    const pcl::KdTreeFLANN<PointType> & kdtreeCornerFromMap,
-    const pcl::KdTreeFLANN<PointType> & kdtreeSurfFromMap,
+    const KDTree<PointType> & kdtreeCornerFromMap,
+    const KDTree<PointType> & kdtreeSurfFromMap,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
     const Vector6d & posevec) const;

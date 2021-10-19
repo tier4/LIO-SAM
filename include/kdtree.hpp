@@ -1,3 +1,6 @@
+#ifndef KDTREE_HPP_
+#define KDTREE_HPP_
+
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 
@@ -31,3 +34,5 @@ public:
 private:
   pcl::KdTreeFLANN<PointType> kdtree_;
 };
+
+#endif
