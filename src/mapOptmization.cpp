@@ -552,8 +552,9 @@ public:
       const int index = static_cast<int>(pt.intensity);
       if (corner_surface_dict.find(index) != corner_surface_dict.end()) {
         // transformed cloud available
-        *corner += corner_surface_dict[index].first;
-        *surface += corner_surface_dict[index].second;
+        const auto [c, s] = corner_surface_dict[index];
+        *corner += c;
+        *surface += s;
         continue;
       }
 
