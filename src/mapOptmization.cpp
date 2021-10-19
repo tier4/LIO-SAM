@@ -256,12 +256,6 @@ void updatePath(
 
 class mapOptimization : public ParamServer
 {
-  using CornerSurfaceDict = std::map<
-    int,
-    std::pair<pcl::PointCloud<PointType>,
-    pcl::PointCloud<PointType>>
-  >;
-
 public:
   // gtsam
   const ros::Publisher pubLaserCloudSurround;
@@ -282,8 +276,6 @@ public:
 
   pcl::PointCloud<PointType>::Ptr points3d;
   pcl::PointCloud<StampedPose> poses6dof;
-
-  CornerSurfaceDict corner_surface_dict;
 
   std::mutex mtx;
 
@@ -358,7 +350,7 @@ public:
 
     extractSurroundingKeyFrames(
       timestamp, poses6dof,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, corner_surface_dict
+      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
     );
 
     pcl::VoxelGrid<PointType> corner_filter;
@@ -505,8 +497,7 @@ public:
     const ros::Time & timestamp,
     const pcl::PointCloud<StampedPose> & poses6dof,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
-    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
-    CornerSurfaceDict & corner_surface_dict) const
+    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
   {
     if (points3d->empty()) {
       return;
@@ -550,13 +541,6 @@ public:
       }
 
       const int index = static_cast<int>(pt.intensity);
-      if (corner_surface_dict.find(index) != corner_surface_dict.end()) {
-        // transformed cloud available
-        const auto [c, s] = corner_surface_dict[index];
-        *corner += c;
-        *surface += s;
-        continue;
-      }
 
       // transformed cloud not available
       const Vector6d v = makePosevec(poses6dof.at(index));
@@ -564,7 +548,6 @@ public:
       const pcl::PointCloud<PointType> s = transform(surface_cloud[index], v);
       *corner += c;
       *surface += s;
-      corner_surface_dict[index] = std::make_pair(c, s);
     }
 
     pcl::VoxelGrid<PointType> corner_filter;
@@ -576,11 +559,6 @@ public:
     surface_filter.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
     surface_filter.setInputCloud(surface);
     surface_filter.filter(*laserCloudSurfFromMapDS);
-
-    // clear map cache if too large
-    if (corner_surface_dict.size() > 1000) {
-      corner_surface_dict.clear();
-    }
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
