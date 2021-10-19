@@ -464,8 +464,6 @@ public:
 
     cloudInfo.initialIMU = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
 
-    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
-
     {
       std::lock_guard<std::mutex> lock2(odoLock);
       dropBefore(scan_start_time - 0.01, odomQueue);
@@ -487,6 +485,8 @@ public:
         odomInc = (p0.inverse() * p1).translation();
       }
     }
+
+    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
 
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imu_timestamps.size() > 1;
