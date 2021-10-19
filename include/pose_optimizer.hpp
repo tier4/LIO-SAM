@@ -9,7 +9,7 @@
 class PoseOptimizer
 {
 public:
-  PoseOptimizer(const int N_SCAN, const int Horizon_SCAN);
+  PoseOptimizer(const int N_SCAN, const int Horizon_SCAN, const int numberOfCores);
 
   bool LMOptimization(
     const pcl::PointCloud<PointType> & laserCloudOri,
@@ -36,6 +36,7 @@ public:
 private:
   const int N_SCAN;
   const int Horizon_SCAN;
+  const int numberOfCores;
 };
 
 #endif

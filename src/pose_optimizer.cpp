@@ -34,8 +34,8 @@ Eigen::Matrix<double, 5, 3> makeMatrixA(
 }
 
 PoseOptimizer::PoseOptimizer(
-  const int N_SCAN, const int Horizon_SCAN)
-: N_SCAN(N_SCAN), Horizon_SCAN(Horizon_SCAN)
+  const int N_SCAN, const int Horizon_SCAN, const int numberOfCores)
+: N_SCAN(N_SCAN), Horizon_SCAN(Horizon_SCAN), numberOfCores(numberOfCores)
 {
 }
 

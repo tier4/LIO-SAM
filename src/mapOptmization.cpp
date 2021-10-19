@@ -326,7 +326,7 @@ public:
     subCloud(nh.subscribe<lio_sam::cloud_info>(
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
-    pose_optimizer_(PoseOptimizer(N_SCAN, Horizon_SCAN)),
+    pose_optimizer_(PoseOptimizer(N_SCAN, Horizon_SCAN, numberOfCores)),
     posevec(Vector6d::Zero()),
     isam(std::make_shared<gtsam::ISAM2>(
         gtsam::ISAM2Params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1))),
