@@ -345,13 +345,10 @@ public:
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
+    const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
+
     pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
-
-    const auto [corner, surface] = extractSurroundingKeyFrames(
-      timestamp, poses6dof,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
-    );
 
     if (corner != nullptr && surface != nullptr) {
       pcl::VoxelGrid<PointType> corner_filter;
@@ -522,9 +519,7 @@ public:
   std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
   extractSurroundingKeyFrames(
     const ros::Time & timestamp,
-    const pcl::PointCloud<StampedPose> & poses6dof,
-    const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
-    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
+    const pcl::PointCloud<StampedPose> & poses6dof) const
   {
     if (points3d->empty()) {
       return {nullptr, nullptr};
