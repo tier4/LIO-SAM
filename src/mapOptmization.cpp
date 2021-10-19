@@ -192,7 +192,7 @@ Vector6d initPosevec(const Eigen::Vector3d & rpy, const bool useImuHeadingInitia
   return posevec;
 }
 
-bool checkPosesClose(
+bool isKeyframe(
   const Vector6d & posevec0, const Vector6d & posevec1,
   const double angle_threshold, const double point_threshold)
 {
@@ -202,7 +202,7 @@ bool checkPosesClose(
 
   const bool f1 = (rpy.array() < angle_threshold).all();
   const bool f2 = xyz.norm() < point_threshold;
-  return f1 && f2;
+  return !(f1 && f2);
 }
 
 double interpolateRoll(const double r0, const double r1, const double weight)
@@ -384,7 +384,7 @@ public:
 
     if (
       poses6dof.empty() ||
-      !checkPosesClose(
+      isKeyframe(
         makePosevec(poses6dof.back()), posevec,
         surroundingkeyframeAddingAngleThreshold,
         surroundingkeyframeAddingDistThreshold))
