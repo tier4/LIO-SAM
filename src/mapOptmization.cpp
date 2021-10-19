@@ -505,7 +505,7 @@ public:
     const pcl::PointCloud<StampedPose> & poses6dof,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
-    CornerSurfaceDict & corner_surface_dict)
+    CornerSurfaceDict & corner_surface_dict) const
   {
     if (points3d->empty()) {
       return;
