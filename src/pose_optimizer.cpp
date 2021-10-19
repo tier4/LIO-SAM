@@ -147,70 +147,74 @@ PoseOptimizer::optimization(
     const PointType p = makePoint(map_point, point.intensity);
     const auto [indices, squared_distances] = kdtreeCornerFromMap.nearestKSearch(p, 5);
 
-    if (squared_distances[4] < 1.0) {
-      Eigen::Vector3d c = Eigen::Vector3d::Zero();
-      for (int j = 0; j < 5; j++) {
-        c += getXYZ(laserCloudCornerFromMapDS->at(indices[j]));
-      }
-      c /= 5.0;
-
-      Eigen::Matrix3d sa = Eigen::Matrix3d::Zero();
-
-      for (int j = 0; j < 5; j++) {
-        const Eigen::Vector3d x = getXYZ(laserCloudCornerFromMapDS->at(indices[j]));
-        const Eigen::Vector3d a = x - c;
-        sa += a * a.transpose();
-      }
-
-      sa = sa / 5.0;
-
-      const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(sa);
-      const Eigen::Vector3d d1 = solver.eigenvalues();
-      const Eigen::Matrix3d v1 = solver.eigenvectors();
-
-      if (d1(0) > 3 * d1(1)) {
-        const Eigen::Vector3d p0 = map_point;
-        const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
-        const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
-
-        const Eigen::Vector3d d01 = p0 - p1;
-        const Eigen::Vector3d d02 = p0 - p2;
-        const Eigen::Vector3d d12 = p1 - p2;
-
-        // const Eigen::Vector3d d012(d01(0) * d02(1) - d02(0) * d01(1),
-        //                            d01(0) * d02(2) - d02(0) * d01(2),
-        //                            d01(1) * d02(2) - d02(1) * d01(2));
-        const Eigen::Vector3d cross(
-          d01(1) * d02(2) - d01(2) * d02(1),
-          d01(2) * d02(0) - d01(0) * d02(2),
-          d01(0) * d02(1) - d01(1) * d02(0));
-
-        const double a012 = cross.norm();
-
-        const double l12 = d12.norm();
-
-        // possible bag. maybe the commented one is correct
-        // const Eigen::Vector3d v(
-        //   (d12(1) * cross(2) - cross(2) * d12(1)),
-        //   (d12(2) * cross(0) - cross(0) * d12(2)),
-        //   (d12(0) * cross(1) - cross(1) * d12(0)));
-
-        const Eigen::Vector3d v(
-          (d12(1) * cross(2) - d12(2) * cross(1)),
-          (d12(2) * cross(0) - d12(0) * cross(2)),
-          (d12(0) * cross(1) - d12(1) * cross(0)));
-
-        const double ld2 = a012 / l12;
-
-        const double s = 1 - 0.9 * fabs(ld2);
-
-        if (s > 0.1) {
-          laserCloudOriCornerVec[i] = point;
-          coeffSelCornerVec[i] = makePoint(s * v / (a012 * l12), s * ld2);
-          laserCloudOriCornerFlag[i] = true;
-        }
-      }
+    if (squared_distances[4] >= 1.0) {
+      continue;
     }
+
+    Eigen::Vector3d c = Eigen::Vector3d::Zero();
+    for (int j = 0; j < 5; j++) {
+      c += getXYZ(laserCloudCornerFromMapDS->at(indices[j]));
+    }
+    c /= 5.0;
+
+    Eigen::Matrix3d sa = Eigen::Matrix3d::Zero();
+
+    for (int j = 0; j < 5; j++) {
+      const Eigen::Vector3d x = getXYZ(laserCloudCornerFromMapDS->at(indices[j]));
+      const Eigen::Vector3d a = x - c;
+      sa += a * a.transpose();
+    }
+
+    sa = sa / 5.0;
+
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(sa);
+    const Eigen::Vector3d d1 = solver.eigenvalues();
+    const Eigen::Matrix3d v1 = solver.eigenvectors();
+
+    if (d1(0) <= 3 * d1(1)) {
+      continue;
+    }
+    const Eigen::Vector3d p0 = map_point;
+    const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
+    const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
+
+    const Eigen::Vector3d d01 = p0 - p1;
+    const Eigen::Vector3d d02 = p0 - p2;
+    const Eigen::Vector3d d12 = p1 - p2;
+
+    // const Eigen::Vector3d d012(d01(0) * d02(1) - d02(0) * d01(1),
+    //                            d01(0) * d02(2) - d02(0) * d01(2),
+    //                            d01(1) * d02(2) - d02(1) * d01(2));
+    const Eigen::Vector3d cross(
+      d01(1) * d02(2) - d01(2) * d02(1),
+      d01(2) * d02(0) - d01(0) * d02(2),
+      d01(0) * d02(1) - d01(1) * d02(0));
+
+    const double a012 = cross.norm();
+
+    const double l12 = d12.norm();
+
+    // possible bag. maybe the commented one is correct
+    // const Eigen::Vector3d v(
+    //   (d12(1) * cross(2) - cross(2) * d12(1)),
+    //   (d12(2) * cross(0) - cross(0) * d12(2)),
+    //   (d12(0) * cross(1) - cross(1) * d12(0)));
+
+    const Eigen::Vector3d v(
+      (d12(1) * cross(2) - d12(2) * cross(1)),
+      (d12(2) * cross(0) - d12(0) * cross(2)),
+      (d12(0) * cross(1) - d12(1) * cross(0)));
+
+    const double ld2 = a012 / l12;
+
+    const double s = 1 - 0.9 * fabs(ld2);
+
+    if (s <= 0.1) {
+      continue;
+    }
+    laserCloudOriCornerVec[i] = point;
+    coeffSelCornerVec[i] = makePoint(s * v / (a012 * l12), s * ld2);
+    laserCloudOriCornerFlag[i] = true;
   }
 
   std::vector<PointType> laserCloudOriSurfVec(N_SCAN * Horizon_SCAN);
