@@ -477,7 +477,7 @@ public:
       const nav_msgs::Odometry msg0 = odomNextOf(odomQueue, scan_start_time);
       const nav_msgs::Odometry msg1 = odomNextOf(odomQueue, scan_end_time);
 
-      cloudInfo.initial_pose = msg0.pose.pose;
+      cloudInfo.scan_start_imu_pose = msg0.pose.pose;
 
       if (doOdomDeskew(msg0.pose.covariance, msg1.pose.covariance)) {
         const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);

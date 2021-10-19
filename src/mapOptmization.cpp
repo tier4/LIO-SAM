@@ -347,7 +347,7 @@ public:
 
     updateInitialGuess(
       lastImuTransformation, msgIn->odomAvailable, msgIn->imuAvailable,
-      msgIn->initialIMU, msgIn->initial_pose
+      msgIn->initialIMU, msgIn->scan_start_imu_pose
     );
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
@@ -457,7 +457,7 @@ public:
     const Eigen::Affine3d & lastImuTransformation,
     const bool odomAvailable, const bool imuAvailable,
     const geometry_msgs::Vector3 & initialIMU,
-    const geometry_msgs::Pose & initial_pose)
+    const geometry_msgs::Pose & scan_start_imu_pose)
   {
     // initialization
     if (points3d->empty()) {
@@ -471,10 +471,10 @@ public:
 
     // use imu pre-integration estimation for pose guess
     if (odomAvailable && lastImuPreTransAvailable) {
-      const Eigen::Affine3d back = poseToAffine(initial_pose);
+      const Eigen::Affine3d back = poseToAffine(scan_start_imu_pose);
       const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
 
-      lastImuPreTransformation = poseToAffine(initial_pose);
+      lastImuPreTransformation = poseToAffine(scan_start_imu_pose);
 
       const Eigen::Affine3d tobe = getTransformation(posevec);
       posevec = getPoseVec(tobe * incre);
@@ -483,7 +483,7 @@ public:
     }
 
     if (odomAvailable) {
-      lastImuPreTransformation = poseToAffine(initial_pose);
+      lastImuPreTransformation = poseToAffine(scan_start_imu_pose);
       lastImuPreTransAvailable = true;
     }
 
