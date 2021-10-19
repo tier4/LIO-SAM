@@ -348,22 +348,48 @@ public:
     pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
 
-    extractSurroundingKeyFrames(
+    const auto [corner, surface] = extractSurroundingKeyFrames(
       timestamp, poses6dof,
       laserCloudCornerFromMapDS, laserCloudSurfFromMapDS
     );
 
-    pcl::VoxelGrid<PointType> corner_filter;
-    corner_filter.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
-    pcl::PointCloud<PointType> laserCloudCornerLastDS;
-    corner_filter.setInputCloud(laserCloudCornerLast);
-    corner_filter.filter(laserCloudCornerLastDS);
+    if (corner != nullptr && surface != nullptr) {
+      pcl::VoxelGrid<PointType> corner_filter;
+      corner_filter.setLeafSize(
+        mappingCornerLeafSize,
+        mappingCornerLeafSize,
+        mappingCornerLeafSize);
+      corner_filter.setInputCloud(corner);
+      corner_filter.filter(*laserCloudCornerFromMapDS);
 
-    pcl::VoxelGrid<PointType> surface_filter;
-    surface_filter.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
+      pcl::VoxelGrid<PointType> surface_filter;
+      surface_filter.setLeafSize(
+        mappingSurfLeafSize,
+        mappingSurfLeafSize,
+        mappingSurfLeafSize);
+      surface_filter.setInputCloud(surface);
+      surface_filter.filter(*laserCloudSurfFromMapDS);
+    }
+
+    pcl::PointCloud<PointType> laserCloudCornerLastDS;
     pcl::PointCloud<PointType> laserCloudSurfLastDS;
-    surface_filter.setInputCloud(laserCloudSurfLast);
-    surface_filter.filter(laserCloudSurfLastDS);
+    {
+      pcl::VoxelGrid<PointType> corner_filter;
+      corner_filter.setLeafSize(
+        mappingCornerLeafSize,
+        mappingCornerLeafSize,
+        mappingCornerLeafSize);
+      corner_filter.setInputCloud(laserCloudCornerLast);
+      corner_filter.filter(laserCloudCornerLastDS);
+
+      pcl::VoxelGrid<PointType> surface_filter;
+      surface_filter.setLeafSize(
+        mappingSurfLeafSize,
+        mappingSurfLeafSize,
+        mappingSurfLeafSize);
+      surface_filter.setInputCloud(laserCloudSurfLast);
+      surface_filter.filter(laserCloudSurfLastDS);
+    }
 
     bool isDegenerate = false;
     std::tie(posevec, isDegenerate) = scan2MapOptimization(
@@ -493,14 +519,15 @@ public:
     }
   }
 
-  void extractSurroundingKeyFrames(
+  std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
+  extractSurroundingKeyFrames(
     const ros::Time & timestamp,
     const pcl::PointCloud<StampedPose> & poses6dof,
     const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
     const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS) const
   {
     if (points3d->empty()) {
-      return;
+      return {nullptr, nullptr};
     }
 
     const double radius = (double)surroundingKeyframeSearchRadius;
@@ -544,21 +571,11 @@ public:
 
       // transformed cloud not available
       const Vector6d v = makePosevec(poses6dof.at(index));
-      const pcl::PointCloud<PointType> c = transform(corner_cloud[index], v);
-      const pcl::PointCloud<PointType> s = transform(surface_cloud[index], v);
-      *corner += c;
-      *surface += s;
+      *corner += transform(corner_cloud[index], v);
+      *surface += transform(surface_cloud[index], v);
     }
 
-    pcl::VoxelGrid<PointType> corner_filter;
-    corner_filter.setLeafSize(mappingCornerLeafSize, mappingCornerLeafSize, mappingCornerLeafSize);
-    corner_filter.setInputCloud(corner);
-    corner_filter.filter(*laserCloudCornerFromMapDS);
-
-    pcl::VoxelGrid<PointType> surface_filter;
-    surface_filter.setLeafSize(mappingSurfLeafSize, mappingSurfLeafSize, mappingSurfLeafSize);
-    surface_filter.setInputCloud(surface);
-    surface_filter.filter(*laserCloudSurfFromMapDS);
+    return {corner, surface};
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
