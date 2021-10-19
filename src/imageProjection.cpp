@@ -166,72 +166,86 @@ int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
   return column_index;
 }
 
-std::tuple<Eigen::MatrixXd, std::vector<PointType>>
-projectPointCloud(
-  const pcl::PointCloud<PointXYZIRT> & input_points,
-  const float range_min,
-  const float range_max,
-  const int downsampleRate,
-  const int N_SCAN,
-  const int Horizon_SCAN,
-  const double scan_start_time,
-  const double scan_end_time,
-  const Eigen::Vector3d & odomInc,
-  const std::vector<Eigen::Vector3d> & angles,
-  const std::vector<double> & imu_timestamps)
+class PointCloudProjection
 {
-  bool is_first_point = true;
-  Eigen::Affine3d start_inverse;
-
-  Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
-
-  std::vector<PointType> output_points(N_SCAN * Horizon_SCAN);
-
-  for (const PointXYZIRT & p : input_points) {
-    const Eigen::Vector3d q(p.x, p.y, p.z);
-
-    const float range = q.norm();
-    if (range < range_min || range_max < range) {
-      continue;
-    }
-
-    const int row_index = p.ring;
-
-    if (row_index % downsampleRate != 0) {
-      continue;
-    }
-
-    const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
-
-    if (range_matrix(row_index, column_index) >= 0) {
-      continue;
-    }
-
-    range_matrix(row_index, column_index) = range;
-
-    const int index = column_index + row_index * Horizon_SCAN;
-
-    if (imu_timestamps.size() < 2) {
-      output_points[index] = makePoint(q, p.intensity);
-      continue;
-    }
-
-    const Eigen::Affine3d transform = makeAffine(
-      calcRotation(scan_start_time, angles, imu_timestamps, p.time),
-      calcPosition(odomInc, scan_start_time, scan_end_time, p.time)
-    );
-
-    if (is_first_point) {
-      start_inverse = transform.inverse();
-      is_first_point = false;
-    }
-
-    // transform points to start
-    output_points[index] = makePoint((start_inverse * transform) * q, p.intensity);
+public:
+  PointCloudProjection(
+    const float range_min, const float range_max,
+    const int downsampleRate, const int N_SCAN, const int Horizon_SCAN)
+  : range_min(range_min), range_max(range_max),
+    downsampleRate(downsampleRate), N_SCAN(N_SCAN), Horizon_SCAN(Horizon_SCAN)
+  {
   }
 
-  return {range_matrix, output_points};
-}
+  std::tuple<Eigen::MatrixXd, std::vector<PointType>>
+  compute(
+    const pcl::PointCloud<PointXYZIRT> & input_points,
+    const double scan_start_time,
+    const double scan_end_time,
+    const Eigen::Vector3d & odomInc,
+    const std::vector<Eigen::Vector3d> & angles,
+    const std::vector<double> & imu_timestamps) const
+  {
+    bool is_first_point = true;
+    Eigen::Affine3d start_inverse;
+
+    Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
+
+    std::vector<PointType> output_points(N_SCAN * Horizon_SCAN);
+
+    for (const PointXYZIRT & p : input_points) {
+      const Eigen::Vector3d q(p.x, p.y, p.z);
+
+      const float range = q.norm();
+      if (range < range_min || range_max < range) {
+        continue;
+      }
+
+      const int row_index = p.ring;
+
+      if (row_index % downsampleRate != 0) {
+        continue;
+      }
+
+      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
+
+      if (range_matrix(row_index, column_index) >= 0) {
+        continue;
+      }
+
+      range_matrix(row_index, column_index) = range;
+
+      const int index = column_index + row_index * Horizon_SCAN;
+
+      if (imu_timestamps.size() < 2) {
+        output_points[index] = makePoint(q, p.intensity);
+        continue;
+      }
+
+      const Eigen::Affine3d transform = makeAffine(
+        calcRotation(scan_start_time, angles, imu_timestamps, p.time),
+        calcPosition(odomInc, scan_start_time, scan_end_time, p.time)
+      );
+
+      if (is_first_point) {
+        start_inverse = transform.inverse();
+        is_first_point = false;
+      }
+
+      // transform points to start
+      output_points[index] = makePoint((start_inverse * transform) * q, p.intensity);
+    }
+
+    return {range_matrix, output_points};
+  }
+
+private:
+  const float range_min;
+  const float range_max;
+  const int downsampleRate;
+  const int N_SCAN;
+  const int Horizon_SCAN;
+};
 
 bool odometryIsAvailable(
   const std::deque<nav_msgs::Odometry> & odomQueue,
@@ -347,6 +361,7 @@ private:
 
   const ros::Publisher pubExtractedCloud;
   const ros::Publisher pubLaserCloudInfo;
+  const PointCloudProjection projection_;
 
   std::deque<nav_msgs::Odometry> odomQueue;
 
@@ -371,7 +386,8 @@ public:
     pubExtractedCloud(
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1)),
     pubLaserCloudInfo(
-      nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1))
+      nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1)),
+    projection_(PointCloudProjection(range_min, range_max, downsampleRate, N_SCAN, Horizon_SCAN))
   {
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
@@ -475,12 +491,8 @@ public:
     cloudInfo.odomAvailable = odomAvailable;
     cloudInfo.imuAvailable = imu_timestamps.size() > 1;
 
-    const auto [range_matrix, output_points] = projectPointCloud(
-      input_cloud, range_min, range_max,
-      downsampleRate, N_SCAN, Horizon_SCAN,
-      scan_start_time, scan_end_time, odomInc,
-      angles, imu_timestamps
-    );
+    const auto [range_matrix, output_points] = projection_.compute(
+      input_cloud, scan_start_time, scan_end_time, odomInc, angles, imu_timestamps);
 
     pcl::PointCloud<PointType> extractedCloud;
     int count = 0;
