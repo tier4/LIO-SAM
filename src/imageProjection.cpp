@@ -166,6 +166,38 @@ int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
   return column_index;
 }
 
+std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdometry(
+  const double scan_end_time,
+  const std::deque<sensor_msgs::Imu> & imu_buffer)
+{
+  std::vector<double> timestamps;
+  std::vector<Eigen::Vector3d> angles;
+
+  if (imu_buffer.empty()) {
+    return {timestamps, angles};
+  }
+
+  for (const sensor_msgs::Imu & imu : imu_buffer) {
+    const double time = timeInSec(imu.header);
+
+    if (time > scan_end_time + 0.01) {
+      break;
+    }
+
+    if (timestamps.size() == 0) {
+      angles.push_back(Eigen::Vector3d::Zero());
+      timestamps.push_back(time);
+      continue;
+    }
+
+    const Eigen::Vector3d angular = vector3ToEigen(imu.angular_velocity);
+    const double dt = time - timestamps.back();
+    angles.push_back(angles.back() + angular * dt);
+    timestamps.push_back(time);
+  }
+  return {timestamps, angles};
+}
+
 class PointCloudProjection
 {
 public:
@@ -177,15 +209,18 @@ public:
   {
   }
 
-  std::tuple<Eigen::MatrixXd, std::vector<PointType>>
+  std::tuple<Eigen::MatrixXd, std::vector<PointType>, bool>
   compute(
+    const std::deque<sensor_msgs::Imu> & imu_buffer,
     const pcl::PointCloud<PointXYZIRT> & input_points,
     const double scan_start_time,
     const double scan_end_time,
-    const Eigen::Vector3d & odomInc,
-    const std::vector<Eigen::Vector3d> & angles,
-    const std::vector<double> & imu_timestamps) const
+    const Eigen::Vector3d & odomInc) const
   {
+    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
+
+    const bool imu_available = imu_timestamps.size() > 1;
+
     bool is_first_point = true;
     Eigen::Affine3d start_inverse;
 
@@ -217,7 +252,7 @@ public:
 
       const int index = column_index + row_index * Horizon_SCAN;
 
-      if (imu_timestamps.size() < 2) {
+      if (!imu_available) {
         output_points[index] = makePoint(q, p.intensity);
         continue;
       }
@@ -236,7 +271,7 @@ public:
       output_points[index] = makePoint((start_inverse * transform) * q, p.intensity);
     }
 
-    return {range_matrix, output_points};
+    return {range_matrix, output_points, imu_available};
   }
 
 private:
@@ -282,38 +317,6 @@ Eigen::Vector3d findInitialImu(
     }
   }
   return initialIMU;
-}
-
-std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdometry(
-  const double scan_end_time,
-  const std::deque<sensor_msgs::Imu> & imu_buffer)
-{
-  std::vector<double> timestamps;
-  std::vector<Eigen::Vector3d> angles;
-
-  if (imu_buffer.empty()) {
-    return {timestamps, angles};
-  }
-
-  for (const sensor_msgs::Imu & imu : imu_buffer) {
-    const double time = timeInSec(imu.header);
-
-    if (time > scan_end_time + 0.01) {
-      break;
-    }
-
-    if (timestamps.size() == 0) {
-      angles.push_back(Eigen::Vector3d::Zero());
-      timestamps.push_back(time);
-      continue;
-    }
-
-    const Eigen::Vector3d angular = vector3ToEigen(imu.angular_velocity);
-    const double dt = time - timestamps.back();
-    angles.push_back(angles.back() + angular * dt);
-    timestamps.push_back(time);
-  }
-  return {timestamps, angles};
 }
 
 bool checkImuTime(
@@ -486,13 +489,11 @@ public:
       }
     }
 
-    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
+    const auto [range_matrix, output_points, imu_available] = projection_.compute(
+      imu_buffer, input_cloud, scan_start_time, scan_end_time, odomInc);
 
     cloudInfo.odomAvailable = odomAvailable;
-    cloudInfo.imuAvailable = imu_timestamps.size() > 1;
-
-    const auto [range_matrix, output_points] = projection_.compute(
-      input_cloud, scan_start_time, scan_end_time, odomInc, angles, imu_timestamps);
+    cloudInfo.imuAvailable = imu_available;
 
     pcl::PointCloud<PointType> extractedCloud;
     int count = 0;
