@@ -3,6 +3,7 @@
 #include "homogeneous.h"
 #include "param_server.h"
 #include "pose_optimizer.hpp"
+#include "kdtree.hpp"
 #include "lio_sam/cloud_info.h"
 #include "lio_sam/save_map.h"
 
@@ -511,14 +512,12 @@ public:
       return;
     }
 
-    std::vector<int> indices;
-    std::vector<float> squared_distances;
-    pcl::KdTreeFLANN<PointType> kdtree;
-
     const double radius = (double)surroundingKeyframeSearchRadius;
-    // extract all the nearby key poses and downsample them
-    kdtree.setInputCloud(points3d); // create kd-tree
-    kdtree.radiusSearch(points3d->back(), radius, indices, squared_distances);
+
+    const KDTree<PointType> kdtree(points3d);
+
+    const auto r = kdtree.radiusSearch(points3d->back(), radius);
+    const std::vector<int> indices = std::get<0>(r);
 
     pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
     for (unsigned int index : indices) {
@@ -527,7 +526,8 @@ public:
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled) {
-      kdtree.nearestKSearch(pt, 1, indices, squared_distances);
+      const auto r = kdtree.nearestKSearch(pt, 1);
+      const std::vector<int> indices = std::get<0>(r);
       pt.intensity = points3d->at(indices[0]).intensity;
     }
 
