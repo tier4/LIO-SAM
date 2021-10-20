@@ -340,47 +340,17 @@ public:
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
-    pcl::PointCloud<PointType> corner_downsampled;
-    pcl::PointCloud<PointType> surface_downsampled;
-    {
-      pcl::VoxelGrid<PointType> corner_filter;
-      corner_filter.setLeafSize(
-        mappingCornerLeafSize,
-        mappingCornerLeafSize,
-        mappingCornerLeafSize);
-      corner_filter.setInputCloud(corner_cloud);
-      corner_filter.filter(corner_downsampled);
-
-      pcl::VoxelGrid<PointType> surface_filter;
-      surface_filter.setLeafSize(
-        mappingSurfLeafSize,
-        mappingSurfLeafSize,
-        mappingSurfLeafSize);
-      surface_filter.setInputCloud(surface_cloud);
-      surface_filter.filter(surface_downsampled);
-    }
+    pcl::PointCloud<PointType> corner_downsampled = downsample(corner_cloud, mappingCornerLeafSize);
+    pcl::PointCloud<PointType> surface_downsampled = downsample(surface_cloud, mappingSurfLeafSize);
 
     const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
 
-    pcl::PointCloud<PointType>::Ptr corner_map_downsampled(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr surface_map_downsampled(new pcl::PointCloud<PointType>());
     bool isDegenerate = false;
     if (corner != nullptr && surface != nullptr) {
-      pcl::VoxelGrid<PointType> corner_filter;
-      corner_filter.setLeafSize(
-        mappingCornerLeafSize,
-        mappingCornerLeafSize,
-        mappingCornerLeafSize);
-      corner_filter.setInputCloud(corner);
-      corner_filter.filter(*corner_map_downsampled);
-
-      pcl::VoxelGrid<PointType> surface_filter;
-      surface_filter.setLeafSize(
-        mappingSurfLeafSize,
-        mappingSurfLeafSize,
-        mappingSurfLeafSize);
-      surface_filter.setInputCloud(surface);
-      surface_filter.filter(*surface_map_downsampled);
+      pcl::PointCloud<PointType>::Ptr corner_map_downsampled(new pcl::PointCloud<PointType>());
+      pcl::PointCloud<PointType>::Ptr surface_map_downsampled(new pcl::PointCloud<PointType>());
+      *corner_map_downsampled = downsample(corner, mappingCornerLeafSize);
+      *surface_map_downsampled = downsample(surface, mappingSurfLeafSize);
 
       std::tie(posevec, isDegenerate) = scan2MapOptimization(
         corner_downsampled, surface_downsampled,
