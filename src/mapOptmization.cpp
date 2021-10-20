@@ -148,8 +148,8 @@ gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
 
 void publishDownsampledCloud(
   const ros::Publisher & publisher,
-  const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
-  const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
+  const pcl::PointCloud<PointType> & corner_downsampled,
+  const pcl::PointCloud<PointType> & surface_downsampled,
   const std::string & frame_id, const ros::Time & timestamp,
   const Vector6d & posevec)
 {
@@ -159,8 +159,8 @@ void publishDownsampledCloud(
   }
 
   pcl::PointCloud<PointType> cloudOut;
-  cloudOut += transform(laserCloudCornerLastDS, posevec);
-  cloudOut += transform(laserCloudSurfLastDS, posevec);
+  cloudOut += transform(corner_downsampled, posevec);
+  cloudOut += transform(surface_downsampled, posevec);
   sensor_msgs::PointCloud2 msg = toRosMsg(cloudOut);
   msg.header.stamp = timestamp;
   msg.header.frame_id = frame_id;
@@ -270,8 +270,8 @@ public:
 
   Vector6d posevec;
 
-  std::vector<pcl::PointCloud<PointType>> corner_cloud;
-  std::vector<pcl::PointCloud<PointType>> surface_cloud;
+  std::vector<pcl::PointCloud<PointType>> corner_cloud_;
+  std::vector<pcl::PointCloud<PointType>> surface_cloud_;
 
   pcl::PointCloud<PointType>::Ptr points3d;
   pcl::PointCloud<StampedPose> poses6dof;
@@ -317,13 +317,13 @@ public:
     const ros::Time timestamp = msgIn->header.stamp;
 
     // corner feature set from odoOptimization
-    pcl::PointCloud<PointType>::Ptr laserCloudCornerLast(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr corner_cloud(new pcl::PointCloud<PointType>());
 
     // surf feature set from odoOptimization
-    pcl::PointCloud<PointType>::Ptr laserCloudSurfLast(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr surface_cloud(new pcl::PointCloud<PointType>());
 
-    pcl::fromROSMsg(msgIn->cloud_corner, *laserCloudCornerLast);
-    pcl::fromROSMsg(msgIn->cloud_surface, *laserCloudSurfLast);
+    pcl::fromROSMsg(msgIn->cloud_corner, *corner_cloud);
+    pcl::fromROSMsg(msgIn->cloud_surface, *surface_cloud);
 
     std::lock_guard<std::mutex> lock(mtx);
 
@@ -343,30 +343,30 @@ public:
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
-    pcl::PointCloud<PointType> laserCloudCornerLastDS;
-    pcl::PointCloud<PointType> laserCloudSurfLastDS;
+    pcl::PointCloud<PointType> corner_downsampled;
+    pcl::PointCloud<PointType> surface_downsampled;
     {
       pcl::VoxelGrid<PointType> corner_filter;
       corner_filter.setLeafSize(
         mappingCornerLeafSize,
         mappingCornerLeafSize,
         mappingCornerLeafSize);
-      corner_filter.setInputCloud(laserCloudCornerLast);
-      corner_filter.filter(laserCloudCornerLastDS);
+      corner_filter.setInputCloud(corner_cloud);
+      corner_filter.filter(corner_downsampled);
 
       pcl::VoxelGrid<PointType> surface_filter;
       surface_filter.setLeafSize(
         mappingSurfLeafSize,
         mappingSurfLeafSize,
         mappingSurfLeafSize);
-      surface_filter.setInputCloud(laserCloudSurfLast);
-      surface_filter.filter(laserCloudSurfLastDS);
+      surface_filter.setInputCloud(surface_cloud);
+      surface_filter.filter(surface_downsampled);
     }
 
     const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
 
-    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr corner_map_downsampled(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr surface_map_downsampled(new pcl::PointCloud<PointType>());
     bool isDegenerate = false;
     if (corner != nullptr && surface != nullptr) {
       pcl::VoxelGrid<PointType> corner_filter;
@@ -375,7 +375,7 @@ public:
         mappingCornerLeafSize,
         mappingCornerLeafSize);
       corner_filter.setInputCloud(corner);
-      corner_filter.filter(*laserCloudCornerFromMapDS);
+      corner_filter.filter(*corner_map_downsampled);
 
       pcl::VoxelGrid<PointType> surface_filter;
       surface_filter.setLeafSize(
@@ -383,11 +383,11 @@ public:
         mappingSurfLeafSize,
         mappingSurfLeafSize);
       surface_filter.setInputCloud(surface);
-      surface_filter.filter(*laserCloudSurfFromMapDS);
+      surface_filter.filter(*surface_map_downsampled);
 
       std::tie(posevec, isDegenerate) = scan2MapOptimization(
-        laserCloudCornerLastDS, laserCloudSurfLastDS,
-        laserCloudCornerFromMapDS, laserCloudSurfFromMapDS,
+        corner_downsampled, surface_downsampled,
+        corner_map_downsampled, surface_map_downsampled,
         msgIn->imuAvailable, msgIn->initialIMU, posevec
       );
     }
@@ -408,8 +408,8 @@ public:
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
-      corner_cloud.push_back(laserCloudCornerLastDS);
-      surface_cloud.push_back(laserCloudSurfLastDS);
+      corner_cloud_.push_back(corner_downsampled);
+      surface_cloud_.push_back(surface_downsampled);
 
       path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
     }
@@ -459,7 +459,7 @@ public:
     // publish key poses
     publishCloud(pubKeyPoses, *points3d, timestamp, odometryFrame);
     publishDownsampledCloud(
-      pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
+      pubRecentKeyFrame, corner_downsampled, surface_downsampled,
       odometryFrame, timestamp, posevec);
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
@@ -561,18 +561,18 @@ public:
 
       // transformed cloud not available
       const Vector6d v = makePosevec(poses6dof.at(index));
-      *corner += transform(corner_cloud[index], v);
-      *surface += transform(surface_cloud[index], v);
+      *corner += transform(corner_cloud_[index], v);
+      *surface += transform(surface_cloud_[index], v);
     }
 
     return {corner, surface};
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
-    const pcl::PointCloud<PointType> & laserCloudCornerLastDS,
-    const pcl::PointCloud<PointType> & laserCloudSurfLastDS,
-    const pcl::PointCloud<PointType>::Ptr & laserCloudCornerFromMapDS,
-    const pcl::PointCloud<PointType>::Ptr & laserCloudSurfFromMapDS,
+    const pcl::PointCloud<PointType> & corner_downsampled,
+    const pcl::PointCloud<PointType> & surface_downsampled,
+    const pcl::PointCloud<PointType>::Ptr & corner_map_downsampled,
+    const pcl::PointCloud<PointType>::Ptr & surface_map_downsampled,
     const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
     const Vector6d & initial_posevec) const
   {
@@ -581,18 +581,18 @@ public:
     }
 
     if (
-      edgeFeatureMinValidNum >= static_cast<int>(laserCloudCornerLastDS.size()) ||
-      surfFeatureMinValidNum >= static_cast<int>(laserCloudSurfLastDS.size()))
+      edgeFeatureMinValidNum >= static_cast<int>(corner_downsampled.size()) ||
+      surfFeatureMinValidNum >= static_cast<int>(surface_downsampled.size()))
     {
       ROS_WARN(
         "Not enough features! Only %d edge and %d planar features available.",
-        laserCloudCornerLastDS.size(), laserCloudSurfLastDS.size());
+        corner_downsampled.size(), surface_downsampled.size());
       return {initial_posevec, false};
     }
 
     auto [posevec, isDegenerate] = pose_optimizer_.run(
-      laserCloudCornerLastDS, laserCloudSurfLastDS,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS, initial_posevec);
+      corner_downsampled, surface_downsampled,
+      corner_map_downsampled, surface_map_downsampled, initial_posevec);
 
     if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
       posevec(0) = interpolateRoll(posevec(0), initialIMU.x, imuRPYWeight);
