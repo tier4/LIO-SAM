@@ -316,14 +316,11 @@ public:
     // extract time stamp
     const ros::Time timestamp = msgIn->header.stamp;
 
-    // corner feature set from odoOptimization
     pcl::PointCloud<PointType>::Ptr corner_cloud(new pcl::PointCloud<PointType>());
-
-    // surf feature set from odoOptimization
     pcl::PointCloud<PointType>::Ptr surface_cloud(new pcl::PointCloud<PointType>());
 
-    pcl::fromROSMsg(msgIn->cloud_corner, *corner_cloud);
-    pcl::fromROSMsg(msgIn->cloud_surface, *surface_cloud);
+    *corner_cloud = getPointCloud<PointType>(msgIn->cloud_corner);
+    *surface_cloud = getPointCloud<PointType>(msgIn->cloud_surface);
 
     std::lock_guard<std::mutex> lock(mtx);
 
