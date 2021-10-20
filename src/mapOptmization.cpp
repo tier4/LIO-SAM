@@ -345,29 +345,6 @@ public:
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
-    const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
-
-    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
-
-    if (corner != nullptr && surface != nullptr) {
-      pcl::VoxelGrid<PointType> corner_filter;
-      corner_filter.setLeafSize(
-        mappingCornerLeafSize,
-        mappingCornerLeafSize,
-        mappingCornerLeafSize);
-      corner_filter.setInputCloud(corner);
-      corner_filter.filter(*laserCloudCornerFromMapDS);
-
-      pcl::VoxelGrid<PointType> surface_filter;
-      surface_filter.setLeafSize(
-        mappingSurfLeafSize,
-        mappingSurfLeafSize,
-        mappingSurfLeafSize);
-      surface_filter.setInputCloud(surface);
-      surface_filter.filter(*laserCloudSurfFromMapDS);
-    }
-
     pcl::PointCloud<PointType> laserCloudCornerLastDS;
     pcl::PointCloud<PointType> laserCloudSurfLastDS;
     {
@@ -388,12 +365,34 @@ public:
       surface_filter.filter(laserCloudSurfLastDS);
     }
 
+    const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
+
+    pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMapDS(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMapDS(new pcl::PointCloud<PointType>());
     bool isDegenerate = false;
-    std::tie(posevec, isDegenerate) = scan2MapOptimization(
-      laserCloudCornerLastDS, laserCloudSurfLastDS,
-      laserCloudCornerFromMapDS, laserCloudSurfFromMapDS,
-      msgIn->imuAvailable, msgIn->initialIMU, posevec
-    );
+    if (corner != nullptr && surface != nullptr) {
+      pcl::VoxelGrid<PointType> corner_filter;
+      corner_filter.setLeafSize(
+        mappingCornerLeafSize,
+        mappingCornerLeafSize,
+        mappingCornerLeafSize);
+      corner_filter.setInputCloud(corner);
+      corner_filter.filter(*laserCloudCornerFromMapDS);
+
+      pcl::VoxelGrid<PointType> surface_filter;
+      surface_filter.setLeafSize(
+        mappingSurfLeafSize,
+        mappingSurfLeafSize,
+        mappingSurfLeafSize);
+      surface_filter.setInputCloud(surface);
+      surface_filter.filter(*laserCloudSurfFromMapDS);
+
+      std::tie(posevec, isDegenerate) = scan2MapOptimization(
+        laserCloudCornerLastDS, laserCloudSurfLastDS,
+        laserCloudCornerFromMapDS, laserCloudSurfFromMapDS,
+        msgIn->imuAvailable, msgIn->initialIMU, posevec
+      );
+    }
 
     const Eigen::Affine3d back = getTransformation(posevec);
     const Eigen::Affine3d pose_increment = (front.inverse() * back);
