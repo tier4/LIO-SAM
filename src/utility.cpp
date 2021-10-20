@@ -1,7 +1,7 @@
 #include "utility.h"
 
 pcl::PointCloud<PointType> downsample(
-  const pcl::PointCloud<PointType>::Ptr & input_cloud, const int leaf_size)
+  const pcl::PointCloud<PointType>::Ptr & input_cloud, const float leaf_size)
 {
   pcl::VoxelGrid<PointType> filter;
   pcl::PointCloud<PointType> downsampled;
