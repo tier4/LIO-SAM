@@ -264,7 +264,6 @@ public:
   const ros::Publisher pubKeyPoses;
   const ros::Publisher pubPath;
 
-  const ros::Publisher pubRecentKeyFrames;
   const ros::Publisher pubRecentKeyFrame;
   const ros::Subscriber subCloud;
   const PoseOptimizer pose_optimizer_;
@@ -298,7 +297,6 @@ public:
       nh.advertise<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 1)),
     pubKeyPoses(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/trajectory", 1)),
     pubPath(nh.advertise<nav_msgs::Path>("lio_sam/mapping/path", 1)),
-    pubRecentKeyFrames(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/map_local", 1)),
     pubRecentKeyFrame(
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/cloud_registered", 1)),
     subCloud(nh.subscribe<lio_sam::cloud_info>(
@@ -460,8 +458,6 @@ public:
 
     // publish key poses
     publishCloud(pubKeyPoses, *points3d, timestamp, odometryFrame);
-    // Publish surrounding key frames
-    publishCloud(pubRecentKeyFrames, *laserCloudSurfFromMapDS, timestamp, odometryFrame);
     publishDownsampledCloud(
       pubRecentKeyFrame, laserCloudCornerLastDS, laserCloudSurfLastDS,
       odometryFrame, timestamp, posevec);
