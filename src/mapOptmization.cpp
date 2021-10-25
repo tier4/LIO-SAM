@@ -1,3 +1,4 @@
+#include "comprehend.hpp"
 #include "utility.h"
 #include "jacobian.h"
 #include "homogeneous.h"
@@ -518,10 +519,7 @@ public:
     const auto r = kdtree.radiusSearch(points3d->back(), radius);
     const std::vector<int> indices = std::get<0>(r);
 
-    pcl::PointCloud<PointType>::Ptr poses(new pcl::PointCloud<PointType>());
-    for (unsigned int index : indices) {
-      poses->push_back(points3d->at(index));
-    }
+    const pcl::PointCloud<PointType>::Ptr poses = comprehend(*points3d, indices);
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled) {
