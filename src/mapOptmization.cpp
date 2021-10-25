@@ -254,6 +254,35 @@ void updatePath(
   }
 }
 
+std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
+fuseMap(
+  const std::vector<pcl::PointCloud<PointType>> & corner_cloud_,
+  const std::vector<pcl::PointCloud<PointType>> & surface_cloud_,
+  const pcl::PointCloud<PointType> & downsampled,
+  const pcl::PointCloud<PointType>::Ptr & points3d,
+  const pcl::PointCloud<StampedPose> & poses6dof,
+  const double radius)
+{
+  pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
+  pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
+
+  for (auto & pt : downsampled) {
+    const double distance = (getXYZ(pt) - getXYZ(points3d->back())).norm();
+    if (distance > radius) {
+      continue;
+    }
+
+    const int index = static_cast<int>(pt.intensity);
+
+    // transformed cloud not available
+    const Vector6d v = makePosevec(poses6dof.at(index));
+    *corner += transform(corner_cloud_[index], v);
+    *surface += transform(surface_cloud_[index], v);
+  }
+
+  return {corner, surface};
+}
+
 class mapOptimization : public ParamServer
 {
 public:
@@ -509,25 +538,7 @@ public:
       downsampled.push_back(points3d->at(i));
     }
 
-    // fuse the map
-    pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
-
-    for (auto & pt  : downsampled) {
-      const double distance = (getXYZ(pt) - getXYZ(points3d->back())).norm();
-      if (distance > radius) {
-        continue;
-      }
-
-      const int index = static_cast<int>(pt.intensity);
-
-      // transformed cloud not available
-      const Vector6d v = makePosevec(poses6dof.at(index));
-      *corner += transform(corner_cloud_[index], v);
-      *surface += transform(surface_cloud_[index], v);
-    }
-
-    return {corner, surface};
+    return fuseMap(corner_cloud_, surface_cloud_, downsampled, points3d, poses6dof, radius);
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
