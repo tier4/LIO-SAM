@@ -70,7 +70,13 @@ link_directories(
 )
 
 include_directories(include)
-add_library(util SHARED src/utility.cpp src/param_server.cpp src/pose_optimizer.cpp)
+add_library(util SHARED
+  src/cloud_optimizer.cpp
+  src/param_server.cpp
+  src/pose_optimizer.cpp
+  src/utility.cpp
+)
+
 target_compile_options(util PRIVATE ${OpenMP_CXX_FLAGS})
 target_link_libraries(util ${catkin_LIBRARIES} gtsam)
 

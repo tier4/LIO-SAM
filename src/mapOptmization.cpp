@@ -266,7 +266,6 @@ public:
 
   const ros::Publisher pubRecentKeyFrame;
   const ros::Subscriber subCloud;
-  const PoseOptimizer pose_optimizer_;
 
   Vector6d posevec;
 
@@ -302,7 +301,6 @@ public:
     subCloud(nh.subscribe<lio_sam::cloud_info>(
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
-    pose_optimizer_(PoseOptimizer(N_SCAN, Horizon_SCAN, numberOfCores)),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<PointType>()),
     lastImuPreTransAvailable(false),
@@ -557,9 +555,10 @@ public:
       return {initial_posevec, false};
     }
 
-    auto [posevec, isDegenerate] = pose_optimizer_.run(
-      corner_downsampled, surface_downsampled,
-      corner_map_downsampled, surface_map_downsampled, initial_posevec);
+    const CloudOptimizer cloud_optimizer(
+      N_SCAN, Horizon_SCAN, numberOfCores,
+      corner_downsampled, surface_downsampled, corner_map_downsampled, surface_map_downsampled);
+    auto [posevec, isDegenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
     if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
       posevec(0) = interpolateRoll(posevec(0), initialIMU.x, imuRPYWeight);

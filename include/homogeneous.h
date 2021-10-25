@@ -1,3 +1,6 @@
+#ifndef HOMOGENEOUS_H_
+#define HOMOGENEOUS_H_
+
 #include <Eigen/Core>
 
 Eigen::MatrixXd toHomogeneous(const Eigen::MatrixXd & mat)
@@ -12,3 +15,5 @@ Eigen::MatrixXd toHomogeneous(const Eigen::MatrixXd & mat)
   }
   return out;
 }
+
+#endif
