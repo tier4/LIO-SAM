@@ -379,9 +379,6 @@ public:
       path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
     }
 
-    const bool imuAvailable = msgIn->imuAvailable;
-    const geometry_msgs::Vector3 initialIMU = msgIn->initialIMU;
-
     const nav_msgs::Odometry odometry = makeOdometry(
       timestamp, odometryFrame, "odom_mapping", makePose(posevec));
 
@@ -401,10 +398,10 @@ public:
       increOdomAffine = increOdomAffine * pose_increment;
       Vector6d incre_pose = getPoseVec(increOdomAffine);
 
-      if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
+      if (msgIn->imuAvailable && std::abs(msgIn->initialIMU.y) < 1.4) {
         const double imuWeight = 0.1;
-        incre_pose(0) = interpolateRoll(incre_pose(0), initialIMU.x, imuWeight);
-        incre_pose(1) = interpolatePitch(incre_pose(1), initialIMU.y, imuWeight);
+        incre_pose(0) = interpolateRoll(incre_pose(0), msgIn->initialIMU.x, imuWeight);
+        incre_pose(1) = interpolatePitch(incre_pose(1), msgIn->initialIMU.y, imuWeight);
       }
 
       nav_msgs::Odometry laserOdomIncremental = makeOdometry(
