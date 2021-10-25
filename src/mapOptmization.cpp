@@ -311,8 +311,8 @@ public:
 
   Eigen::Affine3d lastImuTransformation;
 
+  geometry_msgs::Pose last_imu_pose;
   bool lastImuPreTransAvailable;
-  Eigen::Affine3d lastImuPreTransformation;
 
   bool lastIncreOdomPubFlag;
 
@@ -475,9 +475,10 @@ public:
     // use imu pre-integration estimation for pose guess
     if (odomAvailable && lastImuPreTransAvailable) {
       const Eigen::Affine3d back = poseToAffine(scan_start_imu_pose);
-      const Eigen::Affine3d incre = lastImuPreTransformation.inverse() * back;
+      const Eigen::Affine3d last = poseToAffine(last_imu_pose);
+      const Eigen::Affine3d incre = last.inverse() * back;
 
-      lastImuPreTransformation = poseToAffine(scan_start_imu_pose);
+      last_imu_pose = scan_start_imu_pose;
 
       const Eigen::Affine3d tobe = getTransformation(posevec);
       posevec = getPoseVec(tobe * incre);
@@ -486,7 +487,7 @@ public:
     }
 
     if (odomAvailable) {
-      lastImuPreTransformation = poseToAffine(scan_start_imu_pose);
+      last_imu_pose = scan_start_imu_pose;
       lastImuPreTransAvailable = true;
     }
 
