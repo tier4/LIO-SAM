@@ -31,6 +31,12 @@ public:
     return {indices, squared_distances};
   }
 
+  std::tuple<int, float> closestPoint(const T & point) const
+  {
+    const auto [indices, distances] = this->nearestKSearch(point, 1);
+    return {indices[0], distances[0]};
+  }
+
 private:
   pcl::KdTreeFLANN<PointType> kdtree_;
 };

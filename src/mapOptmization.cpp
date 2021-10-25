@@ -525,9 +525,8 @@ public:
 
     pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
     for (auto & pt : downsampled) {
-      const auto r = kdtree.nearestKSearch(pt, 1);
-      const std::vector<int> indices = std::get<0>(r);
-      pt.intensity = points3d->at(indices[0]).intensity;
+      const int index = std::get<0>(kdtree.closestPoint(pt));
+      pt.intensity = points3d->at(index).intensity;
     }
 
     // also extract some latest key frames in case the robot rotates in one position
