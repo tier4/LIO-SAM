@@ -338,10 +338,10 @@ extractSurroundingKeyFrames(
   }
 
   const auto [corner, surface] = map_fusion(downsampled, poses6dof, radius);
-
-  pcl::PointCloud<PointType>::Ptr corner_downsampled = downsample(corner, corner_leaf_size);
-  pcl::PointCloud<PointType>::Ptr surface_downsampled = downsample(surface, surface_leaf_size);
-  return {corner_downsampled, surface_downsampled};
+  return {
+    downsample(corner, corner_leaf_size),
+    downsample(surface, surface_leaf_size)
+  };
 }
 
 class mapOptimization : public ParamServer
