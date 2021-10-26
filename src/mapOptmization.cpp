@@ -273,7 +273,7 @@ public:
 
   std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
   operator()(
-    const pcl::PointCloud<PointType> & downsampled,
+    const pcl::PointCloud<PointType>::Ptr & downsampled,
     const pcl::PointCloud<StampedPose> & poses6dof,
     const double radius) const
   {
@@ -282,7 +282,7 @@ public:
 
     const Eigen::Vector3d latest = getXYZ(poses6dof.back());
 
-    for (auto & pt : downsampled) {
+    for (auto & pt : *downsampled) {
       const double distance = (getXYZ(pt) - latest).norm();
       if (distance > radius) {
         continue;
@@ -322,8 +322,8 @@ extractSurroundingKeyFrames(
 
   const pcl::PointCloud<PointType>::Ptr poses = comprehend(*points3d, indices);
 
-  pcl::PointCloud<PointType> downsampled = downsample(poses, keyframe_density);
-  for (auto & pt : downsampled) {
+  pcl::PointCloud<PointType>::Ptr downsampled = downsample(poses, keyframe_density);
+  for (auto & pt : *downsampled) {
     const int index = std::get<0>(kdtree.closestPoint(pt));
     pt.intensity = points3d->at(index).intensity;
   }
@@ -333,15 +333,13 @@ extractSurroundingKeyFrames(
     if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
       break;
     }
-    downsampled.push_back(points3d->at(i));
+    downsampled->push_back(points3d->at(i));
   }
 
   const auto [corner, surface] = map_fusion(downsampled, poses6dof, radius);
 
-  pcl::PointCloud<PointType>::Ptr corner_downsampled(new pcl::PointCloud<PointType>());
-  pcl::PointCloud<PointType>::Ptr surface_downsampled(new pcl::PointCloud<PointType>());
-  *corner_downsampled = downsample(corner, corner_leaf_size);
-  *surface_downsampled = downsample(surface, surface_leaf_size);
+  pcl::PointCloud<PointType>::Ptr corner_downsampled = downsample(corner, corner_leaf_size);
+  pcl::PointCloud<PointType>::Ptr surface_downsampled = downsample(surface, surface_leaf_size);
   return {corner_downsampled, surface_downsampled};
 }
 
@@ -428,8 +426,10 @@ public:
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
-    pcl::PointCloud<PointType> corner_downsampled = downsample(corner_cloud, mappingCornerLeafSize);
-    pcl::PointCloud<PointType> surface_downsampled = downsample(surface_cloud, mappingSurfLeafSize);
+    pcl::PointCloud<PointType> corner_downsampled =
+      *downsample(corner_cloud, mappingCornerLeafSize);
+    pcl::PointCloud<PointType> surface_downsampled =
+      *downsample(surface_cloud, mappingSurfLeafSize);
 
     bool isDegenerate = false;
     if (!points3d->empty()) {
