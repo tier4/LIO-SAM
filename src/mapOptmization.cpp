@@ -367,7 +367,7 @@ public:
 
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
-  Eigen::Affine3d lastImuTransformation;
+  Eigen::Vector3d last_imu_orientation;
 
   geometry_msgs::Pose last_imu_pose;
   bool lastImuPreTransAvailable;
@@ -417,11 +417,11 @@ public:
     const Eigen::Affine3d front = getTransformation(posevec);
 
     updateInitialGuess(
-      lastImuTransformation, msgIn->odomAvailable, msgIn->imuAvailable,
+      last_imu_orientation, msgIn->odomAvailable, msgIn->imuAvailable,
       msgIn->imu_orientation, msgIn->scan_start_imu_pose
     );
 
-    lastImuTransformation = makeAffine(vector3ToEigen(msgIn->imu_orientation));
+    last_imu_orientation = vector3ToEigen(msgIn->imu_orientation);
 
     pcl::PointCloud<PointType>::Ptr corner = downsample(corner_cloud, mappingCornerLeafSize);
     pcl::PointCloud<PointType>::Ptr surface = downsample(surface_cloud, mappingSurfLeafSize);
@@ -520,7 +520,7 @@ public:
   }
 
   void updateInitialGuess(
-    const Eigen::Affine3d & lastImuTransformation,
+    const Eigen::Vector3d & last_imu_orientation,
     const bool odomAvailable, const bool imuAvailable,
     const geometry_msgs::Vector3 & imu_orientation,
     const geometry_msgs::Pose & scan_start_imu_pose)
@@ -558,7 +558,7 @@ public:
     if (imuAvailable) {
       const Eigen::Vector3d rpy = vector3ToEigen(imu_orientation);
       const Eigen::Affine3d back = makeAffine(rpy);
-      const Eigen::Affine3d incre = lastImuTransformation.inverse() * back;
+      const Eigen::Affine3d incre = makeAffine(last_imu_orientation).inverse() * back;
       const Eigen::Affine3d tobe = getTransformation(posevec);
 
       posevec = getPoseVec(tobe * incre);

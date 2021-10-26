@@ -304,7 +304,6 @@ Eigen::Vector3d findInitialImu(
   const std::deque<sensor_msgs::Imu> & imu_buffer,
   const double scan_start_time)
 {
-
   if (imu_buffer.empty()) {
     return Eigen::Vector3d::Zero();
   }
