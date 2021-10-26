@@ -103,14 +103,14 @@ public:
     }
 
     std::vector<float> curvature(N_SCAN * Horizon_SCAN);
-    std::vector<int> curvature_indices(N_SCAN * Horizon_SCAN, 0);
+    std::vector<int> indices(N_SCAN * Horizon_SCAN, 0);
     for (unsigned int i = 5; i < points->size() - 5; i++) {
       const float d = range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
         range[i] * 10 +
         range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
 
       curvature[i] = d * d;
-      curvature_indices[i] = i;
+      indices[i] = i;
     }
 
     pcl::PointCloud<PointType> corner;
@@ -136,13 +136,11 @@ public:
           continue;
         }
 
-        std::sort(
-          curvature_indices.begin() + sp, curvature_indices.begin() + ep,
-          by_value(curvature));
+        std::sort(indices.begin() + sp, indices.begin() + ep, by_value(curvature));
 
         int largestPickedNum = 0;
         for (int k = ep; k >= sp; k--) {
-          const int index = curvature_indices[k];
+          const int index = indices[k];
           if (neighbor_picked[index] || curvature[index] <= edgeThreshold) {
             continue;
           }
@@ -174,7 +172,7 @@ public:
         }
 
         for (int k = sp; k <= ep; k++) {
-          const int index = curvature_indices[k];
+          const int index = indices[k];
           if (neighbor_picked[index] || curvature[index] >= surfThreshold) {
             continue;
           }
