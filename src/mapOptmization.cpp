@@ -380,11 +380,19 @@ public:
       *corner_map_downsampled = downsample(corner, mappingCornerLeafSize);
       *surface_map_downsampled = downsample(surface, mappingSurfLeafSize);
 
-      std::tie(posevec, isDegenerate) = scan2MapOptimization(
-        corner_downsampled, surface_downsampled,
-        corner_map_downsampled, surface_map_downsampled,
-        msgIn->imuAvailable, msgIn->initialIMU, posevec
-      );
+      try {
+        const CloudOptimizer cloud_optimizer(
+          N_SCAN, Horizon_SCAN, numberOfCores,
+          edgeFeatureMinValidNum, surfFeatureMinValidNum,
+          corner_downsampled, surface_downsampled,
+          corner_map_downsampled, surface_map_downsampled);
+
+        std::tie(posevec, isDegenerate) = scan2MapOptimization(
+          cloud_optimizer, msgIn->imuAvailable, msgIn->initialIMU, posevec
+        );
+      } catch (const std::exception & e) {
+        ROS_WARN(e.what());
+      }
     }
 
     const Eigen::Affine3d back = getTransformation(posevec);
@@ -540,22 +548,13 @@ public:
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
-    const pcl::PointCloud<PointType> & corner_downsampled,
-    const pcl::PointCloud<PointType> & surface_downsampled,
-    const pcl::PointCloud<PointType>::Ptr & corner_map_downsampled,
-    const pcl::PointCloud<PointType>::Ptr & surface_map_downsampled,
+    const CloudOptimizer & cloud_optimizer,
     const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
-    const Vector6d & initial_posevec) const try
+    const Vector6d & initial_posevec) const
   {
     if (points3d->empty()) {
       return {initial_posevec, false};
     }
-
-    const CloudOptimizer cloud_optimizer(
-      N_SCAN, Horizon_SCAN, numberOfCores,
-      edgeFeatureMinValidNum, surfFeatureMinValidNum,
-      corner_downsampled, surface_downsampled,
-      corner_map_downsampled, surface_map_downsampled);
 
     auto [posevec, isDegenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
@@ -568,9 +567,6 @@ public:
     posevec(1) = std::clamp(posevec(1), -rotation_tolerance, rotation_tolerance);
     posevec(5) = std::clamp(posevec(5), -z_tolerance, z_tolerance);
     return {posevec, isDegenerate};
-  } catch (const std::exception & e) {
-    ROS_WARN(e.what());
-    return {initial_posevec, false};
   }
 };
 
