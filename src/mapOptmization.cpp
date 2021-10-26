@@ -266,8 +266,8 @@ class MapFusion
 {
 public:
   MapFusion(
-    const std::vector<pcl::PointCloud<PointType>> & corner_cloud,
-    const std::vector<pcl::PointCloud<PointType>> & surface_cloud)
+    const std::vector<pcl::PointCloud<PointType>::Ptr> & corner_cloud,
+    const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud)
   : corner_cloud_(corner_cloud), surface_cloud_(surface_cloud)
   {
   }
@@ -292,16 +292,16 @@ public:
       const int index = static_cast<int>(p.intensity);
 
       const Vector6d v = makePosevec(poses6dof.at(index));
-      *corner += transform(corner_cloud_[index], v);
-      *surface += transform(surface_cloud_[index], v);
+      *corner += transform(*corner_cloud_[index], v);
+      *surface += transform(*surface_cloud_[index], v);
     }
 
     return {corner, surface};
   }
 
 private:
-  const std::vector<pcl::PointCloud<PointType>> corner_cloud_;
-  const std::vector<pcl::PointCloud<PointType>> surface_cloud_;
+  const std::vector<pcl::PointCloud<PointType>::Ptr> & corner_cloud_;
+  const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_;
 };
 
 std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
@@ -357,8 +357,8 @@ public:
 
   Vector6d posevec;
 
-  std::vector<pcl::PointCloud<PointType>> corner_cloud_;
-  std::vector<pcl::PointCloud<PointType>> surface_cloud_;
+  std::vector<pcl::PointCloud<PointType>::Ptr> corner_cloud_;
+  std::vector<pcl::PointCloud<PointType>::Ptr> surface_cloud_;
 
   pcl::PointCloud<PointType>::Ptr points3d;
   pcl::PointCloud<StampedPose> poses6dof;
@@ -462,8 +462,8 @@ public:
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
-      corner_cloud_.push_back(*corner);
-      surface_cloud_.push_back(*surface);
+      corner_cloud_.push_back(corner);
+      surface_cloud_.push_back(surface);
 
       path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
     }
