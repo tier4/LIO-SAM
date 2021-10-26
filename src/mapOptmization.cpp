@@ -1,4 +1,5 @@
 #include "comprehend.hpp"
+#include "message.hpp"
 #include "downsample.hpp"
 #include "utility.h"
 #include "jacobian.h"

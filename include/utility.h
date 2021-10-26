@@ -134,14 +134,6 @@ struct Points
   typedef std::vector < PointType, Eigen::aligned_allocator < PointType >> type;
 };
 
-template < typename PointType >
-pcl::PointCloud < PointType > getPointCloud(const sensor_msgs::PointCloud2 & roscloud)
-{
-  pcl::PointCloud < PointType > pclcloud;
-  pcl::fromROSMsg(roscloud, pclcloud);
-  return pclcloud;
-}
-
 inline double timeInSec(const std_msgs::Header & header)
 {
   return header.stamp.toSec();
