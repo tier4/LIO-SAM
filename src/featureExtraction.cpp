@@ -127,7 +127,7 @@ public:
     const int N_BLOCKS = 6;
 
     for (int i = 0; i < N_SCAN; i++) {
-      pcl::PointCloud<PointType>::Ptr surfaceCloudScan(new pcl::PointCloud<PointType>());
+      pcl::PointCloud<PointType>::Ptr surface_scan(new pcl::PointCloud<PointType>());
 
       const int start_index = start_indices[i];
       const int end_index = end_indices[i];
@@ -148,8 +148,8 @@ public:
 
         int largestPickedNum = 0;
         for (int k = ep; k >= sp; k--) {
-          const int ind = curvature_indices[k];
-          if (neighbor_picked[ind] || curvature[ind] <= edgeThreshold) {
+          const int index = curvature_indices[k];
+          if (neighbor_picked[index] || curvature[index] <= edgeThreshold) {
             continue;
           }
 
@@ -159,63 +159,63 @@ public:
 
           largestPickedNum++;
 
-          label[ind] = CurvatureLabel::kEdge;
-          corner.push_back(points->at(ind));
+          label[index] = CurvatureLabel::kEdge;
+          corner.push_back(points->at(index));
 
-          neighbor_picked[ind] = true;
+          neighbor_picked[index] = true;
           for (int l = 1; l <= 5; l++) {
-            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
+            const int d = std::abs(int(column_index[index + l] - column_index[index + l - 1]));
             if (d > 10) {
               break;
             }
-            neighbor_picked[ind + l] = true;
+            neighbor_picked[index + l] = true;
           }
           for (int l = -1; l >= -5; l--) {
-            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
+            const int d = std::abs(int(column_index[index + l] - column_index[index + l + 1]));
             if (d > 10) {
               break;
             }
-            neighbor_picked[ind + l] = true;
+            neighbor_picked[index + l] = true;
           }
         }
 
         for (int k = sp; k <= ep; k++) {
-          const int ind = curvature_indices[k];
-          if (neighbor_picked[ind] || curvature[ind] >= surfThreshold) {
+          const int index = curvature_indices[k];
+          if (neighbor_picked[index] || curvature[index] >= surfThreshold) {
             continue;
           }
 
-          label[ind] = CurvatureLabel::kSurface;
-          neighbor_picked[ind] = true;
+          label[index] = CurvatureLabel::kSurface;
+          neighbor_picked[index] = true;
 
           for (int l = 1; l <= 5; l++) {
 
-            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l - 1]));
+            const int d = std::abs(int(column_index[index + l] - column_index[index + l - 1]));
             if (d > 10) {
               break;
             }
 
-            neighbor_picked[ind + l] = true;
+            neighbor_picked[index + l] = true;
           }
           for (int l = -1; l >= -5; l--) {
 
-            const int d = std::abs(int(column_index[ind + l] - column_index[ind + l + 1]));
+            const int d = std::abs(int(column_index[index + l] - column_index[index + l + 1]));
             if (d > 10) {
               break;
             }
 
-            neighbor_picked[ind + l] = true;
+            neighbor_picked[index + l] = true;
           }
         }
 
         for (int k = sp; k <= ep; k++) {
           if (label[k] == CurvatureLabel::kDefault || label[k] == CurvatureLabel::kEdge) {
-            surfaceCloudScan->push_back(points->at(k));
+            surface_scan->push_back(points->at(k));
           }
         }
       }
 
-      surface += *downsample(surfaceCloudScan, surface_leaf_size);
+      surface += *downsample(surface_scan, surface_leaf_size);
     }
 
     // save newly extracted features
