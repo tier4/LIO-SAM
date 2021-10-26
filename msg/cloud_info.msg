@@ -11,7 +11,7 @@ int64 imuAvailable
 int64 odomAvailable
 
 # Attitude for LOAM initialization
-geometry_msgs/Vector3 initialIMU
+geometry_msgs/Vector3 imu_orientation
 
 # Initial guess from imu pre-integration
 geometry_msgs/Pose scan_start_imu_pose

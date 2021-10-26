@@ -309,14 +309,14 @@ Eigen::Vector3d findInitialImu(
     return Eigen::Vector3d::Zero();
   }
 
-  Eigen::Vector3d initialIMU = Eigen::Vector3d::Zero();
+  Eigen::Vector3d imu_orientation = Eigen::Vector3d::Zero();
 
   for (const sensor_msgs::Imu & imu : imu_buffer) {
     if (timeInSec(imu.header) <= scan_start_time) {
-      initialIMU = quaternionToRPY(imu.orientation);
+      imu_orientation = quaternionToRPY(imu.orientation);
     }
   }
-  return initialIMU;
+  return imu_orientation;
 }
 
 bool checkImuTime(
@@ -465,7 +465,7 @@ public:
       dropBefore(scan_start_time - 0.01, imu_buffer);
     }
 
-    cloudInfo.initialIMU = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
+    cloudInfo.imu_orientation = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);

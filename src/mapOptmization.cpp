@@ -418,10 +418,10 @@ public:
 
     updateInitialGuess(
       lastImuTransformation, msgIn->odomAvailable, msgIn->imuAvailable,
-      msgIn->initialIMU, msgIn->scan_start_imu_pose
+      msgIn->imu_orientation, msgIn->scan_start_imu_pose
     );
 
-    lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
+    lastImuTransformation = makeAffine(vector3ToEigen(msgIn->imu_orientation));
 
     pcl::PointCloud<PointType>::Ptr corner = downsample(corner_cloud, mappingCornerLeafSize);
     pcl::PointCloud<PointType>::Ptr surface = downsample(surface_cloud, mappingSurfLeafSize);
@@ -443,7 +443,7 @@ public:
           corner_map, surface_map);
 
         std::tie(posevec, isDegenerate) = scan2MapOptimization(
-          cloud_optimizer, msgIn->imuAvailable, msgIn->initialIMU, posevec
+          cloud_optimizer, msgIn->imuAvailable, msgIn->imu_orientation, posevec
         );
       } catch (const std::exception & e) {
         ROS_WARN(e.what());
@@ -465,7 +465,8 @@ public:
       corner_cloud_.push_back(corner);
       surface_cloud_.push_back(surface);
 
-      path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
+      path_poses_.push_back(
+        makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
     }
 
     const nav_msgs::Odometry odometry = makeOdometry(
@@ -490,10 +491,10 @@ public:
       increOdomAffine = increOdomAffine * pose_increment;
       Vector6d incre_pose = getPoseVec(increOdomAffine);
 
-      if (msgIn->imuAvailable && std::abs(msgIn->initialIMU.y) < 1.4) {
+      if (msgIn->imuAvailable && std::abs(msgIn->imu_orientation.y) < 1.4) {
         const double imuWeight = 0.1;
-        incre_pose(0) = interpolateRoll(incre_pose(0), msgIn->initialIMU.x, imuWeight);
-        incre_pose(1) = interpolatePitch(incre_pose(1), msgIn->initialIMU.y, imuWeight);
+        incre_pose(0) = interpolateRoll(incre_pose(0), msgIn->imu_orientation.x, imuWeight);
+        incre_pose(1) = interpolatePitch(incre_pose(1), msgIn->imu_orientation.y, imuWeight);
       }
 
       nav_msgs::Odometry laserOdomIncremental = makeOdometry(
@@ -521,12 +522,12 @@ public:
   void updateInitialGuess(
     const Eigen::Affine3d & lastImuTransformation,
     const bool odomAvailable, const bool imuAvailable,
-    const geometry_msgs::Vector3 & initialIMU,
+    const geometry_msgs::Vector3 & imu_orientation,
     const geometry_msgs::Pose & scan_start_imu_pose)
   {
     // initialization
     if (points3d->empty()) {
-      const Eigen::Vector3d rpy = vector3ToEigen(initialIMU);
+      const Eigen::Vector3d rpy = vector3ToEigen(imu_orientation);
 
       posevec = initPosevec(rpy, useImuHeadingInitialization);
 
@@ -555,7 +556,7 @@ public:
 
     // use imu incremental estimation for pose guess (only rotation)
     if (imuAvailable) {
-      const Eigen::Vector3d rpy = vector3ToEigen(initialIMU);
+      const Eigen::Vector3d rpy = vector3ToEigen(imu_orientation);
       const Eigen::Affine3d back = makeAffine(rpy);
       const Eigen::Affine3d incre = lastImuTransformation.inverse() * back;
       const Eigen::Affine3d tobe = getTransformation(posevec);
@@ -568,16 +569,16 @@ public:
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
     const CloudOptimizer & cloud_optimizer,
-    const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
+    const bool imuAvailable, const geometry_msgs::Vector3 & imu_orientation,
     const Vector6d & initial_posevec) const
   {
     assert(!points3d->empty());
 
     auto [posevec, isDegenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
-    if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
-      posevec(0) = interpolateRoll(posevec(0), initialIMU.x, imuRPYWeight);
-      posevec(1) = interpolatePitch(posevec(1), initialIMU.y, imuRPYWeight);
+    if (imuAvailable && std::abs(imu_orientation.y) < 1.4) {
+      posevec(0) = interpolateRoll(posevec(0), imu_orientation.x, imuRPYWeight);
+      posevec(1) = interpolatePitch(posevec(1), imu_orientation.y, imuRPYWeight);
     }
 
     return {posevec, isDegenerate};
