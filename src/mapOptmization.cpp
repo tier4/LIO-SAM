@@ -426,10 +426,8 @@ public:
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
-    pcl::PointCloud<PointType> corner_downsampled =
-      *downsample(corner_cloud, mappingCornerLeafSize);
-    pcl::PointCloud<PointType> surface_downsampled =
-      *downsample(surface_cloud, mappingSurfLeafSize);
+    pcl::PointCloud<PointType> corner = *downsample(corner_cloud, mappingCornerLeafSize);
+    pcl::PointCloud<PointType> surface = *downsample(surface_cloud, mappingSurfLeafSize);
 
     bool isDegenerate = false;
     if (!points3d->empty()) {
@@ -444,7 +442,7 @@ public:
         const CloudOptimizer cloud_optimizer(
           N_SCAN, Horizon_SCAN, numberOfCores,
           edgeFeatureMinValidNum, surfFeatureMinValidNum,
-          corner_downsampled, surface_downsampled,
+          corner, surface,
           corner_map, surface_map);
 
         std::tie(posevec, isDegenerate) = scan2MapOptimization(
@@ -467,8 +465,8 @@ public:
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
-      corner_cloud_.push_back(corner_downsampled);
-      surface_cloud_.push_back(surface_downsampled);
+      corner_cloud_.push_back(corner);
+      surface_cloud_.push_back(surface);
 
       path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
     }
@@ -518,7 +516,7 @@ public:
     // publish key poses
     publishCloud(pubKeyPoses, *points3d, timestamp, odometryFrame);
     publishDownsampledCloud(
-      pubRecentKeyFrame, corner_downsampled, surface_downsampled,
+      pubRecentKeyFrame, corner, surface,
       odometryFrame, timestamp, posevec);
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
