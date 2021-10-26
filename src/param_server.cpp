@@ -60,11 +60,6 @@ ParamServer::ParamServer()
   nh.param<float>("lio_sam/mappingCornerLeafSize", mappingCornerLeafSize, 0.2);
   nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
 
-  nh.param<double>(
-    "lio_sam/z_tolerance", z_tolerance, std::numeric_limits<double>::max());
-  nh.param<double>(
-    "lio_sam/rotation_tolerance", rotation_tolerance, std::numeric_limits<double>::max());
-
   nh.param<int>("lio_sam/numberOfCores", numberOfCores, 2);
   nh.param<double>(
     "lio_sam/mappingProcessInterval", mappingProcessInterval,

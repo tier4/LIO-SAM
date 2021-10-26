@@ -563,9 +563,6 @@ public:
       posevec(1) = interpolatePitch(posevec(1), initialIMU.y, imuRPYWeight);
     }
 
-    posevec(0) = std::clamp(posevec(0), -rotation_tolerance, rotation_tolerance);
-    posevec(1) = std::clamp(posevec(1), -rotation_tolerance, rotation_tolerance);
-    posevec(5) = std::clamp(posevec(5), -z_tolerance, z_tolerance);
     return {posevec, isDegenerate};
   }
 };

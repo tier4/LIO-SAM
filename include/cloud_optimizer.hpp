@@ -34,8 +34,8 @@ public:
     kdtreeSurfFromMap(KDTree<PointType>(surface_map_downsampled))
   {
     if (
-      edgeFeatureMinValidNum >= static_cast<int>(corner_downsampled.size()) ||
-      surfFeatureMinValidNum >= static_cast<int>(surface_downsampled.size()))
+      static_cast<int>(corner_downsampled.size()) <= edgeFeatureMinValidNum ||
+      static_cast<int>(surface_downsampled.size()) <= surfFeatureMinValidNum)
     {
       throw std::runtime_error(
               fmt::format(
