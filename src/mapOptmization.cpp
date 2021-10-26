@@ -156,8 +156,8 @@ gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
 
 void publishDownsampledCloud(
   const ros::Publisher & publisher,
-  const pcl::PointCloud<PointType> & corner_downsampled,
-  const pcl::PointCloud<PointType> & surface_downsampled,
+  const pcl::PointCloud<PointType> & corner,
+  const pcl::PointCloud<PointType> & surface,
   const std::string & frame_id, const ros::Time & timestamp,
   const Vector6d & posevec)
 {
@@ -166,10 +166,10 @@ void publishDownsampledCloud(
     return;
   }
 
-  pcl::PointCloud<PointType> cloudOut;
-  cloudOut += transform(corner_downsampled, posevec);
-  cloudOut += transform(surface_downsampled, posevec);
-  sensor_msgs::PointCloud2 msg = toRosMsg(cloudOut);
+  pcl::PointCloud<PointType> output;
+  output += transform(corner, posevec);
+  output += transform(surface, posevec);
+  sensor_msgs::PointCloud2 msg = toRosMsg(output);
   msg.header.stamp = timestamp;
   msg.header.frame_id = frame_id;
   publisher.publish(msg);
