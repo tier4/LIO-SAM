@@ -390,9 +390,6 @@ public:
       }
     }
 
-    const Eigen::Affine3d back = getTransformation(posevec);
-    const Eigen::Affine3d pose_increment = (front.inverse() * back);
-
     if (
       poses6dof.empty() ||
       isKeyframe(
@@ -428,6 +425,9 @@ public:
       increOdomAffine = getTransformation(posevec);
       pubLaserOdometryIncremental.publish(odometry);
     } else {
+      const Eigen::Affine3d back = getTransformation(posevec);
+      const Eigen::Affine3d pose_increment = (front.inverse() * back);
+
       increOdomAffine = increOdomAffine * pose_increment;
       Vector6d incre_pose = getPoseVec(increOdomAffine);
 
