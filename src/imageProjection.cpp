@@ -86,19 +86,18 @@ pcl::PointCloud<PointXYZIRT> convert(
   const SensorType & sensor)
 {
   if (sensor == SensorType::VELODYNE) {
-    return getPointCloud<PointXYZIRT>(cloud_msg);
+    return *getPointCloud<PointXYZIRT>(cloud_msg);
   }
 
   if (sensor == SensorType::OUSTER) {
     // Convert to Velodyne format
-    pcl::PointCloud<OusterPointXYZIRT> tmpOusterCloudIn =
-      getPointCloud<OusterPointXYZIRT>(cloud_msg);
+    const auto cloud = getPointCloud<OusterPointXYZIRT>(cloud_msg);
 
     pcl::PointCloud<PointXYZIRT> input_cloud;
-    input_cloud.points.resize(tmpOusterCloudIn.size());
-    input_cloud.is_dense = tmpOusterCloudIn.is_dense;
-    for (size_t i = 0; i < tmpOusterCloudIn.size(); i++) {
-      auto & src = tmpOusterCloudIn.points[i];
+    input_cloud.points.resize(cloud->size());
+    input_cloud.is_dense = cloud->is_dense;
+    for (size_t i = 0; i < cloud->size(); i++) {
+      auto & src = cloud->points[i];
       auto & dst = input_cloud.points[i];
       dst.x = src.x;
       dst.y = src.y;

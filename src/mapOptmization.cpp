@@ -404,10 +404,8 @@ public:
     // extract time stamp
     const ros::Time timestamp = msgIn->header.stamp;
 
-    pcl::PointCloud<PointType>::Ptr corner_cloud(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr surface_cloud(new pcl::PointCloud<PointType>());
-    *corner_cloud = getPointCloud<PointType>(msgIn->cloud_corner);
-    *surface_cloud = getPointCloud<PointType>(msgIn->cloud_surface);
+    pcl::PointCloud<PointType>::Ptr corner_cloud = getPointCloud<PointType>(msgIn->cloud_corner);
+    pcl::PointCloud<PointType>::Ptr surface_cloud = getPointCloud<PointType>(msgIn->cloud_surface);
 
     std::lock_guard<std::mutex> lock(mtx);
 

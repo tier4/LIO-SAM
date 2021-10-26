@@ -3,9 +3,9 @@
 #include <sensor_msgs/PointCloud2.h>
 
 template<typename T>
-pcl::PointCloud<T> getPointCloud(const sensor_msgs::PointCloud2 & roscloud)
+typename pcl::PointCloud<T>::Ptr getPointCloud(const sensor_msgs::PointCloud2 & roscloud)
 {
-  pcl::PointCloud<T> pclcloud;
-  pcl::fromROSMsg(roscloud, pclcloud);
+  typename pcl::PointCloud<T>::Ptr pclcloud(new pcl::PointCloud<T>());
+  pcl::fromROSMsg(roscloud, *pclcloud);
   return pclcloud;
 }

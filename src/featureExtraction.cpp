@@ -61,7 +61,7 @@ public:
 
     lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
 
-    const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed).points;
+    const Points<PointType>::type points = getPointCloud<PointType>(msgIn->cloud_deskewed)->points;
 
     for (unsigned int i = 5; i < points.size() - 5; i++) {
       label[i] = CurvatureLabel::kDefault;
