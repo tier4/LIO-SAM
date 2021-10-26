@@ -19,8 +19,8 @@ public:
     const int numberOfCores,
     const int edgeFeatureMinValidNum,
     const int surfFeatureMinValidNum,
-    const pcl::PointCloud<PointType> & corner_downsampled,
-    const pcl::PointCloud<PointType> & surface_downsampled,
+    const pcl::PointCloud<PointType>::Ptr & corner_downsampled,
+    const pcl::PointCloud<PointType>::Ptr & surface_downsampled,
     const pcl::PointCloud<PointType>::Ptr & corner_map_downsampled,
     const pcl::PointCloud<PointType>::Ptr & surface_map_downsampled)
   : N_SCAN(N_SCAN),
@@ -34,13 +34,13 @@ public:
     kdtreeSurfFromMap(KDTree<PointType>(surface_map_downsampled))
   {
     if (
-      static_cast<int>(corner_downsampled.size()) <= edgeFeatureMinValidNum ||
-      static_cast<int>(surface_downsampled.size()) <= surfFeatureMinValidNum)
+      static_cast<int>(corner_downsampled->size()) <= edgeFeatureMinValidNum ||
+      static_cast<int>(surface_downsampled->size()) <= surfFeatureMinValidNum)
     {
       throw std::runtime_error(
               fmt::format(
                 "Not enough features! Only %d edge and %d planar features available.",
-                corner_downsampled.size(), surface_downsampled.size()));
+                corner_downsampled->size(), surface_downsampled->size()));
     }
   }
 
@@ -51,8 +51,8 @@ private:
   const int N_SCAN;
   const int Horizon_SCAN;
   const int numberOfCores;
-  const pcl::PointCloud<PointType> corner_downsampled;
-  const pcl::PointCloud<PointType> surface_downsampled;
+  const pcl::PointCloud<PointType>::Ptr corner_downsampled;
+  const pcl::PointCloud<PointType>::Ptr surface_downsampled;
   const pcl::PointCloud<PointType>::Ptr corner_map_downsampled;
   const pcl::PointCloud<PointType>::Ptr surface_map_downsampled;
   const KDTree<PointType> kdtreeCornerFromMap;

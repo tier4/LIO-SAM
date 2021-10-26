@@ -156,8 +156,8 @@ gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
 
 void publishDownsampledCloud(
   const ros::Publisher & publisher,
-  const pcl::PointCloud<PointType> & corner,
-  const pcl::PointCloud<PointType> & surface,
+  const pcl::PointCloud<PointType>::Ptr & corner,
+  const pcl::PointCloud<PointType>::Ptr & surface,
   const std::string & frame_id, const ros::Time & timestamp,
   const Vector6d & posevec)
 {
@@ -167,8 +167,8 @@ void publishDownsampledCloud(
   }
 
   pcl::PointCloud<PointType> output;
-  output += transform(corner, posevec);
-  output += transform(surface, posevec);
+  output += transform(*corner, posevec);
+  output += transform(*surface, posevec);
   sensor_msgs::PointCloud2 msg = toRosMsg(output);
   msg.header.stamp = timestamp;
   msg.header.frame_id = frame_id;
@@ -427,8 +427,8 @@ public:
 
     lastImuTransformation = makeAffine(vector3ToEigen(msgIn->initialIMU));
 
-    pcl::PointCloud<PointType> corner = *downsample(corner_cloud, mappingCornerLeafSize);
-    pcl::PointCloud<PointType> surface = *downsample(surface_cloud, mappingSurfLeafSize);
+    pcl::PointCloud<PointType>::Ptr corner = downsample(corner_cloud, mappingCornerLeafSize);
+    pcl::PointCloud<PointType>::Ptr surface = downsample(surface_cloud, mappingSurfLeafSize);
 
     bool isDegenerate = false;
     if (!points3d->empty()) {
@@ -466,8 +466,8 @@ public:
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
-      corner_cloud_.push_back(corner);
-      surface_cloud_.push_back(surface);
+      corner_cloud_.push_back(*corner);
+      surface_cloud_.push_back(*surface);
 
       path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
     }

@@ -41,8 +41,8 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
   // corner optimization
   #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < corner_downsampled.size(); i++) {
-    const PointType point = corner_downsampled.at(i);
+  for (unsigned int i = 0; i < corner_downsampled->size(); i++) {
+    const PointType point = corner_downsampled->at(i);
     const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
     const PointType p = makePoint(map_point, point.intensity);
     const auto [indices, squared_distances] = kdtreeCornerFromMap.nearestKSearch(p, 5);
@@ -125,8 +125,8 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < surface_downsampled.size(); i++) {
-    const PointType point = surface_downsampled.at(i);
+  for (unsigned int i = 0; i < surface_downsampled->size(); i++) {
+    const PointType point = surface_downsampled->at(i);
     const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
     const PointType p = makePoint(map_point, point.intensity);
     const auto [indices, squared_distances] = kdtreeSurfFromMap.nearestKSearch(p, 5);
@@ -161,14 +161,14 @@ CloudOptimizer::run(const Vector6d & posevec) const
   pcl::PointCloud<PointType> coeffSel;
 
   // combine corner coeffs
-  for (unsigned int i = 0; i < corner_downsampled.size(); ++i) {
+  for (unsigned int i = 0; i < corner_downsampled->size(); ++i) {
     if (laserCloudOriCornerFlag[i]) {
       laserCloudOri.push_back(laserCloudOriCornerVec[i]);
       coeffSel.push_back(coeffSelCornerVec[i]);
     }
   }
   // combine surf coeffs
-  for (unsigned int i = 0; i < surface_downsampled.size(); ++i) {
+  for (unsigned int i = 0; i < surface_downsampled->size(); ++i) {
     if (laserCloudOriSurfFlag[i]) {
       laserCloudOri.push_back(laserCloudOriSurfVec[i]);
       coeffSel.push_back(coeffSelSurfVec[i]);
