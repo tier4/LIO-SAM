@@ -66,6 +66,11 @@ StampedPose makeStampedPose(const Vector6d & posevec, const double time)
   return makeStampedPose(posevec.head(3), posevec.tail(3), time);
 }
 
+Eigen::Vector3d getXYZ(const StampedPose & pose)
+{
+  return Eigen::Vector3d(pose.x, pose.y, pose.z);
+}
+
 tf::Transform makeTransform(const Vector6d & posevec)
 {
   return tf::Transform(
@@ -261,15 +266,16 @@ fuseMap(
   const std::vector<pcl::PointCloud<PointType>> & corner_cloud_,
   const std::vector<pcl::PointCloud<PointType>> & surface_cloud_,
   const pcl::PointCloud<PointType> & downsampled,
-  const pcl::PointCloud<PointType>::Ptr & points3d,
   const pcl::PointCloud<StampedPose> & poses6dof,
   const double radius)
 {
   pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
   pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
+  const Eigen::Vector3d latest = getXYZ(poses6dof.back());
+
   for (auto & pt : downsampled) {
-    const double distance = (getXYZ(pt) - getXYZ(points3d->back())).norm();
+    const double distance = (getXYZ(pt) - latest).norm();
     if (distance > radius) {
       continue;
     }
@@ -535,8 +541,7 @@ public:
     }
 
     const auto [corner, surface] = fuseMap(
-      corner_cloud_, surface_cloud_, downsampled,
-      points3d, poses6dof, radius
+      corner_cloud_, surface_cloud_, downsampled, poses6dof, radius
     );
     pcl::PointCloud<PointType>::Ptr corner_downsampled(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface_downsampled(new pcl::PointCloud<PointType>());
