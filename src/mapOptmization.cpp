@@ -394,8 +394,7 @@ public:
       poses6dof.empty() ||
       isKeyframe(
         makePosevec(poses6dof.back()), posevec,
-        surroundingkeyframeAddingAngleThreshold,
-        surroundingkeyframeAddingDistThreshold))
+        keyframe_angle_threshold, keyframe_distance_threshold))
     {
       // size can be used as index
       points3d->push_back(makePoint(posevec.tail(3), points3d->size()));

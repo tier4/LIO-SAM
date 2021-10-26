@@ -65,8 +65,8 @@ public:
   double mappingProcessInterval;
 
   // Surrounding map
-  float surroundingkeyframeAddingDistThreshold;
-  float surroundingkeyframeAddingAngleThreshold;
+  float keyframe_distance_threshold;
+  float keyframe_angle_threshold;
   float surroundingKeyframeDensity;
   float surroundingKeyframeSearchRadius;
 

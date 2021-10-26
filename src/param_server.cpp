@@ -65,12 +65,8 @@ ParamServer::ParamServer()
     "lio_sam/mappingProcessInterval", mappingProcessInterval,
     0.15);
 
-  nh.param<float>(
-    "lio_sam/surroundingkeyframeAddingDistThreshold",
-    surroundingkeyframeAddingDistThreshold, 1.0);
-  nh.param<float>(
-    "lio_sam/surroundingkeyframeAddingAngleThreshold",
-    surroundingkeyframeAddingAngleThreshold, 0.2);
+  nh.param<float>("lio_sam/keyframe_distance_threshold", keyframe_distance_threshold, 1.0);
+  nh.param<float>("lio_sam/keyframe_angle_threshold", keyframe_angle_threshold, 0.2);
   nh.param<float>(
     "lio_sam/surroundingKeyframeDensity",
     surroundingKeyframeDensity, 1.0);
