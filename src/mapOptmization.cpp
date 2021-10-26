@@ -1,4 +1,5 @@
 #include "comprehend.hpp"
+#include "downsample.hpp"
 #include "utility.h"
 #include "jacobian.h"
 #include "homogeneous.h"
@@ -346,7 +347,6 @@ public:
 
     pcl::PointCloud<PointType>::Ptr corner_cloud(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface_cloud(new pcl::PointCloud<PointType>());
-
     *corner_cloud = getPointCloud<PointType>(msgIn->cloud_corner);
     *surface_cloud = getPointCloud<PointType>(msgIn->cloud_surface);
 

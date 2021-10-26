@@ -1,3 +1,5 @@
+#include <pcl/filters/voxel_grid.h>
+
 #include "utility.h"
 #include "param_server.h"
 #include "lio_sam/cloud_info.h"

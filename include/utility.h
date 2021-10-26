@@ -25,7 +25,6 @@
 #include <pcl/registration/icp.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/filter.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -175,9 +174,6 @@ inline Eigen::MatrixXd rad2deg(const Eigen::MatrixXd & x)
 {
   return x * (180.0 / M_PI);
 }
-
-pcl::PointCloud < PointType > downsample(
-  const pcl::PointCloud < PointType > ::Ptr & input_cloud, const float leaf_size);
 
 template < typename T >
 pcl::KdTreeFLANN < T > makeKDTree(const typename pcl::PointCloud < T > ::Ptr & pointcloud) {
