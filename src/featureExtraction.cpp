@@ -6,12 +6,6 @@
 #include "param_server.h"
 #include "lio_sam/cloud_info.h"
 
-struct smoothness_t
-{
-  float value;
-  size_t ind;
-};
-
 class by_value
 {
 public:
