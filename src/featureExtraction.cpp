@@ -1,6 +1,7 @@
 #include <pcl/filters/voxel_grid.h>
 
 #include "message.hpp"
+#include "downsample.hpp"
 #include "utility.h"
 #include "param_server.h"
 #include "lio_sam/cloud_info.h"
@@ -214,16 +215,7 @@ public:
         }
       }
 
-      pcl::PointCloud<PointType> downsampled;
-
-      {
-        pcl::VoxelGrid<PointType> filter;
-        filter.setLeafSize(surface_leaf_size, surface_leaf_size, surface_leaf_size);
-        filter.setInputCloud(surfaceCloudScan);
-        filter.filter(downsampled);
-      }
-
-      surface += downsampled;
+      surface += *downsample(surfaceCloudScan, surface_leaf_size);
     }
 
     // save newly extracted features
