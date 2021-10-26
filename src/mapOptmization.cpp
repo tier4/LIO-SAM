@@ -371,10 +371,9 @@ public:
     pcl::PointCloud<PointType> corner_downsampled = downsample(corner_cloud, mappingCornerLeafSize);
     pcl::PointCloud<PointType> surface_downsampled = downsample(surface_cloud, mappingSurfLeafSize);
 
-    const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
-
     bool isDegenerate = false;
-    if (corner != nullptr && surface != nullptr) {
+    if (!points3d->empty()) {
+      const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
       pcl::PointCloud<PointType>::Ptr corner_map_downsampled(new pcl::PointCloud<PointType>());
       pcl::PointCloud<PointType>::Ptr surface_map_downsampled(new pcl::PointCloud<PointType>());
       *corner_map_downsampled = downsample(corner, mappingCornerLeafSize);
@@ -517,10 +516,6 @@ public:
     const ros::Time & timestamp,
     const pcl::PointCloud<StampedPose> & poses6dof) const
   {
-    if (points3d->empty()) {
-      return {nullptr, nullptr};
-    }
-
     const double radius = (double)surroundingKeyframeSearchRadius;
 
     const KDTree<PointType> kdtree(points3d);
@@ -552,9 +547,7 @@ public:
     const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
     const Vector6d & initial_posevec) const
   {
-    if (points3d->empty()) {
-      return {initial_posevec, false};
-    }
+    assert(!points3d->empty());
 
     auto [posevec, isDegenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
