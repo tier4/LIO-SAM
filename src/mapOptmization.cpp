@@ -291,6 +291,49 @@ fuseMap(
   return {corner, surface};
 }
 
+std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
+extractSurroundingKeyFrames(
+  const ros::Time & timestamp,
+  const pcl::PointCloud<PointType>::Ptr & points3d,
+  const pcl::PointCloud<StampedPose> & poses6dof,
+  const std::vector<pcl::PointCloud<PointType>> & corner_cloud_,
+  const std::vector<pcl::PointCloud<PointType>> & surface_cloud_,
+  const float radius,
+  const float keyframe_density,
+  const float corner_leaf_size,
+  const float surface_leaf_size)
+{
+  const KDTree<PointType> kdtree(points3d);
+
+  const auto r = kdtree.radiusSearch(points3d->back(), radius);
+  const std::vector<int> indices = std::get<0>(r);
+
+  const pcl::PointCloud<PointType>::Ptr poses = comprehend(*points3d, indices);
+
+  pcl::PointCloud<PointType> downsampled = downsample(poses, keyframe_density);
+  for (auto & pt : downsampled) {
+    const int index = std::get<0>(kdtree.closestPoint(pt));
+    pt.intensity = points3d->at(index).intensity;
+  }
+
+  // also extract some latest key frames in case the robot rotates in one position
+  for (int i = points3d->size() - 1; i >= 0; --i) {
+    if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
+      break;
+    }
+    downsampled.push_back(points3d->at(i));
+  }
+
+  const auto [corner, surface] = fuseMap(
+    corner_cloud_, surface_cloud_, downsampled, poses6dof, radius
+  );
+  pcl::PointCloud<PointType>::Ptr corner_downsampled(new pcl::PointCloud<PointType>());
+  pcl::PointCloud<PointType>::Ptr surface_downsampled(new pcl::PointCloud<PointType>());
+  *corner_downsampled = downsample(corner, corner_leaf_size);
+  *surface_downsampled = downsample(surface, surface_leaf_size);
+  return {corner_downsampled, surface_downsampled};
+}
+
 class mapOptimization : public ParamServer
 {
 public:
@@ -379,7 +422,11 @@ public:
 
     bool isDegenerate = false;
     if (!points3d->empty()) {
-      const auto [corner_map, surface_map] = extractSurroundingKeyFrames(timestamp, poses6dof);
+      const auto [corner_map, surface_map] = extractSurroundingKeyFrames(
+        timestamp, points3d, poses6dof, corner_cloud_, surface_cloud_,
+        surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
+        mappingCornerLeafSize, mappingSurfLeafSize
+      );
 
       try {
         const CloudOptimizer cloud_optimizer(
@@ -510,44 +557,6 @@ public:
 
       return;
     }
-  }
-
-  std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
-  extractSurroundingKeyFrames(
-    const ros::Time & timestamp,
-    const pcl::PointCloud<StampedPose> & poses6dof) const
-  {
-    const double radius = (double)surroundingKeyframeSearchRadius;
-
-    const KDTree<PointType> kdtree(points3d);
-
-    const auto r = kdtree.radiusSearch(points3d->back(), radius);
-    const std::vector<int> indices = std::get<0>(r);
-
-    const pcl::PointCloud<PointType>::Ptr poses = comprehend(*points3d, indices);
-
-    pcl::PointCloud<PointType> downsampled = downsample(poses, surroundingKeyframeDensity);
-    for (auto & pt : downsampled) {
-      const int index = std::get<0>(kdtree.closestPoint(pt));
-      pt.intensity = points3d->at(index).intensity;
-    }
-
-    // also extract some latest key frames in case the robot rotates in one position
-    for (int i = points3d->size() - 1; i >= 0; --i) {
-      if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
-        break;
-      }
-      downsampled.push_back(points3d->at(i));
-    }
-
-    const auto [corner, surface] = fuseMap(
-      corner_cloud_, surface_cloud_, downsampled, poses6dof, radius
-    );
-    pcl::PointCloud<PointType>::Ptr corner_downsampled(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr surface_downsampled(new pcl::PointCloud<PointType>());
-    *corner_downsampled = downsample(corner, mappingCornerLeafSize);
-    *surface_downsampled = downsample(surface, mappingSurfLeafSize);
-    return {corner_downsampled, surface_downsampled};
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
