@@ -545,25 +545,18 @@ public:
     const pcl::PointCloud<PointType>::Ptr & corner_map_downsampled,
     const pcl::PointCloud<PointType>::Ptr & surface_map_downsampled,
     const bool imuAvailable, const geometry_msgs::Vector3 & initialIMU,
-    const Vector6d & initial_posevec) const
+    const Vector6d & initial_posevec) const try
   {
     if (points3d->empty()) {
       return {initial_posevec, false};
     }
 
-    if (
-      edgeFeatureMinValidNum >= static_cast<int>(corner_downsampled.size()) ||
-      surfFeatureMinValidNum >= static_cast<int>(surface_downsampled.size()))
-    {
-      ROS_WARN(
-        "Not enough features! Only %d edge and %d planar features available.",
-        corner_downsampled.size(), surface_downsampled.size());
-      return {initial_posevec, false};
-    }
-
     const CloudOptimizer cloud_optimizer(
       N_SCAN, Horizon_SCAN, numberOfCores,
-      corner_downsampled, surface_downsampled, corner_map_downsampled, surface_map_downsampled);
+      edgeFeatureMinValidNum, surfFeatureMinValidNum,
+      corner_downsampled, surface_downsampled,
+      corner_map_downsampled, surface_map_downsampled);
+
     auto [posevec, isDegenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
     if (imuAvailable && std::abs(initialIMU.y) < 1.4) {
@@ -575,6 +568,9 @@ public:
     posevec(1) = std::clamp(posevec(1), -rotation_tolerance, rotation_tolerance);
     posevec(5) = std::clamp(posevec(5), -z_tolerance, z_tolerance);
     return {posevec, isDegenerate};
+  } catch (const std::exception & e) {
+    ROS_WARN(e.what());
+    return {initial_posevec, false};
   }
 };
 

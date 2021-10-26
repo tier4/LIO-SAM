@@ -2,7 +2,10 @@
 #define CLOUD_OPTIMIZER_HPP_
 
 #include <tuple>
+
+#include <fmt/format.h>
 #include <pcl/point_cloud.h>
+
 #include "point_type.hpp"
 #include "matrix_type.h"
 #include "kdtree.hpp"
@@ -14,6 +17,8 @@ public:
     const int N_SCAN,
     const int Horizon_SCAN,
     const int numberOfCores,
+    const int edgeFeatureMinValidNum,
+    const int surfFeatureMinValidNum,
     const pcl::PointCloud<PointType> & corner_downsampled,
     const pcl::PointCloud<PointType> & surface_downsampled,
     const pcl::PointCloud<PointType>::Ptr & corner_map_downsampled,
@@ -28,6 +33,15 @@ public:
     kdtreeCornerFromMap(KDTree<PointType>(corner_map_downsampled)),
     kdtreeSurfFromMap(KDTree<PointType>(surface_map_downsampled))
   {
+    if (
+      edgeFeatureMinValidNum >= static_cast<int>(corner_downsampled.size()) ||
+      surfFeatureMinValidNum >= static_cast<int>(surface_downsampled.size()))
+    {
+      throw std::runtime_error(
+              fmt::format(
+                "Not enough features! Only %d edge and %d planar features available.",
+                corner_downsampled.size(), surface_downsampled.size()));
+    }
   }
 
   std::tuple<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>

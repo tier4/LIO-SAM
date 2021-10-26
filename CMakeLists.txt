@@ -25,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenMP REQUIRED)
 find_package(PCL REQUIRED QUIET)
 find_package(GTSAM REQUIRED QUIET)
+find_package(fmt REQUIRED)
 
 add_message_files(
   DIRECTORY msg
@@ -78,7 +79,7 @@ add_library(util SHARED
 )
 
 target_compile_options(util PRIVATE ${OpenMP_CXX_FLAGS})
-target_link_libraries(util ${catkin_LIBRARIES} gtsam)
+target_link_libraries(util ${catkin_LIBRARIES} gtsam fmt::fmt)
 
 ###########
 ## Build ##
