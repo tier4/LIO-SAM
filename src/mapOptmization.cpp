@@ -373,18 +373,14 @@ public:
 
     bool isDegenerate = false;
     if (!points3d->empty()) {
-      const auto [corner, surface] = extractSurroundingKeyFrames(timestamp, poses6dof);
-      pcl::PointCloud<PointType>::Ptr corner_map_downsampled(new pcl::PointCloud<PointType>());
-      pcl::PointCloud<PointType>::Ptr surface_map_downsampled(new pcl::PointCloud<PointType>());
-      *corner_map_downsampled = downsample(corner, mappingCornerLeafSize);
-      *surface_map_downsampled = downsample(surface, mappingSurfLeafSize);
+      const auto [corner_map, surface_map] = extractSurroundingKeyFrames(timestamp, poses6dof);
 
       try {
         const CloudOptimizer cloud_optimizer(
           N_SCAN, Horizon_SCAN, numberOfCores,
           edgeFeatureMinValidNum, surfFeatureMinValidNum,
           corner_downsampled, surface_downsampled,
-          corner_map_downsampled, surface_map_downsampled);
+          corner_map, surface_map);
 
         std::tie(posevec, isDegenerate) = scan2MapOptimization(
           cloud_optimizer, msgIn->imuAvailable, msgIn->initialIMU, posevec
@@ -539,7 +535,15 @@ public:
       downsampled.push_back(points3d->at(i));
     }
 
-    return fuseMap(corner_cloud_, surface_cloud_, downsampled, points3d, poses6dof, radius);
+    const auto [corner, surface] = fuseMap(
+      corner_cloud_, surface_cloud_, downsampled,
+      points3d, poses6dof, radius
+    );
+    pcl::PointCloud<PointType>::Ptr corner_downsampled(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr surface_downsampled(new pcl::PointCloud<PointType>());
+    *corner_downsampled = downsample(corner, mappingCornerLeafSize);
+    *surface_downsampled = downsample(surface, mappingSurfLeafSize);
+    return {corner_downsampled, surface_downsampled};
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
