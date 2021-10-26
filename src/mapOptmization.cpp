@@ -261,43 +261,55 @@ void updatePath(
   }
 }
 
-std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
-fuseMap(
-  const std::vector<pcl::PointCloud<PointType>> & corner_cloud_,
-  const std::vector<pcl::PointCloud<PointType>> & surface_cloud_,
-  const pcl::PointCloud<PointType> & downsampled,
-  const pcl::PointCloud<StampedPose> & poses6dof,
-  const double radius)
+class MapFusion
 {
-  pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
-  pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
-
-  const Eigen::Vector3d latest = getXYZ(poses6dof.back());
-
-  for (auto & pt : downsampled) {
-    const double distance = (getXYZ(pt) - latest).norm();
-    if (distance > radius) {
-      continue;
-    }
-
-    const int index = static_cast<int>(pt.intensity);
-
-    // transformed cloud not available
-    const Vector6d v = makePosevec(poses6dof.at(index));
-    *corner += transform(corner_cloud_[index], v);
-    *surface += transform(surface_cloud_[index], v);
+public:
+  MapFusion(
+    const std::vector<pcl::PointCloud<PointType>> & corner_cloud,
+    const std::vector<pcl::PointCloud<PointType>> & surface_cloud)
+  : corner_cloud_(corner_cloud), surface_cloud_(surface_cloud)
+  {
   }
 
-  return {corner, surface};
-}
+  std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
+  operator()(
+    const pcl::PointCloud<PointType> & downsampled,
+    const pcl::PointCloud<StampedPose> & poses6dof,
+    const double radius) const
+  {
+    pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
+
+    const Eigen::Vector3d latest = getXYZ(poses6dof.back());
+
+    for (auto & pt : downsampled) {
+      const double distance = (getXYZ(pt) - latest).norm();
+      if (distance > radius) {
+        continue;
+      }
+
+      const int index = static_cast<int>(pt.intensity);
+
+      // transformed cloud not available
+      const Vector6d v = makePosevec(poses6dof.at(index));
+      *corner += transform(corner_cloud_[index], v);
+      *surface += transform(surface_cloud_[index], v);
+    }
+
+    return {corner, surface};
+  }
+
+private:
+  const std::vector<pcl::PointCloud<PointType>> corner_cloud_;
+  const std::vector<pcl::PointCloud<PointType>> surface_cloud_;
+};
 
 std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
 extractSurroundingKeyFrames(
   const ros::Time & timestamp,
   const pcl::PointCloud<PointType>::Ptr & points3d,
   const pcl::PointCloud<StampedPose> & poses6dof,
-  const std::vector<pcl::PointCloud<PointType>> & corner_cloud_,
-  const std::vector<pcl::PointCloud<PointType>> & surface_cloud_,
+  const MapFusion & map_fusion,
   const float radius,
   const float keyframe_density,
   const float corner_leaf_size,
@@ -324,9 +336,8 @@ extractSurroundingKeyFrames(
     downsampled.push_back(points3d->at(i));
   }
 
-  const auto [corner, surface] = fuseMap(
-    corner_cloud_, surface_cloud_, downsampled, poses6dof, radius
-  );
+  const auto [corner, surface] = map_fusion(downsampled, poses6dof, radius);
+
   pcl::PointCloud<PointType>::Ptr corner_downsampled(new pcl::PointCloud<PointType>());
   pcl::PointCloud<PointType>::Ptr surface_downsampled(new pcl::PointCloud<PointType>());
   *corner_downsampled = downsample(corner, corner_leaf_size);
@@ -423,7 +434,8 @@ public:
     bool isDegenerate = false;
     if (!points3d->empty()) {
       const auto [corner_map, surface_map] = extractSurroundingKeyFrames(
-        timestamp, points3d, poses6dof, corner_cloud_, surface_cloud_,
+        timestamp, points3d, poses6dof,
+        MapFusion(corner_cloud_, surface_cloud_),
         surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
         mappingCornerLeafSize, mappingSurfLeafSize
       );
