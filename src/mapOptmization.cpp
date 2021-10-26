@@ -274,7 +274,7 @@ public:
 
   std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
   operator()(
-    const pcl::PointCloud<PointType>::Ptr & downsampled,
+    const pcl::PointCloud<PointType>::Ptr & points,
     const pcl::PointCloud<StampedPose> & poses6dof,
     const double radius) const
   {
@@ -283,15 +283,14 @@ public:
 
     const Eigen::Vector3d latest = getXYZ(poses6dof.back());
 
-    for (auto & pt : *downsampled) {
-      const double distance = (getXYZ(pt) - latest).norm();
+    for (auto & p : *points) {
+      const double distance = (getXYZ(p) - latest).norm();
       if (distance > radius) {
         continue;
       }
 
-      const int index = static_cast<int>(pt.intensity);
+      const int index = static_cast<int>(p.intensity);
 
-      // transformed cloud not available
       const Vector6d v = makePosevec(poses6dof.at(index));
       *corner += transform(corner_cloud_[index], v);
       *surface += transform(surface_cloud_[index], v);
@@ -321,12 +320,11 @@ extractSurroundingKeyFrames(
   const auto r = kdtree.radiusSearch(points3d->back(), radius);
   const std::vector<int> indices = std::get<0>(r);
 
-  const pcl::PointCloud<PointType>::Ptr poses = comprehend(*points3d, indices);
-
-  pcl::PointCloud<PointType>::Ptr downsampled = downsample(poses, keyframe_density);
-  for (auto & pt : *downsampled) {
-    const int index = std::get<0>(kdtree.closestPoint(pt));
-    pt.intensity = points3d->at(index).intensity;
+  auto points = downsample(comprehend(*points3d, indices), keyframe_density);
+  for (auto & p : *points) {
+    const int index = std::get<0>(kdtree.closestPoint(p));
+    const auto closest = points3d->at(index);
+    p.intensity = closest.intensity;
   }
 
   // also extract some latest key frames in case the robot rotates in one position
@@ -334,10 +332,10 @@ extractSurroundingKeyFrames(
     if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
       break;
     }
-    downsampled->push_back(points3d->at(i));
+    points->push_back(points3d->at(i));
   }
 
-  const auto [corner, surface] = map_fusion(downsampled, poses6dof, radius);
+  const auto [corner, surface] = map_fusion(points, poses6dof, radius);
   return {
     downsample(corner, corner_leaf_size),
     downsample(surface, surface_leaf_size)
