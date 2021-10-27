@@ -151,10 +151,10 @@ Eigen::Vector3d calcRotation(
 }
 
 Eigen::Vector3d calcPosition(
-  const Eigen::Vector3d & odomInc,
+  const Eigen::Vector3d & imu_incremental_odometry,
   const double scan_start_time, const double scan_end_time, const double time)
 {
-  return odomInc * time / (scan_end_time - scan_start_time);
+  return imu_incremental_odometry * time / (scan_end_time - scan_start_time);
 }
 
 int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
@@ -215,7 +215,7 @@ public:
     const pcl::PointCloud<PointXYZIRT> & input_points,
     const double scan_start_time,
     const double scan_end_time,
-    const Eigen::Vector3d & odomInc) const
+    const Eigen::Vector3d & imu_incremental_odometry) const
   {
     const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
 
@@ -259,7 +259,7 @@ public:
 
       const Eigen::Affine3d transform = makeAffine(
         calcRotation(scan_start_time, angles, imu_timestamps, p.time),
-        calcPosition(odomInc, scan_start_time, scan_end_time, p.time)
+        calcPosition(imu_incremental_odometry, scan_start_time, scan_end_time, p.time)
       );
 
       if (is_first_point) {
@@ -282,7 +282,7 @@ private:
   const int Horizon_SCAN;
 };
 
-bool odometryIsAvailable(
+bool imuOdometryAvailable(
   const std::deque<nav_msgs::Odometry> & odomQueue,
   const double scan_start_time,
   const double scan_end_time)
@@ -300,7 +300,7 @@ bool doOdomDeskew(
   return static_cast<int>(round(covariance0[0])) == static_cast<int>(round(covariance1[0]));
 }
 
-Eigen::Vector3d findInitialImu(
+Eigen::Vector3d findImuOrientation(
   const std::deque<sensor_msgs::Imu> & imu_buffer,
   const double scan_start_time)
 {
@@ -464,18 +464,20 @@ public:
       dropBefore(scan_start_time - 0.01, imu_buffer);
     }
 
-    cloudInfo.imu_orientation = eigenToVector3(findInitialImu(imu_buffer, scan_start_time));
+    cloudInfo.imu_orientation = eigenToVector3(findImuOrientation(imu_buffer, scan_start_time));
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);
       dropBefore(scan_start_time - 0.01, odomQueue);
     }
 
-    const bool odomAvailable = odometryIsAvailable(odomQueue, scan_start_time, scan_end_time);
+    const bool imu_odometry_available = imuOdometryAvailable(
+      odomQueue, scan_start_time, scan_end_time
+    );
 
-    Eigen::Vector3d odomInc = Eigen::Vector3d::Zero();
+    Eigen::Vector3d imu_incremental_odometry = Eigen::Vector3d::Zero();
 
-    if (odomAvailable) {
+    if (imu_odometry_available) {
       const nav_msgs::Odometry msg0 = odomNextOf(odomQueue, scan_start_time);
       const nav_msgs::Odometry msg1 = odomNextOf(odomQueue, scan_end_time);
 
@@ -484,15 +486,15 @@ public:
       if (doOdomDeskew(msg0.pose.covariance, msg1.pose.covariance)) {
         const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);
         const Eigen::Affine3d p1 = poseToAffine(msg1.pose.pose);
-        odomInc = (p0.inverse() * p1).translation();
+        imu_incremental_odometry = (p0.inverse() * p1).translation();
       }
     }
 
     const auto [range_matrix, output_points, imu_available] = projection_.compute(
-      imu_buffer, input_cloud, scan_start_time, scan_end_time, odomInc);
+      imu_buffer, input_cloud, scan_start_time, scan_end_time, imu_incremental_odometry);
 
-    cloudInfo.odomAvailable = odomAvailable;
-    cloudInfo.imuAvailable = imu_available;
+    cloudInfo.imu_odometry_available = imu_odometry_available;
+    cloudInfo.imu_orientation_available = imu_available;
 
     pcl::PointCloud<PointType> extractedCloud;
     int count = 0;

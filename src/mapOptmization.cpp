@@ -415,7 +415,7 @@ public:
     const Eigen::Affine3d front = getTransformation(posevec);
 
     updateInitialGuess(
-      msgIn->odomAvailable, msgIn->imuAvailable,
+      msgIn->imu_odometry_available, msgIn->imu_orientation_available,
       msgIn->imu_orientation, msgIn->scan_start_imu_pose
     );
 
@@ -439,7 +439,7 @@ public:
           corner_map, surface_map);
 
         std::tie(posevec, isDegenerate) = scan2MapOptimization(
-          cloud_optimizer, msgIn->imuAvailable, msgIn->imu_orientation, posevec
+          cloud_optimizer, msgIn->imu_orientation_available, msgIn->imu_orientation, posevec
         );
       } catch (const std::exception & e) {
         ROS_WARN(e.what());
@@ -486,7 +486,7 @@ public:
       incremental_odometry = incremental_odometry.value() * pose_increment;
       Vector6d incre_pose = getPoseVec(incremental_odometry.value());
 
-      if (msgIn->imuAvailable && std::abs(msgIn->imu_orientation.y) < 1.4) {
+      if (msgIn->imu_orientation_available && std::abs(msgIn->imu_orientation.y) < 1.4) {
         const double imuWeight = 0.1;
         incre_pose(0) = interpolateRoll(incre_pose(0), msgIn->imu_orientation.x, imuWeight);
         incre_pose(1) = interpolatePitch(incre_pose(1), msgIn->imu_orientation.y, imuWeight);
@@ -515,7 +515,7 @@ public:
   }
 
   void updateInitialGuess(
-    const bool odomAvailable, const bool imuAvailable,
+    const bool imu_odometry_available, const bool imu_orientation_available,
     const geometry_msgs::Vector3 & imu_orientation,
     const geometry_msgs::Pose & scan_start_imu_pose)
   {
@@ -526,7 +526,7 @@ public:
     }
 
     // use imu pre-integration estimation for pose guess
-    if (odomAvailable && last_imu_pose.has_value()) {
+    if (imu_odometry_available && last_imu_pose.has_value()) {
       const Eigen::Affine3d curr = poseToAffine(scan_start_imu_pose);
       const Eigen::Affine3d last = poseToAffine(last_imu_pose.value());
       const Eigen::Affine3d incre = last.inverse() * curr;
@@ -537,12 +537,12 @@ public:
       return;
     }
 
-    if (odomAvailable) {
+    if (imu_odometry_available) {
       last_imu_pose = scan_start_imu_pose;
     }
 
     // use imu incremental estimation for pose guess (only rotation)
-    if (imuAvailable && last_imu_orientation.has_value()) {
+    if (imu_orientation_available && last_imu_orientation.has_value()) {
       const Eigen::Affine3d curr = makeAffine(vector3ToEigen(imu_orientation));
       const Eigen::Affine3d last = makeAffine(vector3ToEigen(last_imu_orientation.value()));
       const Eigen::Affine3d incre = last.inverse() * curr;
@@ -553,21 +553,21 @@ public:
       return;
     }
 
-    if (imuAvailable) {
+    if (imu_orientation_available) {
       last_imu_orientation = imu_orientation;
     }
   }
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
     const CloudOptimizer & cloud_optimizer,
-    const bool imuAvailable, const geometry_msgs::Vector3 & imu_orientation,
+    const bool imu_orientation_available, const geometry_msgs::Vector3 & imu_orientation,
     const Vector6d & initial_posevec) const
   {
     assert(!points3d->empty());
 
     auto [posevec, isDegenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
-    if (imuAvailable && std::abs(imu_orientation.y) < 1.4) {
+    if (imu_orientation_available && std::abs(imu_orientation.y) < 1.4) {
       posevec(0) = interpolateRoll(posevec(0), imu_orientation.x, imuRPYWeight);
       posevec(1) = interpolatePitch(posevec(1), imu_orientation.y, imuRPYWeight);
     }

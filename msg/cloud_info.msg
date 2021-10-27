@@ -7,8 +7,8 @@ int32[] endRingIndex
 int32[]  pointColInd # point column index in range image
 float32[] pointRange # point range
 
-int64 imuAvailable
-int64 odomAvailable
+int64 imu_orientation_available
+int64 imu_odometry_available
 
 # Attitude for LOAM initialization
 geometry_msgs/Vector3 imu_orientation

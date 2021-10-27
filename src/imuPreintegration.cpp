@@ -349,8 +349,8 @@ public:
   gtsam::imuBias::ConstantBias prev_odom_bias_;
 
   bool doneFirstOpt = false;
-  double lastImuT_imu = -1;
-  double lastImuT_opt = -1;
+  double last_imu_time = -1;
+  double last_imu_time_opt = -1;
 
   gtsam::ISAM2 optimizer;
 
@@ -407,7 +407,7 @@ public:
         if (timeInSec(imuQueOpt.front().header) >= currentCorrectionTime - delta_t) {
           break;
         }
-        lastImuT_opt = timeInSec(imuQueOpt.front().header);
+        last_imu_time_opt = timeInSec(imuQueOpt.front().header);
         imuQueOpt.pop_front();
       }
 
@@ -432,11 +432,11 @@ public:
     while (!imuQueOpt.empty()) {
       // pop and integrate imu data that is between two optimizations
       sensor_msgs::Imu & front = imuQueOpt.front();
-      const double imuTime = timeInSec(front.header);
-      if (imuTime >= currentCorrectionTime - delta_t) {
+      const double imu_time = timeInSec(front.header);
+      if (imu_time >= currentCorrectionTime - delta_t) {
         break;
       }
-      const double dt = (lastImuT_opt < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_opt);
+      const double dt = (last_imu_time_opt < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time_opt);
 
       imuIntegratorOpt_.integrateMeasurement(
         vector3ToEigen(front.linear_acceleration),
@@ -444,7 +444,7 @@ public:
         dt
       );
 
-      lastImuT_opt = imuTime;
+      last_imu_time_opt = imu_time;
       imuQueOpt.pop_front();
     }
 
@@ -491,7 +491,7 @@ public:
     imuIntegratorOpt_.resetIntegrationAndSetBias(prevBias_);
     // check optimization
     if (failureDetection(prevVel_, prevBias_)) {
-      lastImuT_imu = -1;
+      last_imu_time = -1;
       doneFirstOpt = false;
       systemInitialized = false;
       return;
@@ -501,11 +501,11 @@ public:
     prev_odom_ = prevState_;
     prev_odom_bias_ = prevBias_;
     // first pop imu message older than current correction data
-    double lastImuQT = -1;
+    double last_imu_time = -1;
     while (!imuQueImu.empty() &&
       timeInSec(imuQueImu.front().header) < currentCorrectionTime - delta_t)
     {
-      lastImuQT = timeInSec(imuQueImu.front().header);
+      last_imu_time = timeInSec(imuQueImu.front().header);
       imuQueImu.pop_front();
     }
     // repropogate
@@ -515,14 +515,14 @@ public:
       // integrate imu message from the beginning of this optimization
       for (unsigned int i = 0; i < imuQueImu.size(); ++i) {
         const sensor_msgs::Imu & msg = imuQueImu[i];
-        const double imuTime = timeInSec(msg.header);
-        const double dt = (lastImuQT < 0) ? (1.0 / 500.0) : (imuTime - lastImuQT);
+        const double imu_time = timeInSec(msg.header);
+        const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
         imuIntegratorImu_.integrateMeasurement(
           vector3ToEigen(msg.linear_acceleration),
           vector3ToEigen(msg.angular_velocity),
           dt
         );
-        lastImuQT = imuTime;
+        last_imu_time = imu_time;
       }
     }
 
@@ -551,9 +551,9 @@ public:
       return;
     }
 
-    const double imuTime = timeInSec(imu.header);
-    const double dt = (lastImuT_imu < 0) ? (1.0 / 500.0) : (imuTime - lastImuT_imu);
-    lastImuT_imu = imuTime;
+    const double imu_time = timeInSec(imu.header);
+    const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
+    last_imu_time = imu_time;
 
     const Eigen::Vector3d linear_acceleration = vector3ToEigen(imu.linear_acceleration);
     const Eigen::Vector3d angular_velocity = vector3ToEigen(imu.angular_velocity);
@@ -569,11 +569,11 @@ public:
     odometry.child_frame_id = "odom_imu";
 
     // transform imu pose to ldiar
-    const gtsam::Pose3 lidar_pose = current_imu.pose().compose(imu2Lidar);
+    const gtsam::Pose3 pose = current_imu.pose().compose(imu2Lidar);
 
     odometry.pose.pose = makePose(
-      eigenToQuaternion(lidar_pose.rotation().toQuaternion()),
-      eigenToPoint(lidar_pose.translation())
+      eigenToQuaternion(pose.rotation().toQuaternion()),
+      eigenToPoint(pose.translation())
     );
 
     odometry.twist.twist = makeTwist(
