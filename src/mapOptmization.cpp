@@ -371,9 +371,7 @@ public:
 
   std::optional<geometry_msgs::Pose> last_imu_pose;
 
-  bool lastIncreOdomPubFlag;
-
-  Eigen::Affine3d incremental_odometry; // incremental odometry in affine
+  std::optional<Eigen::Affine3d> incremental_odometry;  // incremental odometry in affine
   double last_time_sec;
 
   mapOptimization()
@@ -391,7 +389,7 @@ public:
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<PointType>()),
     last_imu_pose(std::nullopt),
-    lastIncreOdomPubFlag(false),
+    incremental_odometry(std::nullopt),
     last_time_sec(-1.0)
   {
   }
@@ -479,16 +477,15 @@ public:
       tf::StampedTransform(makeTransform(posevec), timestamp, odometryFrame, "lidar_link"));
 
     // Publish odometry for ROS (incremental)
-    if (!lastIncreOdomPubFlag) {
-      lastIncreOdomPubFlag = true;
+    if (!incremental_odometry.has_value()) {
       incremental_odometry = getTransformation(posevec);
       pubLaserOdometryIncremental.publish(odometry);
     } else {
       const Eigen::Affine3d back = getTransformation(posevec);
       const Eigen::Affine3d pose_increment = (front.inverse() * back);
 
-      incremental_odometry = incremental_odometry * pose_increment;
-      Vector6d incre_pose = getPoseVec(incremental_odometry);
+      incremental_odometry = incremental_odometry.value() * pose_increment;
+      Vector6d incre_pose = getPoseVec(incremental_odometry.value());
 
       if (msgIn->imuAvailable && std::abs(msgIn->imu_orientation.y) < 1.4) {
         const double imuWeight = 0.1;
