@@ -339,6 +339,31 @@ void imuPreIntegration(
   }
 }
 
+void imuIntegration(
+  const double odom_time, const double delta_t, double & last_imu_time_opt,
+  gtsam::PreintegratedImuMeasurements & imuIntegratorOpt_,
+  std::deque<sensor_msgs::Imu> & imuQueOpt)
+{
+  while (!imuQueOpt.empty()) {
+    // pop and integrate imu data that is between two optimizations
+    const sensor_msgs::Imu & front = imuQueOpt.front();
+    const double imu_time = timeInSec(front.header);
+    if (imu_time >= odom_time - delta_t) {
+      break;
+    }
+    const double dt = (last_imu_time_opt < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time_opt);
+
+    imuIntegratorOpt_.integrateMeasurement(
+      vector3ToEigen(front.linear_acceleration),
+      vector3ToEigen(front.angular_velocity),
+      dt
+    );
+
+    last_imu_time_opt = imu_time;
+    imuQueOpt.pop_front();
+  }
+}
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -447,24 +472,7 @@ public:
     }
 
     // 1. integrate imu data and optimize
-    while (!imuQueOpt.empty()) {
-      // pop and integrate imu data that is between two optimizations
-      const sensor_msgs::Imu & front = imuQueOpt.front();
-      const double imu_time = timeInSec(front.header);
-      if (imu_time >= odom_time - delta_t) {
-        break;
-      }
-      const double dt = (last_imu_time_opt < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time_opt);
-
-      imuIntegratorOpt_.integrateMeasurement(
-        vector3ToEigen(front.linear_acceleration),
-        vector3ToEigen(front.angular_velocity),
-        dt
-      );
-
-      last_imu_time_opt = imu_time;
-      imuQueOpt.pop_front();
-    }
+    imuIntegration(odom_time, delta_t, last_imu_time_opt, imuIntegratorOpt_, imuQueOpt);
 
     // add imu factor to graph
     const gtsam::PreintegratedImuMeasurements & preint_imu =
