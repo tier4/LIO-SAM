@@ -369,8 +369,7 @@ public:
 
   Eigen::Vector3d last_imu_orientation;
 
-  geometry_msgs::Pose last_imu_pose;
-  bool last_imu_pose_available;
+  std::optional<geometry_msgs::Pose> last_imu_pose;
 
   bool lastIncreOdomPubFlag;
 
@@ -391,7 +390,7 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<PointType>()),
-    last_imu_pose_available(false),
+    last_imu_pose(std::nullopt),
     lastIncreOdomPubFlag(false),
     last_time_sec(-1.0)
   {
@@ -534,9 +533,9 @@ public:
     }
 
     // use imu pre-integration estimation for pose guess
-    if (odomAvailable && last_imu_pose_available) {
+    if (odomAvailable && last_imu_pose.has_value()) {
       const Eigen::Affine3d curr = poseToAffine(scan_start_imu_pose);
-      const Eigen::Affine3d last = poseToAffine(last_imu_pose);
+      const Eigen::Affine3d last = poseToAffine(last_imu_pose.value());
       const Eigen::Affine3d incre = last.inverse() * curr;
 
       last_imu_pose = scan_start_imu_pose;
@@ -548,7 +547,6 @@ public:
 
     if (odomAvailable) {
       last_imu_pose = scan_start_imu_pose;
-      last_imu_pose_available = true;
     }
 
     // use imu incremental estimation for pose guess (only rotation)
