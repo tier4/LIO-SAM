@@ -213,11 +213,9 @@ public:
     broadcaster.sendTransform(
       odom_to_baselink.get(laserOdometry.pose.pose, odom_msg->header.stamp));
 
-    const auto imuPath = imu_path.make(
-      imuOdomQueue.back().header.stamp, laserOdometry.pose.pose, lidarOdomTime);
-
     if (pubImuPath.getNumSubscribers() != 0) {
-      pubImuPath.publish(imuPath);
+      pubImuPath.publish(
+        imu_path.make(imuOdomQueue.back().header.stamp, laserOdometry.pose.pose, lidarOdomTime));
     }
   }
 };
