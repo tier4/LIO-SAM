@@ -274,7 +274,7 @@ void resetOptimizer(
   optimizer.update(graph, values);
 }
 
-gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & lidar_pose)
+gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3 & lidar_pose)
 {
   const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
 
@@ -286,7 +286,7 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & 
   // 1e-2 ~ 1e-3 seems to be good
   const Diagonal::shared_ptr bias_noise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
 
-  gtsam::Pose3 pose = lidar_pose.compose(lidar2Imu);
+  gtsam::Pose3 pose = lidar_pose.compose(lidar_to_imu);
   graph.add(gtsam::PriorFactor<gtsam::Pose3>(X(0), pose, pose_noise));
 
   gtsam::Vector3 velocity = gtsam::Vector3(0, 0, 0);
@@ -317,7 +317,7 @@ public:
   const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
 
-  const gtsam::Vector noiseModelBetweenBias;
+  const gtsam::Vector between_noise_bias_;
 
   gtsam::PreintegratedImuMeasurements imuIntegratorImu_;
   gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
@@ -325,7 +325,7 @@ public:
   bool systemInitialized;
 
   std::deque<sensor_msgs::Imu> imuQueOpt;
-  std::deque<sensor_msgs::Imu> imuQueImu;
+  std::deque<sensor_msgs::Imu> imu_queue;
 
   gtsam::Pose3 prev_pose_;
   gtsam::Vector3 prev_velocity_;
@@ -348,7 +348,7 @@ public:
   gtsam::Pose3 imu2Lidar = gtsam::Pose3(
     gtsam::Rot3(1, 0, 0, 0),
     gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()));
-  gtsam::Pose3 lidar2Imu = gtsam::Pose3(
+  gtsam::Pose3 lidar_to_imu = gtsam::Pose3(
     gtsam::Rot3(1, 0, 0, 0),
     gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
 
@@ -364,7 +364,7 @@ public:
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic + "_incremental", 2000)),
     integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
     prior_imu_bias_(Eigen::Matrix<double, 1, 6>::Zero()),
-    noiseModelBetweenBias(
+    between_noise_bias_(
       (Vector6d() <<
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
@@ -378,7 +378,7 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    const double currentCorrectionTime = timeInSec(odom_msg->header);
+    const double odom_time = timeInSec(odom_msg->header);
 
     // make sure we have imu data to integrate
     if (imuQueOpt.empty()) {
@@ -391,14 +391,14 @@ public:
     if (!systemInitialized) {
       // pop old IMU message
       while (!imuQueOpt.empty()) {
-        if (timeInSec(imuQueOpt.front().header) >= currentCorrectionTime - delta_t) {
+        if (timeInSec(imuQueOpt.front().header) >= odom_time - delta_t) {
           break;
         }
         last_imu_time_opt = timeInSec(imuQueOpt.front().header);
         imuQueOpt.pop_front();
       }
 
-      optimizer = initOptimizer(lidar2Imu, lidar_pose);
+      optimizer = initOptimizer(lidar_to_imu, lidar_pose);
 
       imuIntegratorImu_.resetIntegrationAndSetBias(prev_bias_);
       imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
@@ -418,9 +418,9 @@ public:
     // 1. integrate imu data and optimize
     while (!imuQueOpt.empty()) {
       // pop and integrate imu data that is between two optimizations
-      sensor_msgs::Imu & front = imuQueOpt.front();
+      const sensor_msgs::Imu & front = imuQueOpt.front();
       const double imu_time = timeInSec(front.header);
-      if (imu_time >= currentCorrectionTime - delta_t) {
+      if (imu_time >= odom_time - delta_t) {
         break;
       }
       const double dt = (last_imu_time_opt < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time_opt);
@@ -446,7 +446,7 @@ public:
     graph.add(
       gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
         B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
-        Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * noiseModelBetweenBias))
+        Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * between_noise_bias_))
     );
 
     const Diagonal::shared_ptr correctionNoise(
@@ -456,18 +456,21 @@ public:
 
     const auto noise = odom_msg->pose.covariance[0] == 1 ? correctionNoise2 : correctionNoise;
     // add pose factor
-    const gtsam::Pose3 curr_imu_pose = lidar_pose.compose(lidar2Imu);
+    const gtsam::Pose3 curr_imu_pose = lidar_pose.compose(lidar_to_imu);
     const gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curr_imu_pose, noise);
     graph.add(pose_factor);
     // insert predicted values
     const gtsam::NavState state = imuIntegratorOpt_.predict(prevState_, prev_bias_);
+
     gtsam::Values values;
     values.insert(X(key), state.pose());
     values.insert(V(key), state.v());
     values.insert(B(key), prev_bias_);
+
     // optimize
     optimizer.update(graph, values);
     optimizer.update();
+
     // Overwrite the beginning of the preintegration for the next step.
     const gtsam::Values result = optimizer.calculateEstimate();
     prev_pose_ = result.at<gtsam::Pose3>(X(key));
@@ -487,21 +490,23 @@ public:
     // 2. after optiization, re-propagate imu odometry preintegration
     prev_odom_ = prevState_;
     prev_odom_bias_ = prev_bias_;
+
     // first pop imu message older than current correction data
     double last_imu_time = -1;
-    while (!imuQueImu.empty() &&
-      timeInSec(imuQueImu.front().header) < currentCorrectionTime - delta_t)
+    while (
+      !imu_queue.empty() &&
+      timeInSec(imu_queue.front().header) < odom_time - delta_t)
     {
-      last_imu_time = timeInSec(imuQueImu.front().header);
-      imuQueImu.pop_front();
+      last_imu_time = timeInSec(imu_queue.front().header);
+      imu_queue.pop_front();
     }
     // repropogate
-    if (!imuQueImu.empty()) {
+    if (!imu_queue.empty()) {
       // reset bias use the newly optimized bias
       imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
       // integrate imu message from the beginning of this optimization
-      for (unsigned int i = 0; i < imuQueImu.size(); ++i) {
-        const sensor_msgs::Imu & msg = imuQueImu[i];
+      for (unsigned int i = 0; i < imu_queue.size(); ++i) {
+        const sensor_msgs::Imu & msg = imu_queue[i];
         const double imu_time = timeInSec(msg.header);
         const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
         imuIntegratorImu_.integrateMeasurement(
@@ -532,7 +537,7 @@ public:
       } ();
 
     imuQueOpt.push_back(imu);
-    imuQueImu.push_back(imu);
+    imu_queue.push_back(imu);
 
     if (!doneFirstOpt) {
       return;
