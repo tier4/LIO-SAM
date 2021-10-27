@@ -373,7 +373,7 @@ public:
 
   bool lastIncreOdomPubFlag;
 
-  Eigen::Affine3d increOdomAffine; // incremental odometry in affine
+  Eigen::Affine3d incremental_odometry; // incremental odometry in affine
   double last_time_sec;
 
   mapOptimization()
@@ -481,14 +481,14 @@ public:
     // Publish odometry for ROS (incremental)
     if (!lastIncreOdomPubFlag) {
       lastIncreOdomPubFlag = true;
-      increOdomAffine = getTransformation(posevec);
+      incremental_odometry = getTransformation(posevec);
       pubLaserOdometryIncremental.publish(odometry);
     } else {
       const Eigen::Affine3d back = getTransformation(posevec);
       const Eigen::Affine3d pose_increment = (front.inverse() * back);
 
-      increOdomAffine = increOdomAffine * pose_increment;
-      Vector6d incre_pose = getPoseVec(increOdomAffine);
+      incremental_odometry = incremental_odometry * pose_increment;
+      Vector6d incre_pose = getPoseVec(incremental_odometry);
 
       if (msgIn->imuAvailable && std::abs(msgIn->imu_orientation.y) < 1.4) {
         const double imuWeight = 0.1;
