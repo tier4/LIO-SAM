@@ -305,6 +305,40 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
   return optimizer;
 }
 
+void imuPreIntegration(
+  const double odom_time, const double delta_t,
+  const gtsam::imuBias::ConstantBias & prev_odom_bias_,
+  gtsam::PreintegratedImuMeasurements & imuIntegratorImu_,
+  std::deque<sensor_msgs::Imu> & imu_queue)
+{
+  // first pop imu message older than current correction data
+  double last_imu_time = -1;
+  while (
+    !imu_queue.empty() &&
+    timeInSec(imu_queue.front().header) < odom_time - delta_t)
+  {
+    last_imu_time = timeInSec(imu_queue.front().header);
+    imu_queue.pop_front();
+  }
+  // repropogate
+  if (!imu_queue.empty()) {
+    // reset bias use the newly optimized bias
+    imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
+    // integrate imu message from the beginning of this optimization
+    for (unsigned int i = 0; i < imu_queue.size(); ++i) {
+      const sensor_msgs::Imu & msg = imu_queue[i];
+      const double imu_time = timeInSec(msg.header);
+      const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
+      imuIntegratorImu_.integrateMeasurement(
+        vector3ToEigen(msg.linear_acceleration),
+        vector3ToEigen(msg.angular_velocity),
+        dt
+      );
+      last_imu_time = imu_time;
+    }
+  }
+}
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -491,32 +525,7 @@ public:
     prev_odom_ = prevState_;
     prev_odom_bias_ = prev_bias_;
 
-    // first pop imu message older than current correction data
-    double last_imu_time = -1;
-    while (
-      !imu_queue.empty() &&
-      timeInSec(imu_queue.front().header) < odom_time - delta_t)
-    {
-      last_imu_time = timeInSec(imu_queue.front().header);
-      imu_queue.pop_front();
-    }
-    // repropogate
-    if (!imu_queue.empty()) {
-      // reset bias use the newly optimized bias
-      imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
-      // integrate imu message from the beginning of this optimization
-      for (unsigned int i = 0; i < imu_queue.size(); ++i) {
-        const sensor_msgs::Imu & msg = imu_queue[i];
-        const double imu_time = timeInSec(msg.header);
-        const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
-        imuIntegratorImu_.integrateMeasurement(
-          vector3ToEigen(msg.linear_acceleration),
-          vector3ToEigen(msg.angular_velocity),
-          dt
-        );
-        last_imu_time = imu_time;
-      }
-    }
+    imuPreIntegration(odom_time, delta_t, prev_odom_bias_, imuIntegratorImu_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
