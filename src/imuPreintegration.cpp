@@ -244,9 +244,9 @@ bool failureDetection(
 using Diagonal = gtsam::noiseModel::Diagonal;
 
 void resetOptimizer(
-  const gtsam::Pose3 & prevPose_,
-  const gtsam::Vector3 & prevVel_,
-  const gtsam::imuBias::ConstantBias & prevBias_,
+  const gtsam::Pose3 & pose,
+  const gtsam::Vector3 & velocity,
+  const gtsam::imuBias::ConstantBias & bias,
   const int key,
   gtsam::ISAM2 & optimizer)
 {
@@ -262,59 +262,58 @@ void resetOptimizer(
   const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
   optimizer = gtsam::ISAM2(params);
 
-  gtsam::NonlinearFactorGraph newGraphFactors;
-  gtsam::NonlinearFactorGraph graphFactors = newGraphFactors;
+  gtsam::NonlinearFactorGraph graph;
 
   // add pose
-  gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, updatedPoseNoise);
-  graphFactors.add(priorPose);
+  gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), pose, updatedPoseNoise);
+  graph.add(priorPose);
   // add velocity
-  gtsam::PriorFactor<gtsam::Vector3> priorVel(V(0), prevVel_, updatedVelNoise);
-  graphFactors.add(priorVel);
+  gtsam::PriorFactor<gtsam::Vector3> priorVel(V(0), velocity, updatedVelNoise);
+  graph.add(priorVel);
   // add bias
-  gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, updatedBiasNoise);
-  graphFactors.add(priorBias);
+  gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), bias, updatedBiasNoise);
+  graph.add(priorBias);
   // add values
-  gtsam::Values graphValues;
-  graphValues.insert(X(0), prevPose_);
-  graphValues.insert(V(0), prevVel_);
-  graphValues.insert(B(0), prevBias_);
+  gtsam::Values values;
+  values.insert(X(0), pose);
+  values.insert(V(0), velocity);
+  values.insert(B(0), bias);
   // optimize once
-  optimizer.update(graphFactors, graphValues);
+  optimizer.update(graph, values);
 }
 
 gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & lidar_pose)
 {
   const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
 
-  gtsam::NonlinearFactorGraph graphFactors;
+  gtsam::NonlinearFactorGraph graph;
 
-  const Diagonal::shared_ptr priorPoseNoise(Diagonal::Sigmas(1e-2 * Vector6d::Ones()));
+  const Diagonal::shared_ptr pose_noise(Diagonal::Sigmas(1e-2 * Vector6d::Ones()));
   // rad,rad,rad, m, m, m (m/s)
-  const Diagonal::shared_ptr priorVelNoise(gtsam::noiseModel::Isotropic::Sigma(3, 1e4));
+  const Diagonal::shared_ptr velocity_noise(gtsam::noiseModel::Isotropic::Sigma(3, 1e4));
   // 1e-2 ~ 1e-3 seems to be good
-  const Diagonal::shared_ptr priorBiasNoise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+  const Diagonal::shared_ptr bias_noise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
 
   // initial pose
-  gtsam::Pose3 prevPose_ = lidar_pose.compose(lidar2Imu);
-  gtsam::PriorFactor<gtsam::Pose3> priorPose(X(0), prevPose_, priorPoseNoise);
-  graphFactors.add(priorPose);
+  gtsam::Pose3 pose = lidar_pose.compose(lidar2Imu);
+  gtsam::PriorFactor<gtsam::Pose3> prior_pose(X(0), pose, pose_noise);
+  graph.add(prior_pose);
   // initial velocity
-  gtsam::Vector3 prevVel_ = gtsam::Vector3(0, 0, 0);
-  gtsam::PriorFactor<gtsam::Vector3> priorVel(V(0), prevVel_, priorVelNoise);
-  graphFactors.add(priorVel);
+  gtsam::Vector3 velocity = gtsam::Vector3(0, 0, 0);
+  gtsam::PriorFactor<gtsam::Vector3> prior_velocity(V(0), velocity, velocity_noise);
+  graph.add(prior_velocity);
   // initial bias
-  gtsam::imuBias::ConstantBias prevBias_ = gtsam::imuBias::ConstantBias();
-  gtsam::PriorFactor<gtsam::imuBias::ConstantBias> priorBias(B(0), prevBias_, priorBiasNoise);
-  graphFactors.add(priorBias);
+  gtsam::imuBias::ConstantBias bias = gtsam::imuBias::ConstantBias();
+  gtsam::PriorFactor<gtsam::imuBias::ConstantBias> prior_bias(B(0), bias, bias_noise);
+  graph.add(prior_bias);
   // add values
-  gtsam::Values graphValues;
-  graphValues.insert(X(0), prevPose_);
-  graphValues.insert(V(0), prevVel_);
-  graphValues.insert(B(0), prevBias_);
+  gtsam::Values values;
+  values.insert(X(0), pose);
+  values.insert(V(0), velocity);
+  values.insert(B(0), bias);
   // optimize once
   gtsam::ISAM2 optimizer = gtsam::ISAM2(params);
-  optimizer.update(graphFactors, graphValues);
+  optimizer.update(graph, values);
   return optimizer;
 }
 
@@ -340,10 +339,10 @@ public:
   std::deque<sensor_msgs::Imu> imuQueOpt;
   std::deque<sensor_msgs::Imu> imuQueImu;
 
-  gtsam::Pose3 prevPose_;
-  gtsam::Vector3 prevVel_;
+  gtsam::Pose3 prev_pose_;
+  gtsam::Vector3 prev_velocity_;
   gtsam::NavState prevState_;
-  gtsam::imuBias::ConstantBias prevBias_;
+  gtsam::imuBias::ConstantBias prev_bias_;
 
   gtsam::NavState prev_odom_;
   gtsam::imuBias::ConstantBias prev_odom_bias_;
@@ -413,8 +412,8 @@ public:
 
       optimizer = initOptimizer(lidar2Imu, lidar_pose);
 
-      imuIntegratorImu_.resetIntegrationAndSetBias(prevBias_);
-      imuIntegratorOpt_.resetIntegrationAndSetBias(prevBias_);
+      imuIntegratorImu_.resetIntegrationAndSetBias(prev_bias_);
+      imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
 
       key = 1;
       systemInitialized = true;
@@ -423,7 +422,7 @@ public:
 
     // reset graph for speed
     if (key == 100) {
-      resetOptimizer(prevPose_, prevVel_, prevBias_, key, optimizer);
+      resetOptimizer(prev_pose_, prev_velocity_, prev_bias_, key, optimizer);
 
       key = 1;
     }
@@ -452,11 +451,11 @@ public:
     const gtsam::PreintegratedImuMeasurements & preint_imu =
       dynamic_cast<const gtsam::PreintegratedImuMeasurements &>(imuIntegratorOpt_);
     gtsam::ImuFactor imu_factor(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), preint_imu);
-    gtsam::NonlinearFactorGraph graphFactors;
+    gtsam::NonlinearFactorGraph graph;
 
-    graphFactors.add(imu_factor);
+    graph.add(imu_factor);
     // add imu bias between factor
-    graphFactors.add(
+    graph.add(
       gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
         B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
         Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * noiseModelBetweenBias))
@@ -471,26 +470,26 @@ public:
     // add pose factor
     const gtsam::Pose3 curr_imu_pose = lidar_pose.compose(lidar2Imu);
     const gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curr_imu_pose, noise);
-    graphFactors.add(pose_factor);
+    graph.add(pose_factor);
     // insert predicted values
-    const gtsam::NavState state = imuIntegratorOpt_.predict(prevState_, prevBias_);
-    gtsam::Values graphValues;
-    graphValues.insert(X(key), state.pose());
-    graphValues.insert(V(key), state.v());
-    graphValues.insert(B(key), prevBias_);
+    const gtsam::NavState state = imuIntegratorOpt_.predict(prevState_, prev_bias_);
+    gtsam::Values values;
+    values.insert(X(key), state.pose());
+    values.insert(V(key), state.v());
+    values.insert(B(key), prev_bias_);
     // optimize
-    optimizer.update(graphFactors, graphValues);
+    optimizer.update(graph, values);
     optimizer.update();
     // Overwrite the beginning of the preintegration for the next step.
     const gtsam::Values result = optimizer.calculateEstimate();
-    prevPose_ = result.at<gtsam::Pose3>(X(key));
-    prevVel_ = result.at<gtsam::Vector3>(V(key));
-    prevState_ = gtsam::NavState(prevPose_, prevVel_);
-    prevBias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
+    prev_pose_ = result.at<gtsam::Pose3>(X(key));
+    prev_velocity_ = result.at<gtsam::Vector3>(V(key));
+    prevState_ = gtsam::NavState(prev_pose_, prev_velocity_);
+    prev_bias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
     // Reset the optimization preintegration object.
-    imuIntegratorOpt_.resetIntegrationAndSetBias(prevBias_);
+    imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
     // check optimization
-    if (failureDetection(prevVel_, prevBias_)) {
+    if (failureDetection(prev_velocity_, prev_bias_)) {
       last_imu_time = -1;
       doneFirstOpt = false;
       systemInitialized = false;
@@ -499,7 +498,7 @@ public:
 
     // 2. after optiization, re-propagate imu odometry preintegration
     prev_odom_ = prevState_;
-    prev_odom_bias_ = prevBias_;
+    prev_odom_bias_ = prev_bias_;
     // first pop imu message older than current correction data
     double last_imu_time = -1;
     while (!imuQueImu.empty() &&
