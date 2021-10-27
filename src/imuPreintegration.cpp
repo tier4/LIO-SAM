@@ -363,11 +363,8 @@ public:
 
   gtsam::Pose3 prev_pose_;
   gtsam::Vector3 prev_velocity_;
-  gtsam::NavState prevState_;
+  gtsam::NavState prev_state_;
   gtsam::imuBias::ConstantBias prev_bias_;
-
-  gtsam::NavState prev_odom_;
-  gtsam::imuBias::ConstantBias prev_odom_bias_;
 
   bool doneFirstOpt = false;
   double last_imu_time = -1;
@@ -494,7 +491,7 @@ public:
     const gtsam::PriorFactor<gtsam::Pose3> pose_factor(X(key), curr_imu_pose, noise);
     graph.add(pose_factor);
     // insert predicted values
-    const gtsam::NavState state = imuIntegratorOpt_.predict(prevState_, prev_bias_);
+    const gtsam::NavState state = imuIntegratorOpt_.predict(prev_state_, prev_bias_);
 
     gtsam::Values values;
     values.insert(X(key), state.pose());
@@ -509,7 +506,7 @@ public:
     const gtsam::Values result = optimizer.calculateEstimate();
     prev_pose_ = result.at<gtsam::Pose3>(X(key));
     prev_velocity_ = result.at<gtsam::Vector3>(V(key));
-    prevState_ = gtsam::NavState(prev_pose_, prev_velocity_);
+    prev_state_ = gtsam::NavState(prev_pose_, prev_velocity_);
     prev_bias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
     // Reset the optimization preintegration object.
     imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
@@ -522,10 +519,7 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    prev_odom_ = prevState_;
-    prev_odom_bias_ = prev_bias_;
-
-    imuPreIntegration(odom_time, delta_t, prev_odom_bias_, imuIntegratorImu_, imu_queue);
+    imuPreIntegration(odom_time, delta_t, prev_bias_, imuIntegratorImu_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
@@ -561,7 +555,7 @@ public:
     imuIntegratorImu_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
 
     // predict odometry
-    const gtsam::NavState current_imu = imuIntegratorImu_.predict(prev_odom_, prev_odom_bias_);
+    const gtsam::NavState current_imu = imuIntegratorImu_.predict(prev_state_, prev_bias_);
 
     // publish odometry
     nav_msgs::Odometry odometry;
@@ -578,7 +572,7 @@ public:
     );
 
     odometry.twist.twist = makeTwist(
-      eigenToVector3(angular_velocity + prev_odom_bias_.gyroscope()),
+      eigenToVector3(angular_velocity + prev_bias_.gyroscope()),
       eigenToVector3(current_imu.velocity())
     );
     pubImuOdometry.publish(odometry);
