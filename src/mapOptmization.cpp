@@ -370,7 +370,7 @@ public:
   Eigen::Vector3d last_imu_orientation;
 
   geometry_msgs::Pose last_imu_pose;
-  bool lastImuPreTransAvailable;
+  bool last_imu_pose_available;
 
   bool lastIncreOdomPubFlag;
 
@@ -391,7 +391,7 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<PointType>()),
-    lastImuPreTransAvailable(false),
+    last_imu_pose_available(false),
     lastIncreOdomPubFlag(false),
     last_time_sec(-1.0)
   {
@@ -527,41 +527,37 @@ public:
   {
     // initialization
     if (points3d->empty()) {
-      const Eigen::Vector3d rpy = vector3ToEigen(imu_orientation);
-
-      posevec = initPosevec(rpy, useImuHeadingInitialization);
+      posevec = initPosevec(vector3ToEigen(imu_orientation), useImuHeadingInitialization);
 
       // save imu before return;
       return;
     }
 
     // use imu pre-integration estimation for pose guess
-    if (odomAvailable && lastImuPreTransAvailable) {
-      const Eigen::Affine3d back = poseToAffine(scan_start_imu_pose);
+    if (odomAvailable && last_imu_pose_available) {
+      const Eigen::Affine3d curr = poseToAffine(scan_start_imu_pose);
       const Eigen::Affine3d last = poseToAffine(last_imu_pose);
-      const Eigen::Affine3d incre = last.inverse() * back;
+      const Eigen::Affine3d incre = last.inverse() * curr;
 
       last_imu_pose = scan_start_imu_pose;
 
-      const Eigen::Affine3d tobe = getTransformation(posevec);
-      posevec = getPoseVec(tobe * incre);
+      posevec = getPoseVec(getTransformation(posevec) * incre);
 
       return;
     }
 
     if (odomAvailable) {
       last_imu_pose = scan_start_imu_pose;
-      lastImuPreTransAvailable = true;
+      last_imu_pose_available = true;
     }
 
     // use imu incremental estimation for pose guess (only rotation)
     if (imuAvailable) {
-      const Eigen::Vector3d rpy = vector3ToEigen(imu_orientation);
-      const Eigen::Affine3d back = makeAffine(rpy);
-      const Eigen::Affine3d incre = makeAffine(last_imu_orientation).inverse() * back;
-      const Eigen::Affine3d tobe = getTransformation(posevec);
+      const Eigen::Affine3d curr = makeAffine(vector3ToEigen(imu_orientation));
+      const Eigen::Affine3d last = makeAffine(last_imu_orientation);
+      const Eigen::Affine3d incre = last.inverse() * curr;
 
-      posevec = getPoseVec(tobe * incre);
+      posevec = getPoseVec(getTransformation(posevec) * incre);
 
       return;
     }
