@@ -476,9 +476,8 @@ public:
 
     gtsam::NonlinearFactorGraph graph;
 
-    const gtsam::PreintegratedImuMeasurements & preint_imu =
-      dynamic_cast<const gtsam::PreintegratedImuMeasurements &>(imuIntegratorOpt_);
-    graph.add(gtsam::ImuFactor(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), preint_imu));
+    graph.add(
+      gtsam::ImuFactor(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), imuIntegratorOpt_));
 
     graph.add(
       gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
