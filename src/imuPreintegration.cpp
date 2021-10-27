@@ -294,24 +294,20 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar2Imu, const gtsam::Pose3 & 
   // 1e-2 ~ 1e-3 seems to be good
   const Diagonal::shared_ptr bias_noise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
 
-  // initial pose
   gtsam::Pose3 pose = lidar_pose.compose(lidar2Imu);
-  gtsam::PriorFactor<gtsam::Pose3> prior_pose(X(0), pose, pose_noise);
-  graph.add(prior_pose);
-  // initial velocity
+  graph.add(gtsam::PriorFactor<gtsam::Pose3>(X(0), pose, pose_noise));
+
   gtsam::Vector3 velocity = gtsam::Vector3(0, 0, 0);
-  gtsam::PriorFactor<gtsam::Vector3> prior_velocity(V(0), velocity, velocity_noise);
-  graph.add(prior_velocity);
-  // initial bias
+  graph.add(gtsam::PriorFactor<gtsam::Vector3>(V(0), velocity, velocity_noise));
+
   gtsam::imuBias::ConstantBias bias = gtsam::imuBias::ConstantBias();
-  gtsam::PriorFactor<gtsam::imuBias::ConstantBias> prior_bias(B(0), bias, bias_noise);
-  graph.add(prior_bias);
-  // add values
+  graph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(B(0), bias, bias_noise));
+
   gtsam::Values values;
   values.insert(X(0), pose);
   values.insert(V(0), velocity);
   values.insert(B(0), bias);
-  // optimize once
+
   gtsam::ISAM2 optimizer = gtsam::ISAM2(params);
   optimizer.update(graph, values);
   return optimizer;
