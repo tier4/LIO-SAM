@@ -322,13 +322,8 @@ void imuPreIntegration(
 {
   // first pop imu message older than current correction data
   double last_imu_time = -1;
-  while (
-    !imu_queue.empty() &&
-    timeInSec(imu_queue.front().header) < odom_time - delta_t)
-  {
-    last_imu_time = timeInSec(imu_queue.front().header);
-    imu_queue.pop_front();
-  }
+  popOldMessages(odom_time - delta_t, last_imu_time, imu_queue);
+
   // repropogate
   if (!imu_queue.empty()) {
     // reset bias use the newly optimized bias
