@@ -264,13 +264,13 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
   // 1e-2 ~ 1e-3 seems to be good
   const Diagonal::shared_ptr bias_noise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
 
-  gtsam::Pose3 pose = lidar_pose.compose(lidar_to_imu);
+  const gtsam::Pose3 pose = lidar_pose.compose(lidar_to_imu);
   graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(0), pose, pose_noise));
 
-  gtsam::Vector3 velocity = gtsam::Vector3(0, 0, 0);
+  const gtsam::Vector3 velocity = gtsam::Vector3(0, 0, 0);
   graph.add(gtsam::PriorFactor<gtsam::Vector3>(V(0), velocity, velocity_noise));
 
-  gtsam::imuBias::ConstantBias bias = gtsam::imuBias::ConstantBias();
+  const gtsam::imuBias::ConstantBias bias = gtsam::imuBias::ConstantBias();
   graph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(B(0), bias, bias_noise));
 
   gtsam::Values values;
@@ -389,7 +389,7 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic + "_incremental", 2000)),
     integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
-    prior_imu_bias_(Eigen::Matrix<double, 1, 6>::Zero()),
+    prior_imu_bias_(Vector6d::Zero()),
     between_noise_bias_(
       (Vector6d() <<
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
