@@ -338,6 +338,14 @@ void imuIntegration(
   }
 }
 
+Diagonal::shared_ptr getCovariance(const bool is_degenerate)
+{
+  if (is_degenerate) {
+    return Diagonal::Sigmas(Vector6d::Ones());
+  }
+  return Diagonal::Sigmas((Vector6d() << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished());
+}
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -446,12 +454,8 @@ public:
         Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * between_noise_bias_))
     );
 
-    const Diagonal::shared_ptr correctionNoise(
-      Diagonal::Sigmas((Vector6d() << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished())
-    );
-    const Diagonal::shared_ptr correctionNoise2(Diagonal::Sigmas(Vector6d::Ones()));
     const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
-    const auto noise = is_degenerate ? correctionNoise2 : correctionNoise;
+    const auto noise = getCovariance(is_degenerate);
     graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
     // insert predicted values
     const gtsam::NavState state = imuIntegratorOpt_.predict(prev_state_, prev_bias_);
