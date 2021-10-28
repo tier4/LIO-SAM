@@ -315,14 +315,14 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
 }
 
 void imuPreIntegration(
-  const double odom_time, const double delta_t,
+  const double time_threshold,
   const gtsam::imuBias::ConstantBias & prev_odom_bias_,
   gtsam::PreintegratedImuMeasurements & imuIntegratorImu_,
   std::deque<sensor_msgs::Imu> & imu_queue)
 {
   // first pop imu message older than current correction data
   double last_imu_time = -1;
-  popOldMessages(odom_time - delta_t, last_imu_time, imu_queue);
+  popOldMessages(time_threshold, last_imu_time, imu_queue);
 
   // repropogate
   if (imu_queue.empty()) {
@@ -518,7 +518,7 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    imuPreIntegration(odom_time, delta_t, prev_bias_, imuIntegratorImu_, imu_queue);
+    imuPreIntegration(odom_time - delta_t, prev_bias_, imuIntegratorImu_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
