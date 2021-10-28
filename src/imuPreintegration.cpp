@@ -384,7 +384,7 @@ public:
 
   int key = 1;
 
-  IMUConverter imu_converter_;
+  const IMUConverter imu_converter_;
 
   IMUPreintegration()
   : subImu(nh.subscribe<sensor_msgs::Imu>(
