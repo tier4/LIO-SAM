@@ -286,7 +286,7 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
 void imuPreIntegration(
   const double time_threshold,
   const gtsam::imuBias::ConstantBias & prev_odom_bias_,
-  gtsam::PreintegratedImuMeasurements & imuIntegratorImu_,
+  gtsam::PreintegratedImuMeasurements & integrator,
   std::deque<sensor_msgs::Imu> & imu_queue)
 {
   // first pop imu message older than current correction data
@@ -299,13 +299,13 @@ void imuPreIntegration(
   }
 
   // reset bias use the newly optimized bias
-  imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
+  integrator.resetIntegrationAndSetBias(prev_odom_bias_);
   // integrate imu message from the beginning of this optimization
   for (unsigned int i = 0; i < imu_queue.size(); ++i) {
     const sensor_msgs::Imu & msg = imu_queue[i];
     const double imu_time = timeInSec(msg.header);
     const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
-    imuIntegratorImu_.integrateMeasurement(
+    integrator.integrateMeasurement(
       vector3ToEigen(msg.linear_acceleration),
       vector3ToEigen(msg.angular_velocity),
       dt
@@ -350,7 +350,7 @@ public:
 
   const gtsam::Vector between_noise_bias_;
 
-  gtsam::PreintegratedImuMeasurements imuIntegratorImu_;
+  gtsam::PreintegratedImuMeasurements integrator_;
   gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
 
   bool systemInitialized;
@@ -394,7 +394,7 @@ public:
       (Vector6d() <<
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
-    imuIntegratorImu_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
+    integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     imuIntegratorOpt_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     systemInitialized(false)
   {
@@ -420,7 +420,7 @@ public:
 
       optimizer = initOptimizer(lidar_to_imu, lidar_pose);
 
-      imuIntegratorImu_.resetIntegrationAndSetBias(prev_bias_);
+      integrator_.resetIntegrationAndSetBias(prev_bias_);
       imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
 
       key = 1;
@@ -478,7 +478,7 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    imuPreIntegration(odom_time - delta_t, prev_bias_, imuIntegratorImu_, imu_queue);
+    imuPreIntegration(odom_time - delta_t, prev_bias_, integrator_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
@@ -511,10 +511,10 @@ public:
 
     const Eigen::Vector3d linear_acceleration = vector3ToEigen(imu.linear_acceleration);
     const Eigen::Vector3d angular_velocity = vector3ToEigen(imu.angular_velocity);
-    imuIntegratorImu_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
+    integrator_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
 
     // predict odometry
-    const gtsam::NavState current_imu = imuIntegratorImu_.predict(prev_state_, prev_bias_);
+    const gtsam::NavState current_imu = integrator_.predict(prev_state_, prev_bias_);
 
     // publish odometry
     nav_msgs::Odometry odometry;
@@ -537,7 +537,6 @@ public:
     pubImuOdometry.publish(odometry);
   }
 };
-
 
 int main(int argc, char ** argv)
 {
