@@ -305,34 +305,36 @@ void imuPreIntegration(
     const sensor_msgs::Imu & msg = imu_queue[i];
     const double imu_time = timeInSec(msg.header);
     const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
+
     integrator.integrateMeasurement(
       vector3ToEigen(msg.linear_acceleration),
       vector3ToEigen(msg.angular_velocity),
       dt
     );
+
     last_imu_time = imu_time;
   }
 }
 
 void imuIntegration(
-  const double time_threshold, double & last_imu_time_opt,
-  gtsam::PreintegratedImuMeasurements & imuIntegratorOpt_,
-  std::deque<sensor_msgs::Imu> & imuQueOpt)
+  const double time_threshold, double & last_imu_time,
+  gtsam::PreintegratedImuMeasurements & integrator,
+  std::deque<sensor_msgs::Imu> & imu_queue)
 {
-  while (!imuQueOpt.empty() && timeInSec(imuQueOpt.front().header) < time_threshold) {
+  while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < time_threshold) {
     // pop and integrate imu data that is between two optimizations
-    const sensor_msgs::Imu & front = imuQueOpt.front();
+    const sensor_msgs::Imu & front = imu_queue.front();
     const double imu_time = timeInSec(front.header);
-    const double dt = (last_imu_time_opt < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time_opt);
+    const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
 
-    imuIntegratorOpt_.integrateMeasurement(
+    integrator.integrateMeasurement(
       vector3ToEigen(front.linear_acceleration),
       vector3ToEigen(front.angular_velocity),
       dt
     );
 
-    last_imu_time_opt = imu_time;
-    imuQueOpt.pop_front();
+    last_imu_time = imu_time;
+    imu_queue.pop_front();
   }
 }
 
