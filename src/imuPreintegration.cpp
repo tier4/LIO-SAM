@@ -358,8 +358,6 @@ public:
   std::deque<sensor_msgs::Imu> imuQueOpt;
   std::deque<sensor_msgs::Imu> imu_queue;
 
-  gtsam::Pose3 prev_pose_;
-  gtsam::Vector3 prev_velocity_;
   gtsam::NavState prev_state_;
   gtsam::imuBias::ConstantBias prev_bias_;
 
@@ -465,14 +463,14 @@ public:
 
     // Overwrite the beginning of the preintegration for the next step.
     const gtsam::Values result = optimizer.calculateEstimate();
-    prev_pose_ = result.at<gtsam::Pose3>(P(key));
-    prev_velocity_ = result.at<gtsam::Vector3>(V(key));
-    prev_state_ = gtsam::NavState(prev_pose_, prev_velocity_);
+    const gtsam::Pose3 pose = result.at<gtsam::Pose3>(P(key));
+    const gtsam::Vector3 velocity = result.at<gtsam::Vector3>(V(key));
+    prev_state_ = gtsam::NavState(pose, velocity);
     prev_bias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
     // Reset the optimization preintegration object.
     imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
     // check optimization
-    if (failureDetection(prev_velocity_, prev_bias_)) {
+    if (failureDetection(velocity, prev_bias_)) {
       last_imu_time = -1;
       doneFirstOpt = false;
       systemInitialized = false;
