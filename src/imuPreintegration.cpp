@@ -345,6 +345,9 @@ public:
   const ros::Subscriber subOdometry;
   const ros::Publisher pubImuOdometry;
 
+  const gtsam::Pose3 imu_to_lidar;
+  const gtsam::Pose3 lidar_to_imu;
+
   const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
 
@@ -371,13 +374,6 @@ public:
 
   int key = 1;
 
-  gtsam::Pose3 imu2Lidar = gtsam::Pose3(
-    gtsam::Rot3(1, 0, 0, 0),
-    gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()));
-  gtsam::Pose3 lidar_to_imu = gtsam::Pose3(
-    gtsam::Rot3(1, 0, 0, 0),
-    gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()));
-
   IMUConverter imu_converter_;
 
   IMUPreintegration()
@@ -388,6 +384,12 @@ public:
         "lio_sam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler,
         this, ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic + "_incremental", 2000)),
+    imu_to_lidar(gtsam::Pose3(
+        gtsam::Rot3(1, 0, 0, 0),
+        gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()))),
+    lidar_to_imu(gtsam::Pose3(
+        gtsam::Rot3(1, 0, 0, 0),
+        gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()))),
     integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
     prior_imu_bias_(Vector6d::Zero()),
     between_noise_bias_(
@@ -523,7 +525,7 @@ public:
     odometry.child_frame_id = "odom_imu";
 
     // transform imu pose to ldiar
-    const gtsam::Pose3 pose = current_imu.pose().compose(imu2Lidar);
+    const gtsam::Pose3 pose = current_imu.pose().compose(imu_to_lidar);
 
     odometry.pose.pose = makePose(
       eigenToQuaternion(pose.rotation().toQuaternion()),
