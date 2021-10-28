@@ -364,7 +364,6 @@ public:
   const gtsam::Vector between_noise_bias_;
 
   gtsam::PreintegratedImuMeasurements integrator_;
-  gtsam::PreintegratedImuMeasurements imuIntegratorOpt_;
 
   bool systemInitialized;
 
@@ -407,7 +406,6 @@ public:
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
     integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
-    imuIntegratorOpt_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     systemInitialized(false)
   {
   }
@@ -425,6 +423,8 @@ public:
 
     const gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
 
+    auto imuIntegratorOpt_ = gtsam::PreintegratedImuMeasurements(integration_params_, prev_bias_);
+
     // 0. initialize system
     if (!systemInitialized) {
       // pop old IMU message
@@ -433,7 +433,6 @@ public:
       optimizer = initOptimizer(lidar_to_imu, lidar_pose);
 
       integrator_.resetIntegrationAndSetBias(prev_bias_);
-      imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
 
       key = 1;
       systemInitialized = true;
@@ -476,8 +475,6 @@ public:
     const gtsam::Vector3 velocity = result.at<gtsam::Vector3>(V(key));
     prev_state_ = gtsam::NavState(pose, velocity);
     prev_bias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
-    // Reset the optimization preintegration object.
-    imuIntegratorOpt_.resetIntegrationAndSetBias(prev_bias_);
     // check optimization
     if (failureDetection(velocity, prev_bias_)) {
       last_imu_time = -1;
