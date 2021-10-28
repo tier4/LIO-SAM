@@ -17,7 +17,7 @@
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
-using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
+using gtsam::symbol_shorthand::P; // Pose3 (x,y,z,r,p,y)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 
@@ -260,7 +260,7 @@ void resetOptimizer(
   gtsam::ISAM2 & optimizer)
 {
   const auto pose_noise =
-    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(X(key - 1)));
+    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(P(key - 1)));
   const auto velocity_noise =
     gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(V(key - 1)));
   const auto bias_noise =
@@ -271,12 +271,12 @@ void resetOptimizer(
 
   gtsam::NonlinearFactorGraph graph;
 
-  graph.add(gtsam::PriorFactor<gtsam::Pose3>(X(0), pose, pose_noise));
+  graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(0), pose, pose_noise));
   graph.add(gtsam::PriorFactor<gtsam::Vector3>(V(0), velocity, velocity_noise));
   graph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(B(0), bias, bias_noise));
 
   gtsam::Values values;
-  values.insert(X(0), pose);
+  values.insert(P(0), pose);
   values.insert(V(0), velocity);
   values.insert(B(0), bias);
 
@@ -296,7 +296,7 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
   const Diagonal::shared_ptr bias_noise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
 
   gtsam::Pose3 pose = lidar_pose.compose(lidar_to_imu);
-  graph.add(gtsam::PriorFactor<gtsam::Pose3>(X(0), pose, pose_noise));
+  graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(0), pose, pose_noise));
 
   gtsam::Vector3 velocity = gtsam::Vector3(0, 0, 0);
   graph.add(gtsam::PriorFactor<gtsam::Vector3>(V(0), velocity, velocity_noise));
@@ -305,7 +305,7 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
   graph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(B(0), bias, bias_noise));
 
   gtsam::Values values;
-  values.insert(X(0), pose);
+  values.insert(P(0), pose);
   values.insert(V(0), velocity);
   values.insert(B(0), bias);
 
@@ -474,7 +474,7 @@ public:
     gtsam::NonlinearFactorGraph graph;
 
     graph.add(
-      gtsam::ImuFactor(X(key - 1), V(key - 1), X(key), V(key), B(key - 1), imuIntegratorOpt_));
+      gtsam::ImuFactor(P(key - 1), V(key - 1), P(key), V(key), B(key - 1), imuIntegratorOpt_));
 
     graph.add(
       gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
@@ -488,12 +488,12 @@ public:
     const Diagonal::shared_ptr correctionNoise2(Diagonal::Sigmas(Vector6d::Ones()));
 
     const auto noise = odom_msg->pose.covariance[0] == 1 ? correctionNoise2 : correctionNoise;
-    graph.add(gtsam::PriorFactor<gtsam::Pose3>(X(key), lidar_pose.compose(lidar_to_imu), noise));
+    graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
     // insert predicted values
     const gtsam::NavState state = imuIntegratorOpt_.predict(prev_state_, prev_bias_);
 
     gtsam::Values values;
-    values.insert(X(key), state.pose());
+    values.insert(P(key), state.pose());
     values.insert(V(key), state.v());
     values.insert(B(key), prev_bias_);
 
@@ -503,7 +503,7 @@ public:
 
     // Overwrite the beginning of the preintegration for the next step.
     const gtsam::Values result = optimizer.calculateEstimate();
-    prev_pose_ = result.at<gtsam::Pose3>(X(key));
+    prev_pose_ = result.at<gtsam::Pose3>(P(key));
     prev_velocity_ = result.at<gtsam::Vector3>(V(key));
     prev_state_ = gtsam::NavState(prev_pose_, prev_velocity_);
     prev_bias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
