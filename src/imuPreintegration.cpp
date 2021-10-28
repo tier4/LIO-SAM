@@ -445,6 +445,10 @@ public:
 
     gtsam::NonlinearFactorGraph graph;
 
+    const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
+    const auto noise = getCovariance(is_degenerate);
+    graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
+
     graph.add(
       gtsam::ImuFactor(P(key - 1), V(key - 1), P(key), V(key), B(key - 1), imuIntegratorOpt_));
 
@@ -454,9 +458,6 @@ public:
         Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * between_noise_bias_))
     );
 
-    const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
-    const auto noise = getCovariance(is_degenerate);
-    graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
     // insert predicted values
     const gtsam::NavState state = imuIntegratorOpt_.predict(prev_state_, prev_bias_);
 
