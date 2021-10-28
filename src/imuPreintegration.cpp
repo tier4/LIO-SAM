@@ -286,6 +286,7 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
 void imuPreIntegration(
   const double time_threshold,
   const gtsam::imuBias::ConstantBias & prev_odom_bias_,
+  const boost::shared_ptr<gtsam::PreintegrationParams> & integration_params_,
   gtsam::PreintegratedImuMeasurements & integrator,
   std::deque<sensor_msgs::Imu> & imu_queue)
 {
@@ -299,7 +300,7 @@ void imuPreIntegration(
   }
 
   // reset bias use the newly optimized bias
-  integrator.resetIntegrationAndSetBias(prev_odom_bias_);
+  integrator = gtsam::PreintegratedImuMeasurements(integration_params_, prev_odom_bias_);
   // integrate imu message from the beginning of this optimization
   for (unsigned int i = 0; i < imu_queue.size(); ++i) {
     const sensor_msgs::Imu & msg = imu_queue[i];
@@ -432,7 +433,7 @@ public:
 
       optimizer = initOptimizer(lidar_to_imu, lidar_pose);
 
-      integrator_.resetIntegrationAndSetBias(prev_bias_);
+      integrator_ = gtsam::PreintegratedImuMeasurements(integration_params_, prev_bias_);
 
       key = 1;
       systemInitialized = true;
@@ -484,7 +485,7 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    imuPreIntegration(odom_time - delta_t, prev_bias_, integrator_, imu_queue);
+    imuPreIntegration(odom_time - delta_t, prev_bias_, integration_params_, integrator_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
