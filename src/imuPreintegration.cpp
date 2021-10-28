@@ -526,14 +526,7 @@ public:
     odometry.header.frame_id = odometryFrame;
     odometry.child_frame_id = "odom_imu";
 
-    // transform imu pose to ldiar
-    const gtsam::Pose3 pose = current_imu.pose().compose(imu_to_lidar);
-
-    odometry.pose.pose = makePose(
-      eigenToQuaternion(pose.rotation().toQuaternion()),
-      eigenToPoint(pose.translation())
-    );
-
+    odometry.pose.pose = makePose(current_imu.pose().compose(imu_to_lidar));
     odometry.twist.twist = makeTwist(
       eigenToVector3(angular_velocity + prev_bias_.gyroscope()),
       eigenToVector3(current_imu.velocity())
