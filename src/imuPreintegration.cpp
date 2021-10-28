@@ -252,37 +252,6 @@ bool failureDetection(
 
 using Diagonal = gtsam::noiseModel::Diagonal;
 
-void resetOptimizer(
-  const gtsam::Pose3 & pose,
-  const gtsam::Vector3 & velocity,
-  const gtsam::imuBias::ConstantBias & bias,
-  const int key,
-  gtsam::ISAM2 & optimizer)
-{
-  const auto pose_noise =
-    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(P(key - 1)));
-  const auto velocity_noise =
-    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(V(key - 1)));
-  const auto bias_noise =
-    gtsam::noiseModel::Gaussian::Covariance(optimizer.marginalCovariance(B(key - 1)));
-
-  const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
-  optimizer = gtsam::ISAM2(params);
-
-  gtsam::NonlinearFactorGraph graph;
-
-  graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(0), pose, pose_noise));
-  graph.add(gtsam::PriorFactor<gtsam::Vector3>(V(0), velocity, velocity_noise));
-  graph.add(gtsam::PriorFactor<gtsam::imuBias::ConstantBias>(B(0), bias, bias_noise));
-
-  gtsam::Values values;
-  values.insert(P(0), pose);
-  values.insert(V(0), velocity);
-  values.insert(B(0), bias);
-
-  optimizer.update(graph, values);
-}
-
 gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3 & lidar_pose)
 {
   const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
@@ -459,13 +428,6 @@ public:
       key = 1;
       systemInitialized = true;
       return;
-    }
-
-    // reset graph for speed
-    if (key == 100) {
-      resetOptimizer(prev_pose_, prev_velocity_, prev_bias_, key, optimizer);
-
-      key = 1;
     }
 
     // 1. integrate imu data and optimize
