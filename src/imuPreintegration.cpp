@@ -325,21 +325,23 @@ void imuPreIntegration(
   popOldMessages(odom_time - delta_t, last_imu_time, imu_queue);
 
   // repropogate
-  if (!imu_queue.empty()) {
-    // reset bias use the newly optimized bias
-    imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
-    // integrate imu message from the beginning of this optimization
-    for (unsigned int i = 0; i < imu_queue.size(); ++i) {
-      const sensor_msgs::Imu & msg = imu_queue[i];
-      const double imu_time = timeInSec(msg.header);
-      const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
-      imuIntegratorImu_.integrateMeasurement(
-        vector3ToEigen(msg.linear_acceleration),
-        vector3ToEigen(msg.angular_velocity),
-        dt
-      );
-      last_imu_time = imu_time;
-    }
+  if (imu_queue.empty()) {
+    return;
+  }
+
+  // reset bias use the newly optimized bias
+  imuIntegratorImu_.resetIntegrationAndSetBias(prev_odom_bias_);
+  // integrate imu message from the beginning of this optimization
+  for (unsigned int i = 0; i < imu_queue.size(); ++i) {
+    const sensor_msgs::Imu & msg = imu_queue[i];
+    const double imu_time = timeInSec(msg.header);
+    const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
+    imuIntegratorImu_.integrateMeasurement(
+      vector3ToEigen(msg.linear_acceleration),
+      vector3ToEigen(msg.angular_velocity),
+      dt
+    );
+    last_imu_time = imu_time;
   }
 }
 
