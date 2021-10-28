@@ -422,7 +422,7 @@ public:
     pcl::PointCloud<PointType>::Ptr corner = downsample(corner_cloud, mappingCornerLeafSize);
     pcl::PointCloud<PointType>::Ptr surface = downsample(surface_cloud, mappingSurfLeafSize);
 
-    bool isDegenerate = false;
+    bool is_degenerate = false;
     if (!points3d->empty()) {
       const auto [corner_map, surface_map] = extractSurroundingKeyFrames(
         timestamp, points3d, poses6dof,
@@ -438,7 +438,7 @@ public:
           corner, surface,
           corner_map, surface_map);
 
-        std::tie(posevec, isDegenerate) = scan2MapOptimization(
+        std::tie(posevec, is_degenerate) = scan2MapOptimization(
           cloud_optimizer, msgIn->imu_orientation_available, msgIn->imu_orientation, posevec
         );
       } catch (const std::exception & e) {
@@ -487,19 +487,19 @@ public:
       Vector6d incre_pose = getPoseVec(incremental_odometry.value());
 
       if (msgIn->imu_orientation_available && std::abs(msgIn->imu_orientation.y) < 1.4) {
-        const double imuWeight = 0.1;
-        incre_pose(0) = interpolateRoll(incre_pose(0), msgIn->imu_orientation.x, imuWeight);
-        incre_pose(1) = interpolatePitch(incre_pose(1), msgIn->imu_orientation.y, imuWeight);
+        const double weight = 0.1;
+        incre_pose(0) = interpolateRoll(incre_pose(0), msgIn->imu_orientation.x, weight);
+        incre_pose(1) = interpolatePitch(incre_pose(1), msgIn->imu_orientation.y, weight);
       }
 
-      nav_msgs::Odometry laserOdomIncremental = makeOdometry(
+      nav_msgs::Odometry p = makeOdometry(
         timestamp, odometryFrame, "odom_mapping", makePose(incre_pose));
-      if (isDegenerate) {
-        laserOdomIncremental.pose.covariance[0] = 1;
+      if (is_degenerate) {
+        p.pose.covariance[0] = 1;
       } else {
-        laserOdomIncremental.pose.covariance[0] = 0;
+        p.pose.covariance[0] = 0;
       }
-      pubLaserOdometryIncremental.publish(laserOdomIncremental);
+      pubLaserOdometryIncremental.publish(p);
     }
 
     if (points3d->empty()) {
@@ -565,14 +565,14 @@ public:
   {
     assert(!points3d->empty());
 
-    auto [posevec, isDegenerate] = optimizePose(cloud_optimizer, initial_posevec);
+    auto [posevec, is_degenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
     if (imu_orientation_available && std::abs(imu_orientation.y) < 1.4) {
       posevec(0) = interpolateRoll(posevec(0), imu_orientation.x, imuRPYWeight);
       posevec(1) = interpolatePitch(posevec(1), imu_orientation.y, imuRPYWeight);
     }
 
-    return {posevec, isDegenerate};
+    return {posevec, is_degenerate};
   }
 };
 

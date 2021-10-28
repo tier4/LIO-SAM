@@ -450,8 +450,8 @@ public:
       Diagonal::Sigmas((Vector6d() << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished())
     );
     const Diagonal::shared_ptr correctionNoise2(Diagonal::Sigmas(Vector6d::Ones()));
-
-    const auto noise = odom_msg->pose.covariance[0] == 1 ? correctionNoise2 : correctionNoise;
+    const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
+    const auto noise = is_degenerate ? correctionNoise2 : correctionNoise;
     graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
     // insert predicted values
     const gtsam::NavState state = imuIntegratorOpt_.predict(prev_state_, prev_bias_);
