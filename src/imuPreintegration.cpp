@@ -64,6 +64,17 @@ tf::Transform getLidarToBaseLink(
   return transform;
 }
 
+void popOldMessages(
+  const double time_threshold,
+  double & last_imu_time,
+  std::deque<sensor_msgs::Imu> & imu_queue)
+{
+  while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < time_threshold) {
+    last_imu_time = timeInSec(imu_queue.front().header);
+    imu_queue.pop_front();
+  }
+}
+
 class OdomToBaselink
 {
 private:
@@ -439,18 +450,12 @@ public:
       return;
     }
 
-    gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
+    const gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
 
     // 0. initialize system
     if (!systemInitialized) {
       // pop old IMU message
-      while (!imuQueOpt.empty()) {
-        if (timeInSec(imuQueOpt.front().header) >= odom_time - delta_t) {
-          break;
-        }
-        last_imu_time_opt = timeInSec(imuQueOpt.front().header);
-        imuQueOpt.pop_front();
-      }
+      popOldMessages(odom_time - delta_t, last_imu_time_opt, imuQueOpt);
 
       optimizer = initOptimizer(lidar_to_imu, lidar_pose);
 
