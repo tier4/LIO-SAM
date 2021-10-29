@@ -63,7 +63,7 @@ public:
   nav_msgs::Path make(
     const ros::Time & timestamp,
     const geometry_msgs::Pose & pose,
-    const double lidarOdomTime)
+    const double lidar_odometry_time)
   {
     geometry_msgs::PoseStamped pose_stamped;
     pose_stamped.header.stamp = timestamp;
@@ -72,7 +72,7 @@ public:
     imuPath.poses.push_back(pose_stamped);
     while (
       !imuPath.poses.empty() &&
-      imuPath.poses.front().header.stamp.toSec() < lidarOdomTime - 1.0)
+      imuPath.poses.front().header.stamp.toSec() < lidar_odometry_time - 1.0)
     {
       imuPath.poses.erase(imuPath.poses.begin());
     }
@@ -111,8 +111,8 @@ public:
   const OdomToBaselink odom_to_baselink;
   tf::TransformBroadcaster broadcaster;
 
-  double lidarOdomTime = -1;
-  std::deque<nav_msgs::Odometry> imuOdomQueue;
+  double lidar_odometry_time = -1;
+  std::deque<nav_msgs::Odometry> odometry_queue_;
 
   tf::TransformBroadcaster tfMap2Odom;
 
@@ -140,39 +140,42 @@ public:
 
     lidar_odom = odom_msg->pose.pose;
 
-    lidarOdomTime = odom_msg->header.stamp.toSec();
+    lidar_odometry_time = odom_msg->header.stamp.toSec();
   }
 
   void imuOdometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
   {
+    const auto stamp = odom_msg->header.stamp;
+
     tfMap2Odom.sendTransform(
-      tf::StampedTransform(identityTransform(), odom_msg->header.stamp, mapFrame, odometryFrame));
+      tf::StampedTransform(identityTransform(), stamp, mapFrame, odometryFrame));
 
     std::lock_guard<std::mutex> lock(mtx);
 
-    imuOdomQueue.push_back(*odom_msg);
+    odometry_queue_.push_back(*odom_msg);
 
     // get latest odometry (at current IMU stamp)
-    if (lidarOdomTime == -1) {
+    if (lidar_odometry_time == -1) {
       return;
     }
 
-    dropBefore(lidarOdomTime, imuOdomQueue);
-    const auto front = imuOdomQueue.front().pose.pose;
-    const auto back = imuOdomQueue.back().pose.pose;
+    dropBefore(lidar_odometry_time, odometry_queue_);
+    const auto front = odometry_queue_.front().pose.pose;
+    const auto back = odom_msg->pose.pose;
+    const auto pose = affineToPose(latestOdometry(front, back, lidar_odom));
 
     // publish latest odometry
-    nav_msgs::Odometry laserOdometry = imuOdomQueue.back();
-    laserOdometry.pose.pose = affineToPose(latestOdometry(front, back, lidar_odom));
-    pubImuOdometry.publish(laserOdometry);
+    nav_msgs::Odometry odometry = *odom_msg;
+    odometry.pose.pose = pose;
+    pubImuOdometry.publish(odometry);
 
-    broadcaster.sendTransform(
-      odom_to_baselink.get(laserOdometry.pose.pose, odom_msg->header.stamp));
+    broadcaster.sendTransform(odom_to_baselink.get(pose, stamp));
 
-    if (pubImuPath.getNumSubscribers() != 0) {
-      pubImuPath.publish(
-        imu_path.make(imuOdomQueue.back().header.stamp, laserOdometry.pose.pose, lidarOdomTime));
+    if (pubImuPath.getNumSubscribers() == 0) {
+      return;
     }
+    const auto path = imu_path.make(stamp, pose, lidar_odometry_time);
+    pubImuPath.publish(path);
   }
 };
 
