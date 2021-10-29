@@ -354,10 +354,6 @@ public:
     odometry.child_frame_id = "odom_imu";
 
     odometry.pose.pose = makePose(current_imu.pose().compose(imu_to_lidar));
-    odometry.twist.twist = makeTwist(
-      eigenToVector3(angular_velocity + prev_bias_.gyroscope()),
-      eigenToVector3(current_imu.velocity())
-    );
     pubImuOdometry.publish(odometry);
   }
 };
