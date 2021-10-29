@@ -114,7 +114,7 @@ public:
   double lidar_odometry_time = -1;
   std::deque<nav_msgs::Odometry> odometry_queue_;
 
-  tf::TransformBroadcaster tfMap2Odom;
+  tf::TransformBroadcaster tf_map_to_odom;
 
   ImuPath imu_path;
 
@@ -147,7 +147,7 @@ public:
   {
     const auto stamp = odom_msg->header.stamp;
 
-    tfMap2Odom.sendTransform(
+    tf_map_to_odom.sendTransform(
       tf::StampedTransform(identityTransform(), stamp, mapFrame, odometryFrame));
 
     std::lock_guard<std::mutex> lock(mtx);
