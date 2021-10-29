@@ -158,12 +158,12 @@ public:
     }
 
     dropBefore(lidarOdomTime, imuOdomQueue);
-    const Eigen::Affine3d last =
-      latestOdometry(imuOdomQueue.front().pose.pose, imuOdomQueue.back().pose.pose, lidar_odom);
+    const auto front = imuOdomQueue.front().pose.pose;
+    const auto back = imuOdomQueue.back().pose.pose;
 
     // publish latest odometry
     nav_msgs::Odometry laserOdometry = imuOdomQueue.back();
-    laserOdometry.pose.pose = affineToPose(last);
+    laserOdometry.pose.pose = affineToPose(latestOdometry(front, back, lidar_odom));
     pubImuOdometry.publish(laserOdometry);
 
     broadcaster.sendTransform(
