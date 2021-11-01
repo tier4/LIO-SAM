@@ -535,7 +535,7 @@ public:
     }
 
     // publish key poses
-    publishCloud(pubKeyPoses, *points3d, timestamp, odometryFrame);
+    pubKeyPoses.publish(toRosMsg(*points3d, timestamp, odometryFrame));
     publishDownsampledCloud(
       pubRecentKeyFrame, corner, surface,
       odometryFrame, timestamp, posevec);

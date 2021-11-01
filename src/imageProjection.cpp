@@ -517,9 +517,8 @@ public:
     }
 
     cloudInfo.header = cloud_msg.header;
-    cloudInfo.cloud_deskewed = publishCloud(
-      pubExtractedCloud, extractedCloud,
-      cloud_msg.header.stamp, lidarFrame);
+    cloudInfo.cloud_deskewed = toRosMsg(extractedCloud, cloud_msg.header.stamp, lidarFrame);
+    pubExtractedCloud.publish(cloudInfo.cloud_deskewed);
     pubLaserCloudInfo.publish(cloudInfo);
   }
 };

@@ -214,15 +214,14 @@ public:
     const auto surface_downsampled = downsample(surface, mappingSurfLeafSize);
 
     // save newly extracted features
-    cloudInfo.cloud_corner = publishCloud(
-      pubCornerPoints, *corner_downsampled, msgIn->header.stamp, lidarFrame);
-    cloudInfo.cloud_surface = publishCloud(
-      pubSurfacePoints, *surface_downsampled, msgIn->header.stamp, lidarFrame);
+    cloudInfo.cloud_corner = toRosMsg(*corner_downsampled, msgIn->header.stamp, lidarFrame);
+    cloudInfo.cloud_surface = toRosMsg(*surface_downsampled, msgIn->header.stamp, lidarFrame);
+    pubCornerPoints.publish(cloudInfo.cloud_deskewed);
+    pubSurfacePoints.publish(cloudInfo.cloud_surface);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloudInfo);
   }
 };
-
 
 int main(int argc, char ** argv)
 {

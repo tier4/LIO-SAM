@@ -56,12 +56,10 @@
 #include <mutex>
 
 sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud < PointType > & pointcloud);
-
-sensor_msgs::PointCloud2 publishCloud(
-  const ros::Publisher & thisPub,
-  const pcl::PointCloud < PointType > & thisCloud,
-  const ros::Time thisStamp,
-  const std::string thisFrame);
+sensor_msgs::PointCloud2 toRosMsg(
+  const pcl::PointCloud < PointType > & pointcloud,
+  const ros::Time stamp,
+  const std::string frame);
 
 inline Eigen::Vector3d pointToEigen(const geometry_msgs::Point & p)
 {

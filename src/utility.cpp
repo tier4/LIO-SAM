@@ -88,8 +88,7 @@ sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud)
   return msg;
 }
 
-sensor_msgs::PointCloud2 publishCloud(
-  const ros::Publisher & publisher,
+sensor_msgs::PointCloud2 toRosMsg(
   const pcl::PointCloud<PointType> & pointcloud,
   const ros::Time stamp,
   const std::string frame)
@@ -97,9 +96,6 @@ sensor_msgs::PointCloud2 publishCloud(
   sensor_msgs::PointCloud2 msg = toRosMsg(pointcloud);
   msg.header.stamp = stamp;
   msg.header.frame_id = frame;
-  if (publisher.getNumSubscribers() != 0) {
-    publisher.publish(msg);
-  }
   return msg;
 }
 
