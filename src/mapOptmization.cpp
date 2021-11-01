@@ -28,6 +28,36 @@ using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 
+class ImuOrientationIncrement
+{
+public:
+  ImuOrientationIncrement()
+  : last_pose_(std::nullopt), increment_(Eigen::Affine3d::Identity())
+  {
+  }
+
+  bool is_available()
+  {
+    return last_pose_.has_value();
+  }
+
+  void compute(const Eigen::Affine3d & current_pose)
+  {
+    const Eigen::Affine3d last_pose = last_pose_.value();
+    last_pose_ = current_pose;
+    increment_ = last_pose.inverse() * current_pose;
+  }
+
+  Eigen::Affine3d get()
+  {
+    return increment_;
+  }
+
+private:
+  std::optional<Eigen::Affine3d> last_pose_;
+  Eigen::Affine3d increment_;
+};
+
 struct StampedPose
 {
   PCL_ADD_POINT4D;  // preferred way of adding a XYZ
@@ -367,10 +397,9 @@ public:
 
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
-  std::optional<geometry_msgs::Vector3> last_imu_orientation;
-
   std::optional<geometry_msgs::Pose> last_imu_pose;
 
+  ImuOrientationIncrement imu_orientation_increment_;
   std::optional<Eigen::Affine3d> incremental_odometry;  // incremental odometry in affine
   double last_time_sec;
 
@@ -388,7 +417,6 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<PointType>()),
-    last_imu_orientation(std::nullopt),
     last_imu_pose(std::nullopt),
     incremental_odometry(std::nullopt),
     last_time_sec(-1.0)
@@ -481,9 +509,9 @@ public:
       pubLaserOdometryIncremental.publish(odometry);
     } else {
       const Eigen::Affine3d back = getTransformation(posevec);
-      const Eigen::Affine3d pose_increment = (front.inverse() * back);
+      const Eigen::Affine3d increment = (front.inverse() * back);
 
-      incremental_odometry = incremental_odometry.value() * pose_increment;
+      incremental_odometry = incremental_odometry.value() * increment;
       Vector6d pose = getPoseVec(incremental_odometry.value());
 
       if (msg->imu_orientation_available && std::abs(msg->imu_orientation.y) < 1.4) {
@@ -540,20 +568,11 @@ public:
       last_imu_pose = scan_start_imu_pose;
     }
 
-    // use imu incremental estimation for pose guess (only rotation)
-    if (imu_orientation_available && last_imu_orientation.has_value()) {
-      const Eigen::Affine3d curr = makeAffine(vector3ToEigen(imu_orientation));
-      const Eigen::Affine3d last = makeAffine(vector3ToEigen(last_imu_orientation.value()));
-      const Eigen::Affine3d incre = last.inverse() * curr;
-
-      last_imu_orientation = imu_orientation;
-
-      posevec = getPoseVec(getTransformation(posevec) * incre);
+    if (imu_orientation_available && imu_orientation_increment_.is_available()) {
+      imu_orientation_increment_.compute(makeAffine(vector3ToEigen(imu_orientation)));
+      const Eigen::Affine3d increment = imu_orientation_increment_.get();
+      posevec = getPoseVec(getTransformation(posevec) * increment);
       return;
-    }
-
-    if (imu_orientation_available) {
-      last_imu_orientation = imu_orientation;
     }
   }
 
