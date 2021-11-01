@@ -395,13 +395,13 @@ public:
   {
   }
 
-  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn)
+  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msg)
   {
     // extract time stamp
-    const ros::Time timestamp = msgIn->header.stamp;
+    const ros::Time timestamp = msg->header.stamp;
 
-    pcl::PointCloud<PointType>::Ptr corner_cloud = getPointCloud<PointType>(msgIn->cloud_corner);
-    pcl::PointCloud<PointType>::Ptr surface_cloud = getPointCloud<PointType>(msgIn->cloud_surface);
+    pcl::PointCloud<PointType>::Ptr corner_cloud = getPointCloud<PointType>(msg->cloud_corner);
+    pcl::PointCloud<PointType>::Ptr surface_cloud = getPointCloud<PointType>(msg->cloud_surface);
 
     std::lock_guard<std::mutex> lock(mtx);
 
@@ -415,8 +415,8 @@ public:
     const Eigen::Affine3d front = getTransformation(posevec);
 
     updateInitialGuess(
-      msgIn->imu_odometry_available, msgIn->imu_orientation_available,
-      msgIn->imu_orientation, msgIn->scan_start_imu_pose
+      msg->imu_odometry_available, msg->imu_orientation_available,
+      msg->imu_orientation, msg->scan_start_imu_pose
     );
 
     pcl::PointCloud<PointType>::Ptr corner = downsample(corner_cloud, mappingCornerLeafSize);
@@ -439,7 +439,7 @@ public:
           corner_map, surface_map);
 
         std::tie(posevec, is_degenerate) = scan2MapOptimization(
-          cloud_optimizer, msgIn->imu_orientation_available, msgIn->imu_orientation, posevec
+          cloud_optimizer, msg->imu_orientation_available, msg->imu_orientation, posevec
         );
       } catch (const std::exception & e) {
         ROS_WARN(e.what());
@@ -486,10 +486,10 @@ public:
       incremental_odometry = incremental_odometry.value() * pose_increment;
       Vector6d incre_pose = getPoseVec(incremental_odometry.value());
 
-      if (msgIn->imu_orientation_available && std::abs(msgIn->imu_orientation.y) < 1.4) {
+      if (msg->imu_orientation_available && std::abs(msg->imu_orientation.y) < 1.4) {
         const double weight = 0.1;
-        incre_pose(0) = interpolateRoll(incre_pose(0), msgIn->imu_orientation.x, weight);
-        incre_pose(1) = interpolatePitch(incre_pose(1), msgIn->imu_orientation.y, weight);
+        incre_pose(0) = interpolateRoll(incre_pose(0), msg->imu_orientation.x, weight);
+        incre_pose(1) = interpolatePitch(incre_pose(1), msg->imu_orientation.y, weight);
       }
 
       nav_msgs::Odometry p = makeOdometry(
