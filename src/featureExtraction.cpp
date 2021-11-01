@@ -27,6 +27,28 @@ enum class CurvatureLabel
   kSurface = -1
 };
 
+void neighborPicked(
+  const std::vector<int> & column_index,
+  const int index,
+  std::vector<bool> & neighbor_picked)
+{
+  neighbor_picked[index] = true;
+  for (int l = 1; l <= 5; l++) {
+    const int d = std::abs(int(column_index[index + l] - column_index[index + l - 1]));
+    if (d > 10) {
+      break;
+    }
+    neighbor_picked[index + l] = true;
+  }
+  for (int l = -1; l >= -5; l--) {
+    const int d = std::abs(int(column_index[index + l] - column_index[index + l + 1]));
+    if (d > 10) {
+      break;
+    }
+    neighbor_picked[index + l] = true;
+  }
+}
+
 class FeatureExtraction : public ParamServer
 {
 
@@ -154,21 +176,7 @@ public:
           label[index] = CurvatureLabel::kEdge;
           corner->push_back(points->at(index));
 
-          neighbor_picked[index] = true;
-          for (int l = 1; l <= 5; l++) {
-            const int d = std::abs(int(column_index[index + l] - column_index[index + l - 1]));
-            if (d > 10) {
-              break;
-            }
-            neighbor_picked[index + l] = true;
-          }
-          for (int l = -1; l >= -5; l--) {
-            const int d = std::abs(int(column_index[index + l] - column_index[index + l + 1]));
-            if (d > 10) {
-              break;
-            }
-            neighbor_picked[index + l] = true;
-          }
+          neighborPicked(column_index, index, neighbor_picked);
         }
 
         for (int k = sp; k <= ep; k++) {
@@ -178,26 +186,8 @@ public:
           }
 
           label[index] = CurvatureLabel::kSurface;
-          neighbor_picked[index] = true;
 
-          for (int l = 1; l <= 5; l++) {
-
-            const int d = std::abs(int(column_index[index + l] - column_index[index + l - 1]));
-            if (d > 10) {
-              break;
-            }
-
-            neighbor_picked[index + l] = true;
-          }
-          for (int l = -1; l >= -5; l--) {
-
-            const int d = std::abs(int(column_index[index + l] - column_index[index + l + 1]));
-            if (d > 10) {
-              break;
-            }
-
-            neighbor_picked[index + l] = true;
-          }
+          neighborPicked(column_index, index, neighbor_picked);
         }
 
         for (int k = sp; k <= ep; k++) {
