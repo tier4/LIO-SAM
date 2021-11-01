@@ -189,24 +189,6 @@ gtsam::BetweenFactor<gtsam::Pose3> makeOdomFactor(
   return gtsam::BetweenFactor<gtsam::Pose3>(size - 1, size, src.between(dst), noise);
 }
 
-void publishDownsampledCloud(
-  const ros::Publisher & publisher,
-  const pcl::PointCloud<PointType>::Ptr & corner,
-  const pcl::PointCloud<PointType>::Ptr & surface,
-  const std::string & frame_id, const ros::Time & timestamp,
-  const Vector6d & posevec)
-{
-  // publish registered key frame
-  if (publisher.getNumSubscribers() == 0) {
-    return;
-  }
-
-  pcl::PointCloud<PointType> output;
-  output += transform(*corner, posevec);
-  output += transform(*surface, posevec);
-  publisher.publish(toRosMsg(output, timestamp, frame_id));
-}
-
 void publishPath(
   const ros::Publisher & publisher,
   const std::string & frame_id, const ros::Time & timestamp,
@@ -533,9 +515,8 @@ public:
 
     // publish key poses
     pubKeyPoses.publish(toRosMsg(*points3d, timestamp, odometryFrame));
-    publishDownsampledCloud(
-      pubRecentKeyFrame, corner, surface,
-      odometryFrame, timestamp, posevec);
+    const auto output = transform(*corner, posevec) + transform(*surface, posevec);
+    pubRecentKeyFrame.publish(toRosMsg(output, timestamp, odometryFrame));
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
 
