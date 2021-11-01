@@ -402,8 +402,6 @@ public:
 
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
-  std::optional<geometry_msgs::Pose> last_imu_pose;
-
   ImuOrientationIncrement imu_orientation_increment_;
   ImuOrientationIncrement imu_pose_increment_;
 
@@ -424,7 +422,6 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<PointType>()),
-    last_imu_pose(std::nullopt),
     incremental_odometry(std::nullopt),
     last_time_sec(-1.0)
   {
@@ -560,19 +557,15 @@ public:
     }
 
     // use imu pre-integration estimation for pose guess
-    if (imu_odometry_available && last_imu_pose.has_value()) {
-      const Eigen::Affine3d curr = poseToAffine(scan_start_imu_pose);
-      const Eigen::Affine3d last = poseToAffine(last_imu_pose.value());
-      const Eigen::Affine3d incre = last.inverse() * curr;
-
-      last_imu_pose = scan_start_imu_pose;
-
-      posevec = getPoseVec(getTransformation(posevec) * incre);
+    if (imu_odometry_available && imu_pose_increment_.is_available()) {
+      imu_pose_increment_.compute(poseToAffine(scan_start_imu_pose));
+      const Eigen::Affine3d increment = imu_pose_increment_.get();
+      posevec = getPoseVec(getTransformation(posevec) * increment);
       return;
     }
 
     if (imu_odometry_available) {
-      last_imu_pose = scan_start_imu_pose;
+      imu_pose_increment_.init(poseToAffine(scan_start_imu_pose));
     }
 
     if (imu_orientation_available && imu_orientation_increment_.is_available()) {
