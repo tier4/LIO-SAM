@@ -432,9 +432,6 @@ public:
     // extract time stamp
     const ros::Time timestamp = msg->header.stamp;
 
-    pcl::PointCloud<PointType>::Ptr corner_cloud = getPointCloud<PointType>(msg->cloud_corner);
-    pcl::PointCloud<PointType>::Ptr surface_cloud = getPointCloud<PointType>(msg->cloud_surface);
-
     std::lock_guard<std::mutex> lock(mtx);
 
     if (timestamp.toSec() - last_time_sec < mappingProcessInterval) {
@@ -451,8 +448,10 @@ public:
       msg->imu_orientation, msg->scan_start_imu_pose
     );
 
-    pcl::PointCloud<PointType>::Ptr corner = downsample(corner_cloud, mappingCornerLeafSize);
-    pcl::PointCloud<PointType>::Ptr surface = downsample(surface_cloud, mappingSurfLeafSize);
+    const auto corner_cloud = getPointCloud<PointType>(msg->cloud_corner);
+    const auto surface_cloud = getPointCloud<PointType>(msg->cloud_surface);
+    const auto corner = downsample(corner_cloud, mappingCornerLeafSize);
+    const auto surface = downsample(surface_cloud, mappingSurfLeafSize);
 
     bool is_degenerate = false;
     if (!points3d->empty()) {
