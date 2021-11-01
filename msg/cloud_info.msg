@@ -4,8 +4,8 @@ Header header
 int32[] ring_start_indices
 int32[] end_ring_indices
 
-int32[]  pointColInd # point column index in range image
-float32[] pointRange # point range
+int32[]  point_column_indices # point column index in range image
+float32[] point_range # point range
 
 int64 imu_orientation_available
 int64 imu_odometry_available

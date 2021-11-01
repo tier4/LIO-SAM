@@ -453,8 +453,8 @@ public:
     cloudInfo.ring_start_indices.assign(N_SCAN, 0);
     cloudInfo.end_ring_indices.assign(N_SCAN, 0);
 
-    cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
-    cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
+    cloudInfo.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
+    cloudInfo.point_range.assign(N_SCAN * Horizon_SCAN, 0);
 
     {
       std::lock_guard<std::mutex> lock1(imuLock);
@@ -504,9 +504,9 @@ public:
         }
 
         // mark the points' column index for marking occlusion later
-        cloudInfo.pointColInd[count] = j;
+        cloudInfo.point_column_indices[count] = j;
         // save range info
-        cloudInfo.pointRange[count] = range;
+        cloudInfo.point_range[count] = range;
         // save extracted cloud
         extractedCloud.push_back(output_points[j + i * Horizon_SCAN]);
         // size of extracted cloud

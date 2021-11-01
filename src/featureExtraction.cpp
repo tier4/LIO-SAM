@@ -66,9 +66,9 @@ public:
       neighbor_picked[i] = false;
     }
 
-    const std::vector<float> & range = cloudInfo.pointRange;
+    const std::vector<float> & range = cloudInfo.point_range;
 
-    const std::vector<int> & column_index = cloudInfo.pointColInd;
+    const std::vector<int> & column_index = cloudInfo.point_column_indices;
     // mark occluded points and parallel beam points
     for (unsigned int i = 5; i < points->size() - 6; ++i) {
       // occluded points
