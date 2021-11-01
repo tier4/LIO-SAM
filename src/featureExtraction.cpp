@@ -166,10 +166,6 @@ public:
         const int sp = static_cast<int>(start_index * (1. - j / n) + end_index * j / n);
         const int ep = static_cast<int>(start_index * (1. - k / n) + end_index * k / n - 1.);
 
-        if (sp >= ep) {
-          continue;
-        }
-
         std::sort(indices.begin() + sp, indices.begin() + ep, by_value(curvature));
 
         int n_picked = 0;
