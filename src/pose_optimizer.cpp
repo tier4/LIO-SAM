@@ -1,6 +1,6 @@
 #include "pose_optimizer.hpp"
 #include "jacobian.h"
-#include "utility.h"
+#include "utility.hpp"
 
 #include <Eigen/Eigenvalues>
 

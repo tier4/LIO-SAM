@@ -1,6 +1,6 @@
 #include "cloud_optimizer.hpp"
 #include "homogeneous.h"
-#include "utility.h"
+#include "utility.hpp"
 
 bool validatePlane(
   const Eigen::Matrix<double, 5, 3> & A,

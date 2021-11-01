@@ -1,4 +1,4 @@
-#include "utility.h"
+#include "utility.hpp"
 
 tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg)
 {

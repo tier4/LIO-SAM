@@ -2,7 +2,7 @@
 
 #include "message.hpp"
 #include "downsample.hpp"
-#include "utility.h"
+#include "utility.hpp"
 #include "param_server.h"
 #include "lio_sam/cloud_info.h"
 

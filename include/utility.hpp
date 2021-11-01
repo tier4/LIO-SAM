@@ -55,9 +55,9 @@
 #include <tuple>
 #include <mutex>
 
-sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud < PointType > & pointcloud);
+sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud);
 sensor_msgs::PointCloud2 toRosMsg(
-  const pcl::PointCloud < PointType > & pointcloud,
+  const pcl::PointCloud<PointType> & pointcloud,
   const ros::Time stamp,
   const std::string frame);
 
@@ -102,7 +102,7 @@ geometry_msgs::Pose transformToPose(const geometry_msgs::Transform & transform);
 
 geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v);
 
-std::tuple < Eigen::Vector3d, Eigen::Vector3d > getXYZRPY(const Eigen::Affine3d & affine);
+std::tuple<Eigen::Vector3d, Eigen::Vector3d> getXYZRPY(const Eigen::Affine3d & affine);
 
 geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v);
 
@@ -137,10 +137,10 @@ geometry_msgs::PoseStamped makePoseStamped(
 
 geometry_msgs::Pose affineToPose(const Eigen::Affine3d & affine);
 
-template < typename PointType >
+template<typename PointType>
 struct Points
 {
-  typedef std::vector < PointType, Eigen::aligned_allocator < PointType >> type;
+  typedef std::vector<PointType, Eigen::aligned_allocator<PointType>> type;
 };
 
 inline double timeInSec(const std_msgs::Header & header)
@@ -148,8 +148,8 @@ inline double timeInSec(const std_msgs::Header & header)
   return header.stamp.toSec();
 }
 
-template < typename T >
-void dropBefore(const double time_second, std::deque < T > & buffer)
+template<typename T>
+void dropBefore(const double time_second, std::deque<T> & buffer)
 {
   while (!buffer.empty()) {
     if (timeInSec(buffer.front().header) >= time_second) {
@@ -176,9 +176,10 @@ inline Eigen::MatrixXd rad2deg(const Eigen::MatrixXd & x)
   return x * (180.0 / M_PI);
 }
 
-template < typename T >
-pcl::KdTreeFLANN < T > makeKDTree(const typename pcl::PointCloud < T > ::Ptr & pointcloud) {
-  pcl::KdTreeFLANN < T > kdtree;
+template<typename T>
+pcl::KdTreeFLANN<T> makeKDTree(const typename pcl::PointCloud<T>::Ptr & pointcloud)
+{
+  pcl::KdTreeFLANN<T> kdtree;
   kdtree.setInputCloud(pointcloud);
   return kdtree;
 }
@@ -190,7 +191,8 @@ tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy);
 Eigen::Vector3d interpolate(
   const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight);
 
-class IMUConverter {
+class IMUConverter
+{
 public:
   IMUConverter();
   sensor_msgs::Imu imuConverter(const sensor_msgs::Imu & imu_in) const;

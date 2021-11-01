@@ -1,7 +1,7 @@
 #include "comprehend.hpp"
 #include "message.hpp"
 #include "downsample.hpp"
-#include "utility.h"
+#include "utility.hpp"
 #include "jacobian.h"
 #include "homogeneous.h"
 #include "param_server.h"
