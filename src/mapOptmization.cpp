@@ -41,6 +41,11 @@ public:
     return last_pose_.has_value();
   }
 
+  void init(const Eigen::Affine3d & pose)
+  {
+    last_pose_ = pose;
+  }
+
   void compute(const Eigen::Affine3d & current_pose)
   {
     const Eigen::Affine3d last_pose = last_pose_.value();
@@ -400,6 +405,8 @@ public:
   std::optional<geometry_msgs::Pose> last_imu_pose;
 
   ImuOrientationIncrement imu_orientation_increment_;
+  ImuOrientationIncrement imu_pose_increment_;
+
   std::optional<Eigen::Affine3d> incremental_odometry;  // incremental odometry in affine
   double last_time_sec;
 
@@ -573,6 +580,10 @@ public:
       const Eigen::Affine3d increment = imu_orientation_increment_.get();
       posevec = getPoseVec(getTransformation(posevec) * increment);
       return;
+    }
+
+    if (imu_orientation_available) {
+      imu_orientation_increment_.init(makeAffine(vector3ToEigen(imu_orientation)));
     }
   }
 
