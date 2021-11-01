@@ -138,18 +138,18 @@ public:
 
         std::sort(indices.begin() + sp, indices.begin() + ep, by_value(curvature));
 
-        int largestPickedNum = 0;
+        int n_picked = 0;
         for (int k = ep; k >= sp; k--) {
           const int index = indices[k];
           if (neighbor_picked[index] || curvature[index] <= edgeThreshold) {
             continue;
           }
 
-          if (largestPickedNum >= 20) {
+          if (n_picked >= 20) {
             break;
           }
 
-          largestPickedNum++;
+          n_picked++;
 
           label[index] = CurvatureLabel::kEdge;
           corner->push_back(points->at(index));
