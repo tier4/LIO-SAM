@@ -70,6 +70,16 @@ calcCurvature(
   return {curvature, indices};
 }
 
+std::tuple<int, int> calcIndexRange(
+  const int start_index, const int end_index, const int n_blocks, const int j)
+{
+  const double n = static_cast<double>(n_blocks);
+  const int k = j + 1;
+  const int sp = static_cast<int>(start_index * (1. - j / n) + end_index * j / n);
+  const int ep = static_cast<int>(start_index * (1. - k / n) + end_index * k / n - 1.);
+  return {sp, ep};
+}
+
 class FeatureExtraction : public ParamServer
 {
 
@@ -160,12 +170,7 @@ public:
       const int start_index = start_indices[i];
       const int end_index = end_indices[i];
       for (int j = 0; j < N_BLOCKS; j++) {
-
-        const double n = static_cast<double>(N_BLOCKS);
-        const int k = j + 1;
-        const int sp = static_cast<int>(start_index * (1. - j / n) + end_index * j / n);
-        const int ep = static_cast<int>(start_index * (1. - k / n) + end_index * k / n - 1.);
-
+        const auto [sp, ep] = calcIndexRange(start_index, end_index, N_BLOCKS, j);
         std::sort(indices.begin() + sp, indices.begin() + ep, by_value(curvature));
 
         int n_picked = 0;
