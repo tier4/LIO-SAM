@@ -49,6 +49,27 @@ void neighborPicked(
   }
 }
 
+std::tuple<std::vector<float>, std::vector<int>>
+calcCurvature(
+  const pcl::PointCloud<PointType>::Ptr & points,
+  const std::vector<float> & range,
+  const int N_SCAN,
+  const int Horizon_SCAN)
+{
+  std::vector<float> curvature(N_SCAN * Horizon_SCAN);
+  std::vector<int> indices(N_SCAN * Horizon_SCAN, 0);
+  for (unsigned int i = 5; i < points->size() - 5; i++) {
+    const float d =
+      range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
+      range[i] * 10 +
+      range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
+
+    curvature[i] = d * d;
+    indices[i] = i;
+  }
+  return {curvature, indices};
+}
+
 class FeatureExtraction : public ParamServer
 {
 
@@ -124,16 +145,7 @@ public:
       }
     }
 
-    std::vector<float> curvature(N_SCAN * Horizon_SCAN);
-    std::vector<int> indices(N_SCAN * Horizon_SCAN, 0);
-    for (unsigned int i = 5; i < points->size() - 5; i++) {
-      const float d = range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
-        range[i] * 10 +
-        range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
-
-      curvature[i] = d * d;
-      indices[i] = i;
-    }
+    auto [curvature, indices] = calcCurvature(points, range, N_SCAN, Horizon_SCAN);
 
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
