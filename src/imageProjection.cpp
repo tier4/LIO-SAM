@@ -450,8 +450,8 @@ public:
     }
 
     lio_sam::cloud_info cloudInfo;
-    cloudInfo.startRingIndex.assign(N_SCAN, 0);
-    cloudInfo.endRingIndex.assign(N_SCAN, 0);
+    cloudInfo.ring_start_indices.assign(N_SCAN, 0);
+    cloudInfo.end_ring_indices.assign(N_SCAN, 0);
 
     cloudInfo.pointColInd.assign(N_SCAN * Horizon_SCAN, 0);
     cloudInfo.pointRange.assign(N_SCAN * Horizon_SCAN, 0);
@@ -495,7 +495,7 @@ public:
     int count = 0;
     // extract segmented cloud for lidar odometry
     for (int i = 0; i < N_SCAN; ++i) {
-      cloudInfo.startRingIndex[i] = count + 5;
+      cloudInfo.ring_start_indices[i] = count + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
         const float range = range_matrix(i, j);
@@ -513,7 +513,7 @@ public:
         count += 1;
       }
 
-      cloudInfo.endRingIndex[i] = count - 5;
+      cloudInfo.end_ring_indices[i] = count - 5;
     }
 
     cloudInfo.header = cloud_msg.header;

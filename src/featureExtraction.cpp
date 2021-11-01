@@ -116,8 +116,8 @@ public:
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    const std::vector<int> & start_indices = cloudInfo.startRingIndex;
-    const std::vector<int> & end_indices = cloudInfo.endRingIndex;
+    const std::vector<int> & start_indices = cloudInfo.ring_start_indices;
+    const std::vector<int> & end_indices = cloudInfo.end_ring_indices;
     const int N_BLOCKS = 6;
 
     for (int i = 0; i < N_SCAN; i++) {
