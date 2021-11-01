@@ -448,10 +448,8 @@ public:
       msg->imu_orientation, msg->scan_start_imu_pose
     );
 
-    const auto corner_cloud = getPointCloud<PointType>(msg->cloud_corner);
-    const auto surface_cloud = getPointCloud<PointType>(msg->cloud_surface);
-    const auto corner = downsample(corner_cloud, mappingCornerLeafSize);
-    const auto surface = downsample(surface_cloud, mappingSurfLeafSize);
+    const auto corner = getPointCloud<PointType>(msg->cloud_corner);
+    const auto surface = getPointCloud<PointType>(msg->cloud_surface);
 
     bool is_degenerate = false;
     if (!points3d->empty()) {
