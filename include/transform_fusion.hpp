@@ -84,14 +84,14 @@ public:
 };
 
 Eigen::Affine3d latestOdometry(
-  const geometry_msgs::Pose & front_pose,
-  const geometry_msgs::Pose & back_pose,
-  const geometry_msgs::Pose & lidar_odom)
+  const geometry_msgs::Transform & front_transform,
+  const geometry_msgs::Transform & back_transform,
+  const geometry_msgs::Transform & lidar_odom)
 {
-  const Eigen::Affine3d front = poseToAffine(front_pose);
-  const Eigen::Affine3d back = poseToAffine(back_pose);
+  const Eigen::Affine3d front = transformToAffine(front_transform);
+  const Eigen::Affine3d back = transformToAffine(back_transform);
   const Eigen::Affine3d incre = front.inverse() * back;
-  return poseToAffine(lidar_odom) * incre;
+  return transformToAffine(lidar_odom) * incre;
 }
 
 class TransformFusion : public ParamServer
@@ -105,14 +105,14 @@ public:
   const ros::Publisher pubImuOdometry;
   const ros::Publisher pubImuPath;
 
-  geometry_msgs::Pose lidar_odom;
+  geometry_msgs::Transform lidar_odom;
 
   const tf::Transform lidar_to_baselink;
   const OdomToBaselink odom_to_baselink;
   tf::TransformBroadcaster broadcaster;
 
   double lidar_odometry_time = -1;
-  std::deque<nav_msgs::Odometry> odometry_queue_;
+  std::deque<geometry_msgs::TransformStamped> odometry_queue_;
 
   tf::TransformBroadcaster tf_map_to_odom;
 
@@ -123,7 +123,7 @@ public:
         "lio_sam/mapping/odometry",
         5, &TransformFusion::lidarOdometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
-    subImuOdometry(nh.subscribe<nav_msgs::Odometry>(
+    subImuOdometry(nh.subscribe<geometry_msgs::TransformStamped>(
         odomTopic + "_incremental",
         2000, &TransformFusion::imuOdometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
@@ -138,12 +138,12 @@ public:
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    lidar_odom = odom_msg->pose.pose;
+    lidar_odom = poseToTransform(odom_msg->pose.pose);
 
     lidar_odometry_time = odom_msg->header.stamp.toSec();
   }
 
-  void imuOdometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
+  void imuOdometryHandler(const geometry_msgs::TransformStamped::ConstPtr & odom_msg)
   {
     const auto stamp = odom_msg->header.stamp;
 
@@ -160,12 +160,14 @@ public:
     }
 
     dropBefore(lidar_odometry_time, odometry_queue_);
-    const auto front = odometry_queue_.front().pose.pose;
-    const auto back = odom_msg->pose.pose;
+    const auto front = odometry_queue_.front().transform;
+    const auto back = odom_msg->transform;
     const auto pose = affineToPose(latestOdometry(front, back, lidar_odom));
 
     // publish latest odometry
-    nav_msgs::Odometry odometry = *odom_msg;
+    nav_msgs::Odometry odometry;
+    odometry.header = odom_msg->header;
+    odometry.child_frame_id = odom_msg->child_frame_id;
     odometry.pose.pose = pose;
     pubImuOdometry.publish(odometry);
 

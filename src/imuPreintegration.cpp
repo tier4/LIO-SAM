@@ -219,7 +219,7 @@ public:
     subOdometry(nh.subscribe<nav_msgs::Odometry>(
         "lio_sam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler,
         this, ros::TransportHints().tcpNoDelay())),
-    pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic + "_incremental", 2000)),
+    pubImuOdometry(nh.advertise<geometry_msgs::TransformStamped>(odomTopic + "_incremental", 2000)),
     imu_to_lidar(gtsam::Pose3(
         gtsam::Rot3(1, 0, 0, 0),
         gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()))),
@@ -347,14 +347,13 @@ public:
     // predict odometry
     const gtsam::NavState current_imu = integrator_.predict(prev_state_, prev_bias_);
 
-    // publish odometry
-    nav_msgs::Odometry odometry;
-    odometry.header.stamp = imu.header.stamp;
-    odometry.header.frame_id = odometryFrame;
-    odometry.child_frame_id = "odom_imu";
+    geometry_msgs::TransformStamped transform;
+    transform.header.stamp = imu.header.stamp;
+    transform.header.frame_id = odometryFrame;
+    transform.child_frame_id = "odom_imu";
 
-    odometry.pose.pose = makePose(current_imu.pose().compose(imu_to_lidar));
-    pubImuOdometry.publish(odometry);
+    transform.transform = makeTransform(current_imu.pose().compose(imu_to_lidar));
+    pubImuOdometry.publish(transform);
   }
 };
 

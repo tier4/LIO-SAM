@@ -36,6 +36,51 @@ Eigen::Vector3d interpolate(
   return getRPY(interpolate(q0, q1, weight));
 }
 
+geometry_msgs::Vector3 pointToVector3(const geometry_msgs::Point & p)
+{
+  geometry_msgs::Vector3 v;
+  v.x = p.x;
+  v.y = p.y;
+  v.z = p.z;
+  return v;
+}
+
+geometry_msgs::Point vector3ToPoint(const geometry_msgs::Vector3 & v)
+{
+  geometry_msgs::Point p;
+  p.x = v.x;
+  p.y = v.y;
+  p.z = v.z;
+  return p;
+}
+
+geometry_msgs::Transform poseToTransform(const geometry_msgs::Pose & pose)
+{
+  geometry_msgs::Transform transform;
+  transform.translation = pointToVector3(pose.position);
+  transform.rotation = pose.orientation;
+  return transform;
+}
+
+geometry_msgs::Pose transformToPose(const geometry_msgs::Transform & transform)
+{
+  geometry_msgs::Pose pose;
+  pose.position = vector3ToPoint(transform.translation);
+  pose.orientation = transform.rotation;
+  return pose;
+}
+
+geometry_msgs::TransformStamped poseToTransform(
+  const geometry_msgs::PoseStamped & pose,
+  const std::string & child_frame_id)
+{
+  geometry_msgs::TransformStamped transform;
+  transform.transform = poseToTransform(pose.pose);
+  transform.header = pose.header;
+  transform.child_frame_id = child_frame_id;
+  return transform;
+}
+
 sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud)
 {
   sensor_msgs::PointCloud2 msg;
@@ -128,6 +173,13 @@ geometry_msgs::Quaternion eigenToQuaternion(const Eigen::Quaterniond & quat_eige
   return quat_msg;
 }
 
+Eigen::Affine3d transformToAffine(const geometry_msgs::Transform & transform)
+{
+  Eigen::Affine3d affine;
+  tf::transformMsgToEigen(transform, affine);
+  return affine;
+}
+
 Eigen::Affine3d poseToAffine(const geometry_msgs::Pose & pose)
 {
   Eigen::Affine3d affine;
@@ -196,6 +248,23 @@ geometry_msgs::Pose makePose(const gtsam::Pose3 & pose)
   const auto q = eigenToQuaternion(pose.rotation().toQuaternion());
   const auto p = eigenToPoint(pose.translation());
   return makePose(q, p);
+}
+
+geometry_msgs::Transform makeTransform(
+  const geometry_msgs::Quaternion & rotation,
+  const geometry_msgs::Vector3 & translation)
+{
+  geometry_msgs::Transform transform;
+  transform.rotation = rotation;
+  transform.translation = translation;
+  return transform;
+}
+
+geometry_msgs::Transform makeTransform(const gtsam::Pose3 & pose)
+{
+  const auto q = eigenToQuaternion(pose.rotation().toQuaternion());
+  const auto p = eigenToVector3(pose.translation());
+  return makeTransform(q, p);
 }
 
 geometry_msgs::Pose makePose(const Eigen::Vector3d & rpy, const Eigen::Vector3d & xyz)

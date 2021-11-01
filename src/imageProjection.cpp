@@ -45,7 +45,9 @@ const int queueLength = 2000;
 std::mutex imuLock;
 std::mutex odoLock;
 
-unsigned int indexNextTimeOf(const std::deque<nav_msgs::Odometry> & queue, const double time)
+unsigned int indexNextTimeOf(
+  const std::deque<geometry_msgs::TransformStamped> & queue,
+  const double time)
 {
   for (unsigned int i = 0; i < queue.size(); ++i) {
     if (timeInSec(queue[i].header) < time) {
@@ -283,7 +285,7 @@ private:
 };
 
 bool imuOdometryAvailable(
-  const std::deque<nav_msgs::Odometry> & odomQueue,
+  const std::deque<geometry_msgs::TransformStamped> & odomQueue,
   const double scan_start_time,
   const double scan_end_time)
 {
@@ -341,7 +343,9 @@ bool checkImuTime(
   return true;
 }
 
-nav_msgs::Odometry odomNextOf(const std::deque<nav_msgs::Odometry> & odomQueue, const double time)
+geometry_msgs::TransformStamped odomNextOf(
+  const std::deque<geometry_msgs::TransformStamped> & odomQueue,
+  const double time)
 {
   const unsigned int index = indexNextTimeOf(odomQueue, time);
   return odomQueue[index];
@@ -358,7 +362,7 @@ private:
   const ros::Publisher pubLaserCloudInfo;
   const PointCloudProjection projection_;
 
-  std::deque<nav_msgs::Odometry> odomQueue;
+  std::deque<geometry_msgs::TransformStamped> odomQueue;
 
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
 
@@ -371,7 +375,7 @@ public:
         imuTopic, 2000,
         &ImageProjection::imuHandler, this,
         ros::TransportHints().tcpNoDelay())),
-    subOdom(nh.subscribe<nav_msgs::Odometry>(
+    subOdom(nh.subscribe<geometry_msgs::TransformStamped>(
         odomTopic + "_incremental", 2000,
         &ImageProjection::odometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
@@ -397,7 +401,7 @@ public:
     imu_buffer.push_back(msg);
   }
 
-  void odometryHandler(const nav_msgs::Odometry::ConstPtr & odometryMsg)
+  void odometryHandler(const geometry_msgs::TransformStamped::ConstPtr & odometryMsg)
   {
     std::lock_guard<std::mutex> lock2(odoLock);
     odomQueue.push_back(*odometryMsg);
@@ -471,13 +475,13 @@ public:
     Eigen::Vector3d imu_incremental_odometry = Eigen::Vector3d::Zero();
 
     if (imu_odometry_available) {
-      const nav_msgs::Odometry msg0 = odomNextOf(odomQueue, scan_start_time);
-      const nav_msgs::Odometry msg1 = odomNextOf(odomQueue, scan_end_time);
+      const geometry_msgs::TransformStamped msg0 = odomNextOf(odomQueue, scan_start_time);
+      const geometry_msgs::TransformStamped msg1 = odomNextOf(odomQueue, scan_end_time);
 
-      cloudInfo.scan_start_imu_pose = msg0.pose.pose;
+      cloudInfo.scan_start_imu_pose = transformToPose(msg0.transform);
 
-      const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);
-      const Eigen::Affine3d p1 = poseToAffine(msg1.pose.pose);
+      const Eigen::Affine3d p0 = transformToAffine(msg0.transform);
+      const Eigen::Affine3d p1 = transformToAffine(msg1.transform);
       imu_incremental_odometry = (p0.inverse() * p1).translation();
     }
 

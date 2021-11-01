@@ -97,13 +97,18 @@ Eigen::Quaterniond quaternionToEigen(const geometry_msgs::Quaternion & quat_msg)
 
 geometry_msgs::Quaternion eigenToQuaternion(const Eigen::Quaterniond & quat_eigen);
 
+Eigen::Affine3d transformToAffine(const geometry_msgs::Transform & transform);
 Eigen::Affine3d poseToAffine(const geometry_msgs::Pose & pose);
+geometry_msgs::Transform poseToTransform(const geometry_msgs::Pose & pose);
+geometry_msgs::Pose transformToPose(const geometry_msgs::Transform & transform);
 
 geometry_msgs::Vector3 eigenToVector3(const Eigen::Vector3d & v);
 
 std::tuple < Eigen::Vector3d, Eigen::Vector3d > getXYZRPY(const Eigen::Affine3d & affine);
 
 geometry_msgs::Point eigenToPoint(const Eigen::Vector3d & v);
+
+geometry_msgs::Transform makeTransform(const gtsam::Pose3 & pose);
 
 geometry_msgs::Pose makePose(
   const geometry_msgs::Quaternion & orientation,
