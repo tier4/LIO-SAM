@@ -484,16 +484,15 @@ public:
       const Eigen::Affine3d pose_increment = (front.inverse() * back);
 
       incremental_odometry = incremental_odometry.value() * pose_increment;
-      Vector6d incre_pose = getPoseVec(incremental_odometry.value());
+      Vector6d pose = getPoseVec(incremental_odometry.value());
 
       if (msg->imu_orientation_available && std::abs(msg->imu_orientation.y) < 1.4) {
         const double weight = 0.1;
-        incre_pose(0) = interpolateRoll(incre_pose(0), msg->imu_orientation.x, weight);
-        incre_pose(1) = interpolatePitch(incre_pose(1), msg->imu_orientation.y, weight);
+        pose(0) = interpolateRoll(pose(0), msg->imu_orientation.x, weight);
+        pose(1) = interpolatePitch(pose(1), msg->imu_orientation.y, weight);
       }
 
-      nav_msgs::Odometry p = makeOdometry(
-        timestamp, odometryFrame, "odom_mapping", makePose(incre_pose));
+      auto p = makeOdometry(timestamp, odometryFrame, "odom_mapping", makePose(pose));
       if (is_degenerate) {
         p.pose.covariance[0] = 1;
       } else {
