@@ -449,19 +449,19 @@ public:
       return;
     }
 
-    lio_sam::cloud_info cloudInfo;
-    cloudInfo.ring_start_indices.assign(N_SCAN, 0);
-    cloudInfo.end_ring_indices.assign(N_SCAN, 0);
+    lio_sam::cloud_info cloud_info;
+    cloud_info.ring_start_indices.assign(N_SCAN, 0);
+    cloud_info.end_ring_indices.assign(N_SCAN, 0);
 
-    cloudInfo.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
-    cloudInfo.point_range.assign(N_SCAN * Horizon_SCAN, 0);
+    cloud_info.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
+    cloud_info.point_range.assign(N_SCAN * Horizon_SCAN, 0);
 
     {
       std::lock_guard<std::mutex> lock1(imuLock);
       dropBefore(scan_start_time - 0.01, imu_buffer);
     }
 
-    cloudInfo.imu_orientation = eigenToVector3(findImuOrientation(imu_buffer, scan_start_time));
+    cloud_info.imu_orientation = eigenToVector3(findImuOrientation(imu_buffer, scan_start_time));
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);
@@ -478,7 +478,7 @@ public:
       const geometry_msgs::TransformStamped msg0 = odomNextOf(odomQueue, scan_start_time);
       const geometry_msgs::TransformStamped msg1 = odomNextOf(odomQueue, scan_end_time);
 
-      cloudInfo.scan_start_imu_pose = transformToPose(msg0.transform);
+      cloud_info.scan_start_imu_pose = transformToPose(msg0.transform);
 
       const Eigen::Affine3d p0 = transformToAffine(msg0.transform);
       const Eigen::Affine3d p1 = transformToAffine(msg1.transform);
@@ -488,14 +488,14 @@ public:
     const auto [range_matrix, output_points, imu_available] = projection_.compute(
       imu_buffer, input_cloud, scan_start_time, scan_end_time, imu_incremental_odometry);
 
-    cloudInfo.imu_odometry_available = imu_odometry_available;
-    cloudInfo.imu_orientation_available = imu_available;
+    cloud_info.imu_odometry_available = imu_odometry_available;
+    cloud_info.imu_orientation_available = imu_available;
 
     pcl::PointCloud<PointType> extractedCloud;
     int count = 0;
     // extract segmented cloud for lidar odometry
     for (int i = 0; i < N_SCAN; ++i) {
-      cloudInfo.ring_start_indices[i] = count + 5;
+      cloud_info.ring_start_indices[i] = count + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
         const float range = range_matrix(i, j);
@@ -504,22 +504,22 @@ public:
         }
 
         // mark the points' column index for marking occlusion later
-        cloudInfo.point_column_indices[count] = j;
+        cloud_info.point_column_indices[count] = j;
         // save range info
-        cloudInfo.point_range[count] = range;
+        cloud_info.point_range[count] = range;
         // save extracted cloud
         extractedCloud.push_back(output_points[j + i * Horizon_SCAN]);
         // size of extracted cloud
         count += 1;
       }
 
-      cloudInfo.end_ring_indices[i] = count - 5;
+      cloud_info.end_ring_indices[i] = count - 5;
     }
 
-    cloudInfo.header = cloud_msg.header;
-    cloudInfo.cloud_deskewed = toRosMsg(extractedCloud, cloud_msg.header.stamp, lidarFrame);
-    pubExtractedCloud.publish(cloudInfo.cloud_deskewed);
-    pubLaserCloudInfo.publish(cloudInfo);
+    cloud_info.header = cloud_msg.header;
+    cloud_info.cloud_deskewed = toRosMsg(extractedCloud, cloud_msg.header.stamp, lidarFrame);
+    pubExtractedCloud.publish(cloud_info.cloud_deskewed);
+    pubLaserCloudInfo.publish(cloud_info);
   }
 };
 

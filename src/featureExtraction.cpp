@@ -48,15 +48,15 @@ public:
   {
   }
 
-  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msgIn) const
+  void laserCloudInfoHandler(const lio_sam::cloud_infoConstPtr & msg) const
   {
     // used to prevent from labeling a neighbor as surface or edge
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
 
-    lio_sam::cloud_info cloudInfo = *msgIn; // new cloud info
+    lio_sam::cloud_info cloud_info = *msg; // new cloud info
 
-    const auto points = getPointCloud<PointType>(msgIn->cloud_deskewed);
+    const auto points = getPointCloud<PointType>(msg->cloud_deskewed);
 
     for (unsigned int i = 5; i < points->size() - 5; i++) {
       label[i] = CurvatureLabel::kDefault;
@@ -66,9 +66,9 @@ public:
       neighbor_picked[i] = false;
     }
 
-    const std::vector<float> & range = cloudInfo.point_range;
+    const std::vector<float> & range = cloud_info.point_range;
 
-    const std::vector<int> & column_index = cloudInfo.point_column_indices;
+    const std::vector<int> & column_index = cloud_info.point_column_indices;
     // mark occluded points and parallel beam points
     for (unsigned int i = 5; i < points->size() - 6; ++i) {
       // occluded points
@@ -116,8 +116,8 @@ public:
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    const std::vector<int> & start_indices = cloudInfo.ring_start_indices;
-    const std::vector<int> & end_indices = cloudInfo.end_ring_indices;
+    const std::vector<int> & start_indices = cloud_info.ring_start_indices;
+    const std::vector<int> & end_indices = cloud_info.end_ring_indices;
     const int N_BLOCKS = 6;
 
     for (int i = 0; i < N_SCAN; i++) {
@@ -214,12 +214,13 @@ public:
     const auto surface_downsampled = downsample(surface, mappingSurfLeafSize);
 
     // save newly extracted features
-    cloudInfo.cloud_corner = toRosMsg(*corner_downsampled, msgIn->header.stamp, lidarFrame);
-    cloudInfo.cloud_surface = toRosMsg(*surface_downsampled, msgIn->header.stamp, lidarFrame);
-    pubCornerPoints.publish(cloudInfo.cloud_deskewed);
-    pubSurfacePoints.publish(cloudInfo.cloud_surface);
+    cloud_info.cloud_corner = toRosMsg(*corner_downsampled, msg->header.stamp, lidarFrame);
+    cloud_info.cloud_surface = toRosMsg(*surface_downsampled, msg->header.stamp, lidarFrame);
+    // for visualization
+    pubCornerPoints.publish(cloud_info.cloud_deskewed);
+    pubSurfacePoints.publish(cloud_info.cloud_surface);
     // publish to mapOptimization
-    pubLaserCloudInfo.publish(cloudInfo);
+    pubLaserCloudInfo.publish(cloud_info);
   }
 };
 
