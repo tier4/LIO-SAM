@@ -78,7 +78,7 @@ bool failureDetection(
 
 using Diagonal = gtsam::noiseModel::Diagonal;
 
-gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3 & lidar_pose)
+gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & pose)
 {
   const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
 
@@ -90,7 +90,6 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & lidar_to_imu, const gtsam::Pose3
   // 1e-2 ~ 1e-3 seems to be good
   const Diagonal::shared_ptr bias_noise(gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
 
-  const gtsam::Pose3 pose = lidar_pose.compose(lidar_to_imu);
   graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(0), pose, pose_noise));
 
   const gtsam::Vector3 velocity = gtsam::Vector3(0, 0, 0);
@@ -257,7 +256,7 @@ public:
       // pop old IMU message
       popOldMessages(odom_time - delta_t, last_imu_time_opt, imuQueOpt);
 
-      optimizer = initOptimizer(lidar_to_imu, lidar_pose);
+      optimizer = initOptimizer(lidar_pose.compose(lidar_to_imu));
 
       key = 1;
       systemInitialized = true;
