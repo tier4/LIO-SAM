@@ -129,21 +129,15 @@ public:
 
       // 10 pixel diff in range image
       if (d < 10 && range[i] - range[i + 1] > 0.3) {
-        neighbor_picked[i - 5] = true;
-        neighbor_picked[i - 4] = true;
-        neighbor_picked[i - 3] = true;
-        neighbor_picked[i - 2] = true;
-        neighbor_picked[i - 1] = true;
-        neighbor_picked[i - 0] = true;
+        for (int j = 0; j <= 5; j++) {
+          neighbor_picked[i - j] = true;
+        }
       }
 
       if (d < 10 && range[i + 1] - range[i] > 0.3) {
-        neighbor_picked[i + 1] = true;
-        neighbor_picked[i + 2] = true;
-        neighbor_picked[i + 3] = true;
-        neighbor_picked[i + 4] = true;
-        neighbor_picked[i + 5] = true;
-        neighbor_picked[i + 6] = true;
+        for (int j = 1; j <= 6; j++) {
+          neighbor_picked[i + j] = true;
+        }
       }
 
       // parallel beam
