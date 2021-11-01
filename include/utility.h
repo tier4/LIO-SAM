@@ -114,6 +114,12 @@ geometry_msgs::Pose makePose(
   const geometry_msgs::Quaternion & orientation,
   const geometry_msgs::Point & position);
 
+geometry_msgs::TransformStamped makeTransformStamped(
+  const ros::Time & timestamp,
+  const std::string & frame_id,
+  const std::string & child_frame_id,
+  const geometry_msgs::Transform & transform);
+
 geometry_msgs::Twist makeTwist(
   const geometry_msgs::Vector3 & angular,
   const geometry_msgs::Vector3 & linear);

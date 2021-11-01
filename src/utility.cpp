@@ -250,6 +250,20 @@ geometry_msgs::Pose makePose(const gtsam::Pose3 & pose)
   return makePose(q, p);
 }
 
+geometry_msgs::TransformStamped makeTransformStamped(
+  const ros::Time & timestamp,
+  const std::string & frame_id,
+  const std::string & child_frame_id,
+  const geometry_msgs::Transform & transform)
+{
+  geometry_msgs::TransformStamped transform_stamped;
+  transform_stamped.header.stamp = timestamp;
+  transform_stamped.header.frame_id = frame_id;
+  transform_stamped.child_frame_id = child_frame_id;
+  transform_stamped.transform = transform;
+  return transform_stamped;
+}
+
 geometry_msgs::Transform makeTransform(
   const geometry_msgs::Quaternion & rotation,
   const geometry_msgs::Vector3 & translation)

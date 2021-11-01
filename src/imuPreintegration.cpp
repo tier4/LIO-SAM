@@ -347,13 +347,11 @@ public:
     // predict odometry
     const gtsam::NavState current_imu = integrator_.predict(prev_state_, prev_bias_);
 
-    geometry_msgs::TransformStamped transform;
-    transform.header.stamp = imu.header.stamp;
-    transform.header.frame_id = odometryFrame;
-    transform.child_frame_id = "odom_imu";
-
-    transform.transform = makeTransform(current_imu.pose().compose(imu_to_lidar));
-    pubImuOdometry.publish(transform);
+    pubImuOdometry.publish(
+      makeTransformStamped(
+        imu.header.stamp, odometryFrame, "odom_imu",
+        makeTransform(current_imu.pose().compose(imu_to_lidar)))
+    );
   }
 };
 
