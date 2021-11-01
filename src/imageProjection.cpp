@@ -293,13 +293,6 @@ bool imuOdometryAvailable(
     timeInSec(odomQueue.back().header) < scan_end_time);
 }
 
-bool doOdomDeskew(
-  const boost::array<double, 36> & covariance0,
-  const boost::array<double, 36> & covariance1)
-{
-  return static_cast<int>(round(covariance0[0])) == static_cast<int>(round(covariance1[0]));
-}
-
 Eigen::Vector3d findImuOrientation(
   const std::deque<sensor_msgs::Imu> & imu_buffer,
   const double scan_start_time)
@@ -483,11 +476,9 @@ public:
 
       cloudInfo.scan_start_imu_pose = msg0.pose.pose;
 
-      if (doOdomDeskew(msg0.pose.covariance, msg1.pose.covariance)) {
-        const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);
-        const Eigen::Affine3d p1 = poseToAffine(msg1.pose.pose);
-        imu_incremental_odometry = (p0.inverse() * p1).translation();
-      }
+      const Eigen::Affine3d p0 = poseToAffine(msg0.pose.pose);
+      const Eigen::Affine3d p1 = poseToAffine(msg1.pose.pose);
+      imu_incremental_odometry = (p0.inverse() * p1).translation();
     }
 
     const auto [range_matrix, output_points, imu_available] = projection_.compute(
