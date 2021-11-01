@@ -204,10 +204,7 @@ void publishDownsampledCloud(
   pcl::PointCloud<PointType> output;
   output += transform(*corner, posevec);
   output += transform(*surface, posevec);
-  sensor_msgs::PointCloud2 msg = toRosMsg(output);
-  msg.header.stamp = timestamp;
-  msg.header.frame_id = frame_id;
-  publisher.publish(msg);
+  publisher.publish(toRosMsg(output, timestamp, frame_id));
 }
 
 void publishPath(
