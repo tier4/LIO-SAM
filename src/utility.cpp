@@ -89,19 +89,18 @@ sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud)
 }
 
 sensor_msgs::PointCloud2 publishCloud(
-  const ros::Publisher & thisPub,
-  const pcl::PointCloud<PointType> & thisCloud,
-  const ros::Time thisStamp,
-  const std::string thisFrame)
+  const ros::Publisher & publisher,
+  const pcl::PointCloud<PointType> & pointcloud,
+  const ros::Time stamp,
+  const std::string frame)
 {
-  sensor_msgs::PointCloud2 tempCloud;
-  pcl::toROSMsg(thisCloud, tempCloud);
-  tempCloud.header.stamp = thisStamp;
-  tempCloud.header.frame_id = thisFrame;
-  if (thisPub.getNumSubscribers() != 0) {
-    thisPub.publish(tempCloud);
+  sensor_msgs::PointCloud2 msg = toRosMsg(pointcloud);
+  msg.header.stamp = stamp;
+  msg.header.frame_id = frame;
+  if (publisher.getNumSubscribers() != 0) {
+    publisher.publish(msg);
   }
-  return tempCloud;
+  return msg;
 }
 
 nav_msgs::Odometry makeOdometry(
