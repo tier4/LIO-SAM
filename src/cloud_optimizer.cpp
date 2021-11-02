@@ -43,7 +43,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_downsampled->size(); i++) {
     const pcl::PointXYZ point = edge_downsampled->at(i);
-    const pcl::PointXYZ map_point = makePointXYZ(point_to_map * getXYZ(point));
+    const pcl::PointXYZ map_point = transform(point_to_map, point);
     const auto [indices, squared_distances] = kdtreeEdgeFromMap.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {
@@ -126,7 +126,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < surface_downsampled->size(); i++) {
     const pcl::PointXYZ point = surface_downsampled->at(i);
-    const pcl::PointXYZ map_point = makePointXYZ(point_to_map * getXYZ(point));
+    const pcl::PointXYZ map_point = transform(point_to_map, point);
     const auto [indices, squared_distances] = kdtreeSurfFromMap.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {

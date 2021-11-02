@@ -198,6 +198,7 @@ pcl::KdTreeFLANN<T> makeKDTree(const typename pcl::PointCloud<T>::Ptr & pointclo
 }
 
 pcl::PointXYZ makePointXYZ(const Eigen::Vector3d & v);
+pcl::PointXYZ transform(const Eigen::Affine3d & transform, const pcl::PointXYZ & point);
 
 tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg);
 

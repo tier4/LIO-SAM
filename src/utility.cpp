@@ -5,6 +5,11 @@ pcl::PointXYZ makePointXYZ(const Eigen::Vector3d & v)
   return pcl::PointXYZ(v(0), v(1), v(2));
 }
 
+pcl::PointXYZ transform(const Eigen::Affine3d & transform, const pcl::PointXYZ & point)
+{
+  return makePointXYZ(transform * getXYZ(point));
+}
+
 tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg)
 {
   tf::Pose pose;

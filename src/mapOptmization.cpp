@@ -155,13 +155,11 @@ pcl::PointCloud<pcl::PointXYZ> transform(
   pcl::PointCloud<pcl::PointXYZ> output;
 
   output.resize(input.size());
-  const Eigen::Affine3d transform = getTransformation(posevec);
+  const Eigen::Affine3d affine = getTransformation(posevec);
 
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < input.size(); ++i) {
-    const auto & point = input.at(i);
-    const Eigen::Vector3d p = getXYZ(point);
-    output.at(i) = makePointXYZ(transform * p);
+    output.at(i) = transform(affine, input.at(i));
   }
   return output;
 }
