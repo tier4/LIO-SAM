@@ -151,12 +151,6 @@ geometry_msgs::PoseStamped makePoseStamped(
 
 geometry_msgs::Pose affineToPose(const Eigen::Affine3d & affine);
 
-template<typename PointType>
-struct Points
-{
-  typedef std::vector<PointType, Eigen::aligned_allocator<PointType>> type;
-};
-
 inline double timeInSec(const std_msgs::Header & header)
 {
   return header.stamp.toSec();
