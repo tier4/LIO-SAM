@@ -280,9 +280,9 @@ class MapFusion
 {
 public:
   MapFusion(
-    const std::vector<pcl::PointCloud<PointType>::Ptr> & corner_cloud,
+    const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud,
     const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud)
-  : corner_cloud_(corner_cloud), surface_cloud_(surface_cloud)
+  : edge_cloud_(edge_cloud), surface_cloud_(surface_cloud)
   {
   }
 
@@ -292,7 +292,7 @@ public:
     const pcl::PointCloud<StampedPose> & poses6dof,
     const double radius) const
   {
-    pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr edge(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
     const Eigen::Vector3d latest = getXYZ(poses6dof.back());
@@ -306,15 +306,15 @@ public:
       const int index = static_cast<int>(p.intensity);
 
       const Vector6d v = makePosevec(poses6dof.at(index));
-      *corner += transform(*corner_cloud_[index], v);
+      *edge += transform(*edge_cloud_[index], v);
       *surface += transform(*surface_cloud_[index], v);
     }
 
-    return {corner, surface};
+    return {edge, surface};
   }
 
 private:
-  const std::vector<pcl::PointCloud<PointType>::Ptr> & corner_cloud_;
+  const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud_;
   const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_;
 };
 
@@ -326,7 +326,7 @@ extractSurroundingKeyFrames(
   const MapFusion & map_fusion,
   const float radius,
   const float keyframe_density,
-  const float corner_leaf_size,
+  const float edge_leaf_size,
   const float surface_leaf_size)
 {
   const KDTree<PointType> kdtree(points3d);
@@ -349,9 +349,9 @@ extractSurroundingKeyFrames(
     points->push_back(points3d->at(i));
   }
 
-  const auto [corner, surface] = map_fusion(points, poses6dof, radius);
+  const auto [edge, surface] = map_fusion(points, poses6dof, radius);
   return {
-    downsample(corner, corner_leaf_size),
+    downsample(edge, edge_leaf_size),
     downsample(surface, surface_leaf_size)
   };
 }
@@ -371,7 +371,7 @@ public:
 
   Vector6d posevec;
 
-  std::vector<pcl::PointCloud<PointType>::Ptr> corner_cloud_;
+  std::vector<pcl::PointCloud<PointType>::Ptr> edge_cloud_;
   std::vector<pcl::PointCloud<PointType>::Ptr> surface_cloud_;
 
   pcl::PointCloud<PointType>::Ptr points3d;
@@ -427,24 +427,24 @@ public:
       msg->imu_orientation, msg->scan_start_imu_pose
     );
 
-    const auto corner = getPointCloud<PointType>(msg->cloud_corner);
+    const auto edge = getPointCloud<PointType>(msg->cloud_edge);
     const auto surface = getPointCloud<PointType>(msg->cloud_surface);
 
     bool is_degenerate = false;
     if (!points3d->empty()) {
-      const auto [corner_map, surface_map] = extractSurroundingKeyFrames(
+      const auto [edge_map, surface_map] = extractSurroundingKeyFrames(
         timestamp, points3d, poses6dof,
-        MapFusion(corner_cloud_, surface_cloud_),
+        MapFusion(edge_cloud_, surface_cloud_),
         surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
-        mappingCornerLeafSize, mappingSurfLeafSize
+        mappingEdgeLeafSize, mappingSurfLeafSize
       );
 
       try {
         const CloudOptimizer cloud_optimizer(
           N_SCAN, Horizon_SCAN, numberOfCores,
           edgeFeatureMinValidNum, surfFeatureMinValidNum,
-          corner, surface,
-          corner_map, surface_map);
+          edge, surface,
+          edge_map, surface_map);
 
         std::tie(posevec, is_degenerate) = scan2MapOptimization(
           cloud_optimizer, msg->imu_orientation_available, msg->imu_orientation, posevec
@@ -466,7 +466,7 @@ public:
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
-      corner_cloud_.push_back(corner);
+      edge_cloud_.push_back(edge);
       surface_cloud_.push_back(surface);
 
       path_poses_.push_back(
@@ -515,7 +515,7 @@ public:
 
     // publish key poses
     pubKeyPoses.publish(toRosMsg(*points3d, timestamp, odometryFrame));
-    const auto output = transform(*corner, posevec) + transform(*surface, posevec);
+    const auto output = transform(*edge, posevec) + transform(*surface, posevec);
     pubRecentKeyFrame.publish(toRosMsg(output, timestamp, odometryFrame));
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }

@@ -23,7 +23,7 @@ private:
 enum class CurvatureLabel
 {
   Default = 0,
-  Corner = 1,
+  Edge = 1,
   Surface = -1
 };
 
@@ -104,13 +104,13 @@ class FeatureExtraction : public ParamServer
 
 public:
   const ros::Publisher pubLaserCloudInfo;
-  const ros::Publisher pubCornerPoints;
+  const ros::Publisher pubEdgePoints;
   const ros::Publisher pubSurfacePoints;
   const ros::Subscriber subLaserCloudInfo;
 
   FeatureExtraction()
   : pubLaserCloudInfo(nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1)),
-    pubCornerPoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_corner", 1)),
+    pubEdgePoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_edge", 1)),
     pubSurfacePoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1)),
     subLaserCloudInfo(
       nh.subscribe<lio_sam::cloud_info>(
@@ -165,7 +165,7 @@ public:
 
     auto [curvature, indices] = calcCurvature(points, range, N_SCAN, Horizon_SCAN);
 
-    pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<PointType>::Ptr edge(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
     const int N_BLOCKS = 6;
@@ -197,8 +197,8 @@ public:
 
           n_picked++;
 
-          corner->push_back(points->at(index));
-          label[index] = CurvatureLabel::Corner;
+          edge->push_back(points->at(index));
+          label[index] = CurvatureLabel::Edge;
 
           neighborPicked(column_indices, index, neighbor_picked);
         }
@@ -215,7 +215,7 @@ public:
         }
 
         for (int k = sp; k <= ep; k++) {
-          if (label[k] == CurvatureLabel::Default || label[k] == CurvatureLabel::Corner) {
+          if (label[k] == CurvatureLabel::Default || label[k] == CurvatureLabel::Edge) {
             surface_scan->push_back(points->at(k));
           }
         }
@@ -224,15 +224,15 @@ public:
       *surface += *downsample(surface_scan, surface_leaf_size);
     }
 
-    const auto corner_downsampled = downsample(corner, mappingCornerLeafSize);
+    const auto edge_downsampled = downsample(edge, mappingEdgeLeafSize);
     const auto surface_downsampled = downsample(surface, mappingSurfLeafSize);
 
     lio_sam::cloud_info cloud_info = *msg; // new cloud info
     // save newly extracted features
-    cloud_info.cloud_corner = toRosMsg(*corner_downsampled, msg->header.stamp, lidarFrame);
+    cloud_info.cloud_edge = toRosMsg(*edge_downsampled, msg->header.stamp, lidarFrame);
     cloud_info.cloud_surface = toRosMsg(*surface_downsampled, msg->header.stamp, lidarFrame);
     // for visualization
-    pubCornerPoints.publish(cloud_info.cloud_deskewed);
+    pubEdgePoints.publish(cloud_info.cloud_deskewed);
     pubSurfacePoints.publish(cloud_info.cloud_surface);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloud_info);

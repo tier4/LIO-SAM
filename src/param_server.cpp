@@ -57,7 +57,7 @@ ParamServer::ParamServer()
   nh.param<int>("lio_sam/surfFeatureMinValidNum", surfFeatureMinValidNum, 100);
 
   nh.param<float>("lio_sam/odometrySurfLeafSize", surface_leaf_size, 0.2);
-  nh.param<float>("lio_sam/mappingCornerLeafSize", mappingCornerLeafSize, 0.2);
+  nh.param<float>("lio_sam/mappingEdgeLeafSize", mappingEdgeLeafSize, 0.2);
   nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
 
   nh.param<int>("lio_sam/numberOfCores", numberOfCores, 2);

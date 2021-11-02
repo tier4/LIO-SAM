@@ -57,7 +57,7 @@ public:
 
   // voxel filter paprams
   float surface_leaf_size;
-  float mappingCornerLeafSize;
+  float mappingEdgeLeafSize;
   float mappingSurfLeafSize;
 
   // CPU Params

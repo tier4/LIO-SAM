@@ -18,5 +18,5 @@ geometry_msgs/Pose scan_start_imu_pose
 
 # Point cloud messages
 sensor_msgs/PointCloud2 cloud_deskewed  # original cloud deskewed
-sensor_msgs/PointCloud2 cloud_corner    # extracted corner feature
+sensor_msgs/PointCloud2 cloud_edge    # extracted edge feature
 sensor_msgs/PointCloud2 cloud_surface   # extracted surface feature
