@@ -107,8 +107,6 @@ public:
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
     std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
 
-    lio_sam::cloud_info cloud_info = *msg; // new cloud info
-
     const auto points = getPointCloud<PointType>(msg->cloud_deskewed);
 
     for (unsigned int i = 5; i < points->size() - 5; i++) {
@@ -119,9 +117,9 @@ public:
       neighbor_picked[i] = false;
     }
 
-    const std::vector<float> & range = cloud_info.point_range;
+    const std::vector<float> & range = msg->point_range;
 
-    const std::vector<int> & column_index = cloud_info.point_column_indices;
+    const std::vector<int> & column_index = msg->point_column_indices;
     // mark occluded points and parallel beam points
     for (unsigned int i = 5; i < points->size() - 6; ++i) {
       // occluded points
@@ -156,15 +154,13 @@ public:
     pcl::PointCloud<PointType>::Ptr corner(new pcl::PointCloud<PointType>());
     pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
 
-    const std::vector<int> & start_indices = cloud_info.ring_start_indices;
-    const std::vector<int> & end_indices = cloud_info.end_ring_indices;
     const int N_BLOCKS = 6;
 
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<PointType>::Ptr surface_scan(new pcl::PointCloud<PointType>());
 
-      const int start_index = start_indices[i];
-      const int end_index = end_indices[i];
+      const int start_index = msg->ring_start_indices[i];
+      const int end_index = msg->end_ring_indices[i];
       for (int j = 0; j < N_BLOCKS; j++) {
         const auto [sp, ep] = calcIndexRange(start_index, end_index, N_BLOCKS, j);
         std::sort(indices.begin() + sp, indices.begin() + ep, by_value(curvature));
@@ -212,6 +208,7 @@ public:
     const auto corner_downsampled = downsample(corner, mappingCornerLeafSize);
     const auto surface_downsampled = downsample(surface, mappingSurfLeafSize);
 
+    lio_sam::cloud_info cloud_info = *msg; // new cloud info
     // save newly extracted features
     cloud_info.cloud_corner = toRosMsg(*corner_downsampled, msg->header.stamp, lidarFrame);
     cloud_info.cloud_surface = toRosMsg(*surface_downsampled, msg->header.stamp, lidarFrame);
