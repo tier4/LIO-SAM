@@ -28,20 +28,20 @@ enum class CurvatureLabel
 };
 
 void neighborPicked(
-  const std::vector<int> & column_index,
+  const std::vector<int> & column_indices,
   const int index,
   std::vector<bool> & neighbor_picked)
 {
   neighbor_picked[index] = true;
   for (int l = 1; l <= 5; l++) {
-    const int d = std::abs(int(column_index[index + l] - column_index[index + l - 1]));
+    const int d = std::abs(int(column_indices[index + l] - column_indices[index + l - 1]));
     if (d > 10) {
       break;
     }
     neighbor_picked[index + l] = true;
   }
   for (int l = -1; l >= -5; l--) {
-    const int d = std::abs(int(column_index[index + l] - column_index[index + l + 1]));
+    const int d = std::abs(int(column_indices[index + l] - column_indices[index + l + 1]));
     if (d > 10) {
       break;
     }
@@ -133,11 +133,11 @@ public:
 
     const std::vector<float> & range = msg->point_range;
 
-    const std::vector<int> & column_index = msg->point_column_indices;
+    const std::vector<int> & column_indices = msg->point_column_indices;
     // mark occluded points and parallel beam points
     for (unsigned int i = 5; i < points->size() - 6; ++i) {
       // occluded points
-      const int d = std::abs(int(column_index[i + 1] - column_index[i]));
+      const int d = std::abs(int(column_indices[i + 1] - column_indices[i]));
 
       // 10 pixel diff in range image
       if (d < 10 && range[i] - range[i + 1] > 0.3) {
@@ -200,7 +200,7 @@ public:
           corner->push_back(points->at(index));
           label[index] = CurvatureLabel::Corner;
 
-          neighborPicked(column_index, index, neighbor_picked);
+          neighborPicked(column_indices, index, neighbor_picked);
         }
 
         for (int k = sp; k <= ep; k++) {
@@ -211,7 +211,7 @@ public:
 
           label[index] = CurvatureLabel::Surface;
 
-          neighborPicked(column_index, index, neighbor_picked);
+          neighborPicked(column_indices, index, neighbor_picked);
         }
 
         for (int k = sp; k <= ep; k++) {
