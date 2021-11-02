@@ -5,8 +5,8 @@
 #include <Eigen/Eigenvalues>
 
 bool LMOptimization(
-  const pcl::PointCloud<pcl::PointXYZ> & laserCloudOri,
-  const pcl::PointCloud<pcl::PointXYZI> & coeffSel,
+  const pcl::PointCloud<pcl::PointXYZ> & points,
+  const pcl::PointCloud<pcl::PointXYZI> & coeffs,
   const int iterCount, bool & isDegenerate, Vector6d & posevec)
 {
   // This optimization is from the original loam_velodyne by Ji Zhang,
@@ -20,7 +20,7 @@ bool LMOptimization(
   // yaw = pitch          ---     yaw = roll
 
   // lidar -> camera
-  int laserCloudSelNum = laserCloudOri.size();
+  int laserCloudSelNum = points.size();
   if (laserCloudSelNum < 50) {
     return false;
   }
@@ -30,19 +30,19 @@ bool LMOptimization(
 
   for (int i = 0; i < laserCloudSelNum; i++) {
     // lidar -> camera
-    const float intensity = coeffSel.at(i).intensity;
+    const float intensity = coeffs.at(i).intensity;
 
     // in camera
 
     const Eigen::Vector3d point_ori(
-      laserCloudOri.at(i).y,
-      laserCloudOri.at(i).z,
-      laserCloudOri.at(i).x);
+      points.at(i).y,
+      points.at(i).z,
+      points.at(i).x);
 
     const Eigen::Vector3d coeff_vec(
-      coeffSel.at(i).y,
-      coeffSel.at(i).z,
-      coeffSel.at(i).x);
+      coeffs.at(i).y,
+      coeffs.at(i).z,
+      coeffs.at(i).x);
 
     const Eigen::Matrix3d MX = dRdx(posevec(0), posevec(2), posevec(1));
     const float arx = (MX * point_ori).dot(coeff_vec);
@@ -57,9 +57,9 @@ bool LMOptimization(
     A(i, 0) = arz;
     A(i, 1) = arx;
     A(i, 2) = ary;
-    A(i, 3) = coeffSel.at(i).x;
-    A(i, 4) = coeffSel.at(i).y;
-    A(i, 5) = coeffSel.at(i).z;
+    A(i, 3) = coeffs.at(i).x;
+    A(i, 4) = coeffs.at(i).y;
+    A(i, 5) = coeffs.at(i).z;
     b(i) = -intensity;
   }
 
@@ -96,9 +96,9 @@ std::tuple<Vector6d, bool> optimizePose(
 
   bool isDegenerate = false;
   for (int iterCount = 0; iterCount < 30; iterCount++) {
-    const auto [laserCloudOri, coeffSel] = cloud_optimizer.run(posevec);
+    const auto [points, coeffs] = cloud_optimizer.run(posevec);
 
-    if (LMOptimization(laserCloudOri, coeffSel, iterCount, isDegenerate, posevec)) {
+    if (LMOptimization(points, coeffs, iterCount, isDegenerate, posevec)) {
       break;
     }
   }

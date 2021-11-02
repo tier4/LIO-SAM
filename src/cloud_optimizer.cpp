@@ -35,7 +35,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
   std::vector<pcl::PointXYZ> edge_points(N_SCAN * Horizon_SCAN);
-  std::vector<pcl::PointXYZI> coeffSelEdgeVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZI> edge_coeffs(N_SCAN * Horizon_SCAN);
   // edge point holder for parallel computation
   std::vector<bool> edge_flags(N_SCAN * Horizon_SCAN, false);
 
@@ -112,12 +112,12 @@ CloudOptimizer::run(const Vector6d & posevec) const
       continue;
     }
     edge_points[i] = point;
-    coeffSelEdgeVec[i] = makePoint(s * v / (a012 * l12), s * ld2);
+    edge_coeffs[i] = makePoint(s * v / (a012 * l12), s * ld2);
     edge_flags[i] = true;
   }
 
   std::vector<pcl::PointXYZ> surface_points(N_SCAN * Horizon_SCAN);
-  std::vector<pcl::PointXYZI> coeffSelSurfVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZI> surface_coeffs(N_SCAN * Horizon_SCAN);
 
   // surf point holder for parallel computation
   std::vector<bool> surface_flags(N_SCAN * Horizon_SCAN, false);
@@ -151,27 +151,27 @@ CloudOptimizer::run(const Vector6d & posevec) const
     }
 
     surface_points[i] = point;
-    coeffSelSurfVec[i] = makePoint((s / x.norm()) * x, s * pd2);
+    surface_coeffs[i] = makePoint((s / x.norm()) * x, s * pd2);
     surface_flags[i] = true;
   }
 
-  pcl::PointCloud<pcl::PointXYZ> laserCloudOri;
-  pcl::PointCloud<pcl::PointXYZI> coeffSel;
+  pcl::PointCloud<pcl::PointXYZ> points;
+  pcl::PointCloud<pcl::PointXYZI> coeffs;
 
   // combine edge coeffs
   for (unsigned int i = 0; i < edge_downsampled->size(); ++i) {
     if (edge_flags[i]) {
-      laserCloudOri.push_back(edge_points[i]);
-      coeffSel.push_back(coeffSelEdgeVec[i]);
+      points.push_back(edge_points[i]);
+      coeffs.push_back(edge_coeffs[i]);
     }
   }
   // combine surf coeffs
   for (unsigned int i = 0; i < surface_downsampled->size(); ++i) {
     if (surface_flags[i]) {
-      laserCloudOri.push_back(surface_points[i]);
-      coeffSel.push_back(coeffSelSurfVec[i]);
+      points.push_back(surface_points[i]);
+      coeffs.push_back(surface_coeffs[i]);
     }
   }
 
-  return {laserCloudOri, coeffSel};
+  return {points, coeffs};
 }
