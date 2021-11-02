@@ -30,12 +30,12 @@ Eigen::Matrix<double, 5, 3> makeMatrixA(
   return A;
 }
 
-std::tuple<pcl::PointCloud<pcl::PointXYZ>, std::vector<Eigen::Vector4d>, std::vector<double>>
+std::tuple<pcl::PointCloud<pcl::PointXYZ>, std::vector<Eigen::Vector3d>, std::vector<double>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
   std::vector<pcl::PointXYZ> edge_points(edge_downsampled->size());
-  std::vector<Eigen::Vector4d> edge_coeffs(edge_downsampled->size());
+  std::vector<Eigen::Vector3d> edge_coeffs(edge_downsampled->size());
   std::vector<double> edge_coeffs_b(edge_downsampled->size());
   std::vector<bool> edge_flags(edge_downsampled->size(), false);
 
@@ -114,13 +114,13 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
     const double s = 1 - 0.9 * k;
     edge_points[i] = point;
-    edge_coeffs[i] = (s / l12) * Eigen::Vector4d(v(0) / a012, v(1) / a012, v(2) / a012, a012);
+    edge_coeffs[i] = (s / (l12 * a012)) * v;
     edge_coeffs_b[i] = -(s / l12) * a012;
     edge_flags[i] = true;
   }
 
   std::vector<pcl::PointXYZ> surface_points(surface_downsampled->size());
-  std::vector<Eigen::Vector4d> surface_coeffs(surface_downsampled->size());
+  std::vector<Eigen::Vector3d> surface_coeffs(surface_downsampled->size());
   std::vector<double> surface_coeffs_b(surface_downsampled->size());
   std::vector<bool> surface_flags(surface_downsampled->size(), false);
 
@@ -155,13 +155,13 @@ CloudOptimizer::run(const Vector6d & posevec) const
     const double s = 1 - 0.9 * k;
 
     surface_points[i] = point;
-    surface_coeffs[i] = (s / x.norm()) * Eigen::Vector4d(x(0), x(1), x(2), pd2);
+    surface_coeffs[i] = (s / x.norm()) * x;
     surface_coeffs_b[i] = -(s / x.norm()) * pd2;
     surface_flags[i] = true;
   }
 
   pcl::PointCloud<pcl::PointXYZ> points;
-  std::vector<Eigen::Vector4d> coeffs;
+  std::vector<Eigen::Vector3d> coeffs;
   std::vector<double> b;
 
   for (unsigned int i = 0; i < edge_downsampled->size(); ++i) {

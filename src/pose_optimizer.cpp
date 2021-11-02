@@ -6,7 +6,7 @@
 
 bool LMOptimization(
   const pcl::PointCloud<pcl::PointXYZ> & points,
-  const std::vector<Eigen::Vector4d> & coeffs,
+  const std::vector<Eigen::Vector3d> & coeffs,
   const Eigen::VectorXd & b,
   const int iterCount, bool & isDegenerate, Vector6d & posevec)
 {
@@ -27,11 +27,10 @@ bool LMOptimization(
 
   Eigen::MatrixXd A(points.size(), 6);
   for (unsigned int i = 0; i < points.size(); i++) {
-    const Eigen::Vector4d c = coeffs.at(i);
-
     // in camera
 
     const pcl::PointXYZ p = points.at(i);
+    const Eigen::Vector3d c = coeffs.at(i);
     const Eigen::Vector3d point_ori(p.y, p.z, p.x);
     const Eigen::Vector3d coeff_vec(c(1), c(2), c(0));
 
