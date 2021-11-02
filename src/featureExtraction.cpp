@@ -70,15 +70,34 @@ calcCurvature(
   return {curvature, indices};
 }
 
-std::tuple<int, int> calcIndexRange(
-  const int start_index, const int end_index, const int n_blocks, const int j)
+class IndexRange
 {
-  const double n = static_cast<double>(n_blocks);
-  const int k = j + 1;
-  const int sp = static_cast<int>(start_index * (1. - j / n) + end_index * j / n);
-  const int ep = static_cast<int>(start_index * (1. - k / n) + end_index * k / n - 1.);
-  return {sp, ep};
-}
+public:
+  IndexRange(const int start_index, const int end_index, const int n_blocks)
+  : start_index_(static_cast<double>(start_index)),
+    end_index_(static_cast<double>(end_index)),
+    n_blocks_(static_cast<double>(n_blocks))
+  {
+  }
+
+  int begin(const int j) const
+  {
+    const double n = n_blocks_;
+    return static_cast<int>(start_index_ * (1. - j / n) + end_index_ * j / n);
+  }
+
+  int end(const int j) const
+  {
+    const double n = n_blocks_;
+    const int k = j + 1;
+    return static_cast<int>(start_index_ * (1. - k / n) + end_index_ * k / n - 1.);
+  }
+
+private:
+  const double start_index_;
+  const double end_index_;
+  const double n_blocks_;
+};
 
 class FeatureExtraction : public ParamServer
 {
@@ -159,10 +178,10 @@ public:
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<PointType>::Ptr surface_scan(new pcl::PointCloud<PointType>());
 
-      const int start_index = msg->ring_start_indices[i];
-      const int end_index = msg->end_ring_indices[i];
+      const IndexRange index_range(msg->ring_start_indices[i], msg->end_ring_indices[i], N_BLOCKS);
       for (int j = 0; j < N_BLOCKS; j++) {
-        const auto [sp, ep] = calcIndexRange(start_index, end_index, N_BLOCKS, j);
+        const int sp = index_range.begin(j);
+        const int ep = index_range.end(j);
         std::sort(indices.begin() + sp, indices.begin() + ep, by_value(curvature));
 
         int n_picked = 0;
