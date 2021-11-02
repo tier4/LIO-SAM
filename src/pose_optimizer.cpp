@@ -33,11 +33,8 @@ bool LMOptimization(
 
     // in camera
 
-    const Eigen::Vector3d point_ori(
-      points.at(i).y,
-      points.at(i).z,
-      points.at(i).x);
-
+    const pcl::PointXYZ p = points.at(i);
+    const Eigen::Vector3d point_ori(p.y, p.z, p.x);
     const Eigen::Vector3d coeff_vec(c(1), c(2), c(0));
 
     const Eigen::Matrix3d MX = dRdx(posevec(0), posevec(2), posevec(1));
