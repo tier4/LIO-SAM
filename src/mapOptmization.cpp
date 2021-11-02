@@ -414,8 +414,7 @@ public:
 
       try {
         const CloudOptimizer cloud_optimizer(
-          N_SCAN, Horizon_SCAN, numberOfCores,
-          edgeFeatureMinValidNum, surfFeatureMinValidNum,
+          numberOfCores, edgeFeatureMinValidNum, surfFeatureMinValidNum,
           edge, surface,
           edge_map, surface_map);
 

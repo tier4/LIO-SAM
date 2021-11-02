@@ -14,8 +14,6 @@ class CloudOptimizer
 {
 public:
   CloudOptimizer(
-    const int N_SCAN,
-    const int Horizon_SCAN,
     const int numberOfCores,
     const int edgeFeatureMinValidNum,
     const int surfFeatureMinValidNum,
@@ -23,9 +21,7 @@ public:
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_downsampled,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map_downsampled,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map_downsampled)
-  : N_SCAN(N_SCAN),
-    Horizon_SCAN(Horizon_SCAN),
-    numberOfCores(numberOfCores),
+  : numberOfCores(numberOfCores),
     edge_downsampled(edge_downsampled),
     surface_downsampled(surface_downsampled),
     edge_map_downsampled(edge_map_downsampled),
@@ -48,8 +44,6 @@ public:
   run(const Vector6d & posevec) const;
 
 private:
-  const int N_SCAN;
-  const int Horizon_SCAN;
   const int numberOfCores;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_downsampled;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_downsampled;

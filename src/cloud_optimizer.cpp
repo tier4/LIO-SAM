@@ -34,10 +34,10 @@ std::tuple<pcl::PointCloud<pcl::PointXYZ>, std::vector<Eigen::Vector4d>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
-  std::vector<pcl::PointXYZ> edge_points(N_SCAN * Horizon_SCAN);
-  std::vector<Eigen::Vector4d> edge_coeffs(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZ> edge_points(edge_downsampled->size());
+  std::vector<Eigen::Vector4d> edge_coeffs(edge_downsampled->size());
   // edge point holder for parallel computation
-  std::vector<bool> edge_flags(N_SCAN * Horizon_SCAN, false);
+  std::vector<bool> edge_flags(edge_downsampled->size(), false);
 
   // edge optimization
   #pragma omp parallel for num_threads(numberOfCores)
@@ -117,11 +117,11 @@ CloudOptimizer::run(const Vector6d & posevec) const
     edge_flags[i] = true;
   }
 
-  std::vector<pcl::PointXYZ> surface_points(N_SCAN * Horizon_SCAN);
-  std::vector<Eigen::Vector4d> surface_coeffs(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZ> surface_points(surface_downsampled->size());
+  std::vector<Eigen::Vector4d> surface_coeffs(surface_downsampled->size());
 
   // surf point holder for parallel computation
-  std::vector<bool> surface_flags(N_SCAN * Horizon_SCAN, false);
+  std::vector<bool> surface_flags(surface_downsampled->size(), false);
 
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
