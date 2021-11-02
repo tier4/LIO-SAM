@@ -276,6 +276,31 @@ void updatePath(
   }
 }
 
+pcl::PointCloud<PointType>::Ptr mapFusion(
+  const std::vector<pcl::PointCloud<PointType>::Ptr> & cloud,
+  const pcl::PointCloud<PointType>::Ptr & points,
+  const pcl::PointCloud<StampedPose> & poses6dof,
+  const double radius)
+{
+  pcl::PointCloud<PointType>::Ptr fused(new pcl::PointCloud<PointType>());
+
+  const Eigen::Vector3d latest = getXYZ(poses6dof.back());
+
+  for (auto & p : *points) {
+    const double distance = (getXYZ(p) - latest).norm();
+    if (distance > radius) {
+      continue;
+    }
+
+    const int index = static_cast<int>(p.intensity);
+
+    const Vector6d v = makePosevec(poses6dof.at(index));
+    *fused += transform(*cloud[index], v);
+  }
+
+  return fused;
+}
+
 class MapFusion
 {
 public:
@@ -292,24 +317,8 @@ public:
     const pcl::PointCloud<StampedPose> & poses6dof,
     const double radius) const
   {
-    pcl::PointCloud<PointType>::Ptr edge(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
-
-    const Eigen::Vector3d latest = getXYZ(poses6dof.back());
-
-    for (auto & p : *points) {
-      const double distance = (getXYZ(p) - latest).norm();
-      if (distance > radius) {
-        continue;
-      }
-
-      const int index = static_cast<int>(p.intensity);
-
-      const Vector6d v = makePosevec(poses6dof.at(index));
-      *edge += transform(*edge_cloud_[index], v);
-      *surface += transform(*surface_cloud_[index], v);
-    }
-
+    const auto edge = mapFusion(edge_cloud_, points, poses6dof, radius);
+    const auto surface = mapFusion(surface_cloud_, points, poses6dof, radius);
     return {edge, surface};
   }
 
