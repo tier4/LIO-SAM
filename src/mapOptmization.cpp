@@ -282,8 +282,13 @@ public:
     const pcl::PointCloud<PointType>::Ptr & points3d,
     const pcl::PointCloud<StampedPose> & poses6dof,
     const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud_,
-    const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_) const
+    const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_,
+    const std::vector<int> & indices_,
+    const std::vector<ros::Time> & timestamps_) const
   {
+    assert(points3d->size() == poses6dof.size());
+    assert(points3d->size() == indices_.size());
+    assert(points3d->size() == timestamps_.size());
     const KDTree<PointType> kdtree(points3d);
 
     const auto r = kdtree.radiusSearch(points3d->back(), radius_);
@@ -298,10 +303,10 @@ public:
 
     // also extract some latest key frames in case the robot rotates in one position
     for (int i = points3d->size() - 1; i >= 0; --i) {
-      if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
+      if (timestamp.toSec() - timestamps_.at(i).toSec() >= 10.0) {
         break;
       }
-      point_indices.push_back(points3d->at(i).intensity);
+      point_indices.push_back(indices_.at(i));
     }
 
     const auto edge = mapFusion(edge_cloud_, poses6dof, point_indices, radius_);
@@ -331,7 +336,7 @@ public:
 
   const ros::Publisher pubRecentKeyFrame;
   const ros::Subscriber subCloud;
-  SurroundingKeyframeExtraction extract_keyframes_;
+  const SurroundingKeyframeExtraction extract_keyframes_;
 
   Vector6d posevec;
 
@@ -343,6 +348,8 @@ public:
 
   std::mutex mtx;
 
+  std::vector<ros::Time> timestamps_;
+  std::vector<int> indices_;
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
   ImuOrientationIncrement imu_orientation_increment_;
@@ -401,8 +408,9 @@ public:
     bool is_degenerate = false;
     if (!points3d->empty()) {
       const auto [edge_map, surface_map] = extract_keyframes_(
-        timestamp, points3d, poses6dof,
-        edge_cloud_, surface_cloud_
+        timestamp, points3d,
+        poses6dof,
+        edge_cloud_, surface_cloud_, indices_, timestamps_
       );
 
       try {
@@ -427,8 +435,9 @@ public:
         keyframe_angle_threshold, keyframe_distance_threshold))
     {
       // size can be used as index
+      timestamps_.push_back(timestamp);
+      indices_.push_back(points3d->size());
       points3d->push_back(makePoint(posevec.tail(3), points3d->size()));
-
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
