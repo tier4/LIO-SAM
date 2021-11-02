@@ -263,32 +263,6 @@ pcl::PointCloud<PointType>::Ptr mapFusion(
   return fused;
 }
 
-class MapFusion
-{
-public:
-  MapFusion(
-    const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud,
-    const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud)
-  : edge_cloud_(edge_cloud), surface_cloud_(surface_cloud)
-  {
-  }
-
-  std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
-  operator()(
-    const pcl::PointCloud<PointType>::Ptr & points,
-    const pcl::PointCloud<StampedPose> & poses6dof,
-    const double radius) const
-  {
-    const auto edge = mapFusion(edge_cloud_, points, poses6dof, radius);
-    const auto surface = mapFusion(surface_cloud_, points, poses6dof, radius);
-    return {edge, surface};
-  }
-
-private:
-  const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud_;
-  const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_;
-};
-
 class SurroundingKeyframeExtraction
 {
 public:
