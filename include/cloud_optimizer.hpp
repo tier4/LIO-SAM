@@ -30,8 +30,8 @@ public:
     surface_downsampled(surface_downsampled),
     edge_map_downsampled(edge_map_downsampled),
     surface_map_downsampled(surface_map_downsampled),
-    kdtreeEdgeFromMap(KDTree<pcl::PointXYZ>(edge_map_downsampled)),
-    kdtreeSurfFromMap(KDTree<pcl::PointXYZ>(surface_map_downsampled))
+    edge_kdtree_(KDTree<pcl::PointXYZ>(edge_map_downsampled)),
+    surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map_downsampled))
   {
     if (
       static_cast<int>(edge_downsampled->size()) <= edgeFeatureMinValidNum ||
@@ -55,8 +55,8 @@ private:
   const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_downsampled;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_map_downsampled;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_map_downsampled;
-  const KDTree<pcl::PointXYZ> kdtreeEdgeFromMap;
-  const KDTree<pcl::PointXYZ> kdtreeSurfFromMap;
+  const KDTree<pcl::PointXYZ> edge_kdtree_;
+  const KDTree<pcl::PointXYZ> surface_kdtree_;
 };
 
 #endif

@@ -34,17 +34,17 @@ std::tuple<pcl::PointCloud<pcl::PointXYZ>, pcl::PointCloud<pcl::PointXYZI>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
-  std::vector<pcl::PointXYZ> laserCloudOriEdgeVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZ> edge_points(N_SCAN * Horizon_SCAN);
   std::vector<pcl::PointXYZI> coeffSelEdgeVec(N_SCAN * Horizon_SCAN);
   // edge point holder for parallel computation
-  std::vector<bool> laserCloudOriEdgeFlag(N_SCAN * Horizon_SCAN, false);
+  std::vector<bool> edge_flags(N_SCAN * Horizon_SCAN, false);
 
   // edge optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_downsampled->size(); i++) {
     const pcl::PointXYZ point = edge_downsampled->at(i);
     const pcl::PointXYZ map_point = transform(point_to_map, point);
-    const auto [indices, squared_distances] = kdtreeEdgeFromMap.nearestKSearch(map_point, 5);
+    const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {
       continue;
@@ -111,23 +111,23 @@ CloudOptimizer::run(const Vector6d & posevec) const
     if (s <= 0.1) {
       continue;
     }
-    laserCloudOriEdgeVec[i] = point;
+    edge_points[i] = point;
     coeffSelEdgeVec[i] = makePoint(s * v / (a012 * l12), s * ld2);
-    laserCloudOriEdgeFlag[i] = true;
+    edge_flags[i] = true;
   }
 
-  std::vector<pcl::PointXYZ> laserCloudOriSurfVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZ> surface_points(N_SCAN * Horizon_SCAN);
   std::vector<pcl::PointXYZI> coeffSelSurfVec(N_SCAN * Horizon_SCAN);
 
   // surf point holder for parallel computation
-  std::vector<bool> laserCloudOriSurfFlag(N_SCAN * Horizon_SCAN, false);
+  std::vector<bool> surface_flags(N_SCAN * Horizon_SCAN, false);
 
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < surface_downsampled->size(); i++) {
     const pcl::PointXYZ point = surface_downsampled->at(i);
     const pcl::PointXYZ map_point = transform(point_to_map, point);
-    const auto [indices, squared_distances] = kdtreeSurfFromMap.nearestKSearch(map_point, 5);
+    const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {
       continue;
@@ -150,9 +150,9 @@ CloudOptimizer::run(const Vector6d & posevec) const
       continue;
     }
 
-    laserCloudOriSurfVec[i] = point;
+    surface_points[i] = point;
     coeffSelSurfVec[i] = makePoint((s / x.norm()) * x, s * pd2);
-    laserCloudOriSurfFlag[i] = true;
+    surface_flags[i] = true;
   }
 
   pcl::PointCloud<pcl::PointXYZ> laserCloudOri;
@@ -160,15 +160,15 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
   // combine edge coeffs
   for (unsigned int i = 0; i < edge_downsampled->size(); ++i) {
-    if (laserCloudOriEdgeFlag[i]) {
-      laserCloudOri.push_back(laserCloudOriEdgeVec[i]);
+    if (edge_flags[i]) {
+      laserCloudOri.push_back(edge_points[i]);
       coeffSel.push_back(coeffSelEdgeVec[i]);
     }
   }
   // combine surf coeffs
   for (unsigned int i = 0; i < surface_downsampled->size(); ++i) {
-    if (laserCloudOriSurfFlag[i]) {
-      laserCloudOri.push_back(laserCloudOriSurfVec[i]);
+    if (surface_flags[i]) {
+      laserCloudOri.push_back(surface_points[i]);
       coeffSel.push_back(coeffSelSurfVec[i]);
     }
   }
