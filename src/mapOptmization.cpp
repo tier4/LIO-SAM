@@ -347,7 +347,8 @@ public:
     const ros::Time & timestamp,
     const pcl::PointCloud<PointType>::Ptr & points3d,
     const pcl::PointCloud<StampedPose> & poses6dof,
-    const MapFusion & map_fusion) const
+    const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud_,
+    const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_) const
   {
     const KDTree<PointType> kdtree(points3d);
 
@@ -369,7 +370,8 @@ public:
       points->push_back(points3d->at(i));
     }
 
-    const auto [edge, surface] = map_fusion(points, poses6dof, radius_);
+    const auto edge = mapFusion(edge_cloud_, points, poses6dof, radius_);
+    const auto surface = mapFusion(surface_cloud_, points, poses6dof, radius_);
     return {
       downsample(edge, edge_leaf_size_),
       downsample(surface, surface_leaf_size_)
@@ -466,7 +468,7 @@ public:
     if (!points3d->empty()) {
       const auto [edge_map, surface_map] = extract_keyframes_(
         timestamp, points3d, poses6dof,
-        MapFusion(edge_cloud_, surface_cloud_)
+        edge_cloud_, surface_cloud_
       );
 
       try {
