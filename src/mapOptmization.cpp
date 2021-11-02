@@ -293,8 +293,7 @@ public:
     std::vector<int> point_indices;
     for (auto & p : *points) {
       const int index = std::get<0>(kdtree.closestPoint(p));
-      const auto closest = points3d->at(index);
-      point_indices.push_back(closest.intensity);
+      point_indices.push_back(index);
     }
 
     // also extract some latest key frames in case the robot rotates in one position
