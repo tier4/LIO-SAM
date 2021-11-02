@@ -38,7 +38,7 @@ public:
   }
 
 private:
-  pcl::KdTreeFLANN<PointType> kdtree_;
+  pcl::KdTreeFLANN<T> kdtree_;
 };
 
 #endif
