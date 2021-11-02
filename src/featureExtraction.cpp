@@ -105,13 +105,8 @@ public:
   {
     // used to prevent from labeling a neighbor as surface or edge
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
-    std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
 
     const auto points = getPointCloud<PointType>(msg->cloud_deskewed);
-
-    for (unsigned int i = 5; i < points->size() - 5; i++) {
-      label[i] = CurvatureLabel::kDefault;
-    }
 
     for (unsigned int i = 5; i < points->size() - 5; i++) {
       neighbor_picked[i] = false;
@@ -156,6 +151,11 @@ public:
 
     const int N_BLOCKS = 6;
 
+    std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
+    for (unsigned int i = 5; i < points->size() - 5; i++) {
+      label[i] = CurvatureLabel::kDefault;
+    }
+
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<PointType>::Ptr surface_scan(new pcl::PointCloud<PointType>());
 
@@ -178,8 +178,8 @@ public:
 
           n_picked++;
 
-          label[index] = CurvatureLabel::kEdge;
           corner->push_back(points->at(index));
+          label[index] = CurvatureLabel::kEdge;
 
           neighborPicked(column_index, index, neighbor_picked);
         }
