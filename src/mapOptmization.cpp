@@ -148,11 +148,11 @@ Vector6d makePosevec(const StampedPose & p)
   return v;
 }
 
-pcl::PointCloud<PointType> transform(
-  const pcl::PointCloud<PointType> & input, const Vector6d & posevec,
+pcl::PointCloud<pcl::PointXYZ> transform(
+  const pcl::PointCloud<pcl::PointXYZ> & input, const Vector6d & posevec,
   const int numberOfCores = 2)
 {
-  pcl::PointCloud<PointType> output;
+  pcl::PointCloud<pcl::PointXYZ> output;
 
   output.resize(input.size());
   const Eigen::Affine3d transform = getTransformation(posevec);
@@ -161,7 +161,7 @@ pcl::PointCloud<PointType> transform(
   for (unsigned int i = 0; i < input.size(); ++i) {
     const auto & point = input.at(i);
     const Eigen::Vector3d p = getXYZ(point);
-    output.at(i) = makePoint(transform * p, point.intensity);
+    output.at(i) = makePointXYZ(transform * p);
   }
   return output;
 }
@@ -238,13 +238,13 @@ double interpolatePitch(const double p0, const double p1, const double weight)
   return interpolate(Eigen::Vector3d(0, p0, 0), Eigen::Vector3d(0, p1, 0), weight)(1);
 }
 
-pcl::PointCloud<PointType>::Ptr mapFusion(
-  const std::vector<pcl::PointCloud<PointType>::Ptr> & cloud,
+pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
+  const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> & cloud,
   const pcl::PointCloud<StampedPose> & poses6dof,
   const std::vector<int> & indices,
   const double radius)
 {
-  pcl::PointCloud<PointType>::Ptr fused(new pcl::PointCloud<PointType>());
+  pcl::PointCloud<pcl::PointXYZ>::Ptr fused(new pcl::PointCloud<pcl::PointXYZ>());
 
   const Eigen::Vector3d latest = getXYZ(poses6dof.back());
 
@@ -276,13 +276,13 @@ public:
   {
   }
 
-  std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
+  std::tuple<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>
   operator()(
     const ros::Time & timestamp,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & points3d,
     const pcl::PointCloud<StampedPose> & poses6dof,
-    const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud_,
-    const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_,
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> & edge_cloud_,
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> & surface_cloud_,
     const std::vector<int> & indices_,
     const std::vector<ros::Time> & timestamps_) const
   {
@@ -313,8 +313,8 @@ public:
     const auto edge = mapFusion(edge_cloud_, poses6dof, point_indices, radius_);
     const auto surface = mapFusion(surface_cloud_, poses6dof, point_indices, radius_);
     return {
-      downsample<PointType>(edge, edge_leaf_size_),
-      downsample<PointType>(surface, surface_leaf_size_)
+      downsample<pcl::PointXYZ>(edge, edge_leaf_size_),
+      downsample<pcl::PointXYZ>(surface, surface_leaf_size_)
     };
   }
 
@@ -341,8 +341,8 @@ public:
 
   Vector6d posevec;
 
-  std::vector<pcl::PointCloud<PointType>::Ptr> edge_cloud_;
-  std::vector<pcl::PointCloud<PointType>::Ptr> surface_cloud_;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> edge_cloud_;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> surface_cloud_;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr points3d;
   pcl::PointCloud<StampedPose> poses6dof;
@@ -403,8 +403,8 @@ public:
       msg->imu_orientation, msg->scan_start_imu_pose
     );
 
-    const auto edge = getPointCloud<PointType>(msg->cloud_edge);
-    const auto surface = getPointCloud<PointType>(msg->cloud_surface);
+    const auto edge = getPointCloud<pcl::PointXYZ>(msg->cloud_edge);
+    const auto surface = getPointCloud<pcl::PointXYZ>(msg->cloud_surface);
 
     bool is_degenerate = false;
     if (!points3d->empty()) {

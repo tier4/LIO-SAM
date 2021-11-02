@@ -211,7 +211,7 @@ public:
   {
   }
 
-  std::tuple<Eigen::MatrixXd, std::vector<PointType>, bool>
+  std::tuple<Eigen::MatrixXd, std::vector<pcl::PointXYZ>, bool>
   compute(
     const std::deque<sensor_msgs::Imu> & imu_buffer,
     const pcl::PointCloud<PointXYZIRT> & input_points,
@@ -228,7 +228,7 @@ public:
 
     Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
 
-    std::vector<PointType> output_points(N_SCAN * Horizon_SCAN);
+    std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
 
     for (const PointXYZIRT & p : input_points) {
       const Eigen::Vector3d q(p.x, p.y, p.z);
@@ -255,7 +255,7 @@ public:
       const int index = column_index + row_index * Horizon_SCAN;
 
       if (!imu_available) {
-        output_points[index] = makePoint(q, p.intensity);
+        output_points[index] = makePointXYZ(q);
         continue;
       }
 
@@ -270,7 +270,7 @@ public:
       }
 
       // transform points to start
-      output_points[index] = makePoint((start_inverse * transform) * q, p.intensity);
+      output_points[index] = makePointXYZ((start_inverse * transform) * q);
     }
 
     return {range_matrix, output_points, imu_available};
@@ -491,7 +491,7 @@ public:
     cloud_info.imu_odometry_available = imu_odometry_available;
     cloud_info.imu_orientation_available = imu_available;
 
-    pcl::PointCloud<PointType> extractedCloud;
+    pcl::PointCloud<pcl::PointXYZ> extractedCloud;
     int count = 0;
     // extract segmented cloud for lidar odometry
     for (int i = 0; i < N_SCAN; ++i) {

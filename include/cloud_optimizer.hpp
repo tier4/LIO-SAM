@@ -19,10 +19,10 @@ public:
     const int numberOfCores,
     const int edgeFeatureMinValidNum,
     const int surfFeatureMinValidNum,
-    const pcl::PointCloud<PointType>::Ptr & edge_downsampled,
-    const pcl::PointCloud<PointType>::Ptr & surface_downsampled,
-    const pcl::PointCloud<PointType>::Ptr & edge_map_downsampled,
-    const pcl::PointCloud<PointType>::Ptr & surface_map_downsampled)
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_downsampled,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_downsampled,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map_downsampled,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map_downsampled)
   : N_SCAN(N_SCAN),
     Horizon_SCAN(Horizon_SCAN),
     numberOfCores(numberOfCores),
@@ -30,8 +30,8 @@ public:
     surface_downsampled(surface_downsampled),
     edge_map_downsampled(edge_map_downsampled),
     surface_map_downsampled(surface_map_downsampled),
-    kdtreeEdgeFromMap(KDTree<PointType>(edge_map_downsampled)),
-    kdtreeSurfFromMap(KDTree<PointType>(surface_map_downsampled))
+    kdtreeEdgeFromMap(KDTree<pcl::PointXYZ>(edge_map_downsampled)),
+    kdtreeSurfFromMap(KDTree<pcl::PointXYZ>(surface_map_downsampled))
   {
     if (
       static_cast<int>(edge_downsampled->size()) <= edgeFeatureMinValidNum ||
@@ -44,19 +44,19 @@ public:
     }
   }
 
-  std::tuple<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>
+  std::tuple<pcl::PointCloud<pcl::PointXYZ>, pcl::PointCloud<pcl::PointXYZI>>
   run(const Vector6d & posevec) const;
 
 private:
   const int N_SCAN;
   const int Horizon_SCAN;
   const int numberOfCores;
-  const pcl::PointCloud<PointType>::Ptr edge_downsampled;
-  const pcl::PointCloud<PointType>::Ptr surface_downsampled;
-  const pcl::PointCloud<PointType>::Ptr edge_map_downsampled;
-  const pcl::PointCloud<PointType>::Ptr surface_map_downsampled;
-  const KDTree<PointType> kdtreeEdgeFromMap;
-  const KDTree<PointType> kdtreeSurfFromMap;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_downsampled;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_downsampled;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_map_downsampled;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_map_downsampled;
+  const KDTree<pcl::PointXYZ> kdtreeEdgeFromMap;
+  const KDTree<pcl::PointXYZ> kdtreeSurfFromMap;
 };
 
 #endif

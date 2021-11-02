@@ -5,8 +5,8 @@
 #include <Eigen/Eigenvalues>
 
 bool LMOptimization(
-  const pcl::PointCloud<PointType> & laserCloudOri,
-  const pcl::PointCloud<PointType> & coeffSel,
+  const pcl::PointCloud<pcl::PointXYZ> & laserCloudOri,
+  const pcl::PointCloud<pcl::PointXYZI> & coeffSel,
   const int iterCount, bool & isDegenerate, Vector6d & posevec)
 {
   // This optimization is from the original loam_velodyne by Ji Zhang,

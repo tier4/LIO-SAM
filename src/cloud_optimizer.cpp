@@ -20,7 +20,7 @@ bool validatePlane(
 }
 
 Eigen::Matrix<double, 5, 3> makeMatrixA(
-  const pcl::PointCloud<PointType>::Ptr & pointcloud,
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
   const std::vector<int> & indices)
 {
   Eigen::Matrix<double, 5, 3> A = Eigen::Matrix<double, 5, 3>::Zero();
@@ -30,22 +30,21 @@ Eigen::Matrix<double, 5, 3> makeMatrixA(
   return A;
 }
 
-std::tuple<pcl::PointCloud<PointType>, pcl::PointCloud<PointType>>
+std::tuple<pcl::PointCloud<pcl::PointXYZ>, pcl::PointCloud<pcl::PointXYZI>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
-  std::vector<PointType> laserCloudOriEdgeVec(N_SCAN * Horizon_SCAN);
-  std::vector<PointType> coeffSelEdgeVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZ> laserCloudOriEdgeVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZI> coeffSelEdgeVec(N_SCAN * Horizon_SCAN);
   // edge point holder for parallel computation
   std::vector<bool> laserCloudOriEdgeFlag(N_SCAN * Horizon_SCAN, false);
 
   // edge optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_downsampled->size(); i++) {
-    const PointType point = edge_downsampled->at(i);
-    const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
-    const PointType p = makePoint(map_point, point.intensity);
-    const auto [indices, squared_distances] = kdtreeEdgeFromMap.nearestKSearch(p, 5);
+    const pcl::PointXYZ point = edge_downsampled->at(i);
+    const pcl::PointXYZ map_point = makePointXYZ(point_to_map * getXYZ(point));
+    const auto [indices, squared_distances] = kdtreeEdgeFromMap.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {
       continue;
@@ -74,7 +73,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
     if (d1(0) <= 3 * d1(1)) {
       continue;
     }
-    const Eigen::Vector3d p0 = map_point;
+    const Eigen::Vector3d p0 = getXYZ(map_point);
     const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
     const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
 
@@ -117,8 +116,8 @@ CloudOptimizer::run(const Vector6d & posevec) const
     laserCloudOriEdgeFlag[i] = true;
   }
 
-  std::vector<PointType> laserCloudOriSurfVec(N_SCAN * Horizon_SCAN);
-  std::vector<PointType> coeffSelSurfVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZ> laserCloudOriSurfVec(N_SCAN * Horizon_SCAN);
+  std::vector<pcl::PointXYZI> coeffSelSurfVec(N_SCAN * Horizon_SCAN);
 
   // surf point holder for parallel computation
   std::vector<bool> laserCloudOriSurfFlag(N_SCAN * Horizon_SCAN, false);
@@ -126,10 +125,9 @@ CloudOptimizer::run(const Vector6d & posevec) const
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < surface_downsampled->size(); i++) {
-    const PointType point = surface_downsampled->at(i);
-    const Eigen::Vector3d map_point = point_to_map * getXYZ(point);
-    const PointType p = makePoint(map_point, point.intensity);
-    const auto [indices, squared_distances] = kdtreeSurfFromMap.nearestKSearch(p, 5);
+    const pcl::PointXYZ point = surface_downsampled->at(i);
+    const pcl::PointXYZ map_point = makePointXYZ(point_to_map * getXYZ(point));
+    const auto [indices, squared_distances] = kdtreeSurfFromMap.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {
       continue;
@@ -144,9 +142,9 @@ CloudOptimizer::run(const Vector6d & posevec) const
     }
 
     const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
-    const Eigen::Vector4d q = toHomogeneous(map_point);
+    const Eigen::Vector4d q = toHomogeneous(getXYZ(map_point));
     const float pd2 = y.transpose() * q;
-    const float s = 1 - 0.9 * fabs(pd2) / sqrt(map_point.norm());
+    const float s = 1 - 0.9 * fabs(pd2) / sqrt(getXYZ(map_point).norm());
 
     if (s <= 0.1) {
       continue;
@@ -157,8 +155,8 @@ CloudOptimizer::run(const Vector6d & posevec) const
     laserCloudOriSurfFlag[i] = true;
   }
 
-  pcl::PointCloud<PointType> laserCloudOri;
-  pcl::PointCloud<PointType> coeffSel;
+  pcl::PointCloud<pcl::PointXYZ> laserCloudOri;
+  pcl::PointCloud<pcl::PointXYZI> coeffSel;
 
   // combine edge coeffs
   for (unsigned int i = 0; i < edge_downsampled->size(); ++i) {

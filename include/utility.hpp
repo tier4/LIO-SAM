@@ -174,6 +174,11 @@ inline tf::Transform identityTransform()
   return identity;
 }
 
+inline Eigen::Vector3d getXYZ(const pcl::PointXYZ & point)
+{
+  return Eigen::Vector3d(point.x, point.y, point.z);
+}
+
 inline Eigen::Vector3d getXYZ(const PointType & point)
 {
   return Eigen::Vector3d(point.x, point.y, point.z);

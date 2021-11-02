@@ -51,7 +51,7 @@ void neighborPicked(
 
 std::tuple<std::vector<float>, std::vector<int>>
 calcCurvature(
-  const pcl::PointCloud<PointType>::Ptr & points,
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & points,
   const std::vector<float> & range,
   const int N_SCAN,
   const int Horizon_SCAN)
@@ -125,7 +125,7 @@ public:
     // used to prevent from labeling a neighbor as surface or edge
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
 
-    const auto points = getPointCloud<PointType>(msg->cloud_deskewed);
+    const auto points = getPointCloud<pcl::PointXYZ>(msg->cloud_deskewed);
 
     for (unsigned int i = 5; i < points->size() - 5; i++) {
       neighbor_picked[i] = false;
@@ -165,8 +165,8 @@ public:
 
     auto [curvature, indices] = calcCurvature(points, range, N_SCAN, Horizon_SCAN);
 
-    pcl::PointCloud<PointType>::Ptr edge(new pcl::PointCloud<PointType>());
-    pcl::PointCloud<PointType>::Ptr surface(new pcl::PointCloud<PointType>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr edge(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr surface(new pcl::PointCloud<pcl::PointXYZ>());
 
     const int N_BLOCKS = 6;
 
@@ -176,7 +176,7 @@ public:
     }
 
     for (int i = 0; i < N_SCAN; i++) {
-      pcl::PointCloud<PointType>::Ptr surface_scan(new pcl::PointCloud<PointType>());
+      pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan(new pcl::PointCloud<pcl::PointXYZ>());
 
       const IndexRange index_range(msg->ring_start_indices[i], msg->end_ring_indices[i], N_BLOCKS);
       for (int j = 0; j < N_BLOCKS; j++) {
@@ -221,11 +221,11 @@ public:
         }
       }
 
-      *surface += *downsample(surface_scan, surface_leaf_size);
+      *surface += *downsample<pcl::PointXYZ>(surface_scan, surface_leaf_size);
     }
 
-    const auto edge_downsampled = downsample(edge, mappingEdgeLeafSize);
-    const auto surface_downsampled = downsample(surface, mappingSurfLeafSize);
+    const auto edge_downsampled = downsample<pcl::PointXYZ>(edge, mappingEdgeLeafSize);
+    const auto surface_downsampled = downsample<pcl::PointXYZ>(surface, mappingSurfLeafSize);
 
     lio_sam::cloud_info cloud_info = *msg; // new cloud info
     // save newly extracted features
