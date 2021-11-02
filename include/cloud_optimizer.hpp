@@ -40,7 +40,7 @@ public:
     }
   }
 
-  std::tuple<pcl::PointCloud<pcl::PointXYZ>, std::vector<Eigen::Vector4d>>
+  std::tuple<pcl::PointCloud<pcl::PointXYZ>, std::vector<Eigen::Vector4d>, std::vector<double>>
   run(const Vector6d & posevec) const;
 
 private:

@@ -7,6 +7,7 @@
 bool LMOptimization(
   const pcl::PointCloud<pcl::PointXYZ> & points,
   const std::vector<Eigen::Vector4d> & coeffs,
+  const Eigen::VectorXd & b,
   const int iterCount, bool & isDegenerate, Vector6d & posevec)
 {
   // This optimization is from the original loam_velodyne by Ji Zhang,
@@ -25,11 +26,8 @@ bool LMOptimization(
   }
 
   Eigen::MatrixXd A(points.size(), 6);
-  Eigen::VectorXd b(points.size());
-
   for (unsigned int i = 0; i < points.size(); i++) {
     const Eigen::Vector4d c = coeffs.at(i);
-    const float intensity = c(3);
 
     // in camera
 
@@ -53,7 +51,6 @@ bool LMOptimization(
     A(i, 3) = c(0);
     A(i, 4) = c(1);
     A(i, 5) = c(2);
-    b(i) = -intensity;
   }
 
   const Eigen::MatrixXd AtA = A.transpose() * A;
@@ -89,9 +86,9 @@ std::tuple<Vector6d, bool> optimizePose(
 
   bool isDegenerate = false;
   for (int iterCount = 0; iterCount < 30; iterCount++) {
-    const auto [points, coeffs] = cloud_optimizer.run(posevec);
-
-    if (LMOptimization(points, coeffs, iterCount, isDegenerate, posevec)) {
+    const auto [points, coeffs, b_vector] = cloud_optimizer.run(posevec);
+    const Eigen::Map<const Eigen::VectorXd> b(b_vector.data(), b_vector.size());
+    if (LMOptimization(points, coeffs, b, iterCount, isDegenerate, posevec)) {
       break;
     }
   }
