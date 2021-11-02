@@ -5,9 +5,6 @@
 #include <pcl/filters/voxel_grid.h>
 #include "point_type.hpp"
 
-pcl::PointCloud<PointType>::Ptr downsample(
-  const pcl::PointCloud<PointType>::Ptr & input_cloud, const float leaf_size);
-
 template<typename T>
 typename pcl::PointCloud<T>::Ptr downsample(
   const typename pcl::PointCloud<T>::Ptr & input_cloud, const float leaf_size)
