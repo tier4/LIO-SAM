@@ -30,12 +30,12 @@ Eigen::Matrix<double, 5, 3> makeMatrixA(
   return A;
 }
 
-std::tuple<pcl::PointCloud<pcl::PointXYZ>, pcl::PointCloud<pcl::PointXYZI>>
+std::tuple<pcl::PointCloud<pcl::PointXYZ>, std::vector<Eigen::Vector4d>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
   std::vector<pcl::PointXYZ> edge_points(N_SCAN * Horizon_SCAN);
-  std::vector<pcl::PointXYZI> edge_coeffs(N_SCAN * Horizon_SCAN);
+  std::vector<Eigen::Vector4d> edge_coeffs(N_SCAN * Horizon_SCAN);
   // edge point holder for parallel computation
   std::vector<bool> edge_flags(N_SCAN * Horizon_SCAN, false);
 
@@ -115,12 +115,16 @@ CloudOptimizer::run(const Vector6d & posevec) const
       continue;
     }
     edge_points[i] = point;
-    edge_coeffs[i] = makePoint(s * v / (a012 * l12), s * ld2);
+    edge_coeffs[i] = s * Eigen::Vector4d(
+      v(0) / (a012 * l12),
+      v(1) / (a012 * l12),
+      v(2) / (a012 * l12),
+      ld2);
     edge_flags[i] = true;
   }
 
   std::vector<pcl::PointXYZ> surface_points(N_SCAN * Horizon_SCAN);
-  std::vector<pcl::PointXYZI> surface_coeffs(N_SCAN * Horizon_SCAN);
+  std::vector<Eigen::Vector4d> surface_coeffs(N_SCAN * Horizon_SCAN);
 
   // surf point holder for parallel computation
   std::vector<bool> surface_flags(N_SCAN * Horizon_SCAN, false);
@@ -154,21 +158,20 @@ CloudOptimizer::run(const Vector6d & posevec) const
     }
 
     surface_points[i] = point;
-    surface_coeffs[i] = makePoint((s / x.norm()) * x, s * pd2);
+    const double norm = x.norm();
+    surface_coeffs[i] = s * Eigen::Vector4d(x(0) / norm, x(1) / norm, x(2) / norm, pd2);
     surface_flags[i] = true;
   }
 
   pcl::PointCloud<pcl::PointXYZ> points;
-  pcl::PointCloud<pcl::PointXYZI> coeffs;
+  std::vector<Eigen::Vector4d> coeffs;
 
-  // combine edge coeffs
   for (unsigned int i = 0; i < edge_downsampled->size(); ++i) {
     if (edge_flags[i]) {
       points.push_back(edge_points[i]);
       coeffs.push_back(edge_coeffs[i]);
     }
   }
-  // combine surf coeffs
   for (unsigned int i = 0; i < surface_downsampled->size(); ++i) {
     if (surface_flags[i]) {
       points.push_back(surface_points[i]);

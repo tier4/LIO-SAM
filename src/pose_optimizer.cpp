@@ -6,7 +6,7 @@
 
 bool LMOptimization(
   const pcl::PointCloud<pcl::PointXYZ> & points,
-  const pcl::PointCloud<pcl::PointXYZI> & coeffs,
+  const std::vector<Eigen::Vector4d> & coeffs,
   const int iterCount, bool & isDegenerate, Vector6d & posevec)
 {
   // This optimization is from the original loam_velodyne by Ji Zhang,
@@ -28,8 +28,8 @@ bool LMOptimization(
   Eigen::VectorXd b(points.size());
 
   for (unsigned int i = 0; i < points.size(); i++) {
-    // lidar -> camera
-    const float intensity = coeffs.at(i).intensity;
+    const Eigen::Vector4d c = coeffs.at(i);
+    const float intensity = c(3);
 
     // in camera
 
@@ -38,10 +38,7 @@ bool LMOptimization(
       points.at(i).z,
       points.at(i).x);
 
-    const Eigen::Vector3d coeff_vec(
-      coeffs.at(i).y,
-      coeffs.at(i).z,
-      coeffs.at(i).x);
+    const Eigen::Vector3d coeff_vec(c(1), c(2), c(0));
 
     const Eigen::Matrix3d MX = dRdx(posevec(0), posevec(2), posevec(1));
     const float arx = (MX * point_ori).dot(coeff_vec);
@@ -56,9 +53,9 @@ bool LMOptimization(
     A(i, 0) = arz;
     A(i, 1) = arx;
     A(i, 2) = ary;
-    A(i, 3) = coeffs.at(i).x;
-    A(i, 4) = coeffs.at(i).y;
-    A(i, 5) = coeffs.at(i).z;
+    A(i, 3) = c(0);
+    A(i, 4) = c(1);
+    A(i, 5) = c(2);
     b(i) = -intensity;
   }
 
