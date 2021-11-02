@@ -20,15 +20,14 @@ bool LMOptimization(
   // yaw = pitch          ---     yaw = roll
 
   // lidar -> camera
-  int laserCloudSelNum = points.size();
-  if (laserCloudSelNum < 50) {
+  if (points.size() < 50) {
     return false;
   }
 
-  Eigen::MatrixXd A(laserCloudSelNum, 6);
-  Eigen::VectorXd b(laserCloudSelNum);
+  Eigen::MatrixXd A(points.size(), 6);
+  Eigen::VectorXd b(points.size());
 
-  for (int i = 0; i < laserCloudSelNum; i++) {
+  for (unsigned int i = 0; i < points.size(); i++) {
     // lidar -> camera
     const float intensity = coeffs.at(i).intensity;
 
