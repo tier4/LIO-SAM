@@ -81,9 +81,12 @@ CloudOptimizer::run(const Vector6d & posevec) const
     const Eigen::Vector3d d02 = p0 - p2;
     const Eigen::Vector3d d12 = p1 - p2;
 
-    // const Eigen::Vector3d d012(d01(0) * d02(1) - d02(0) * d01(1),
-    //                            d01(0) * d02(2) - d02(0) * d01(2),
-    //                            d01(1) * d02(2) - d02(1) * d01(2));
+    // Cross product version.
+    // The current version can be replaced with a simpler computation
+    // const Eigen::Vector3d cross(
+    //  d01(0) * d02(1) - d02(0) * d01(1),
+    //  d01(0) * d02(2) - d02(0) * d01(2),
+    //  d01(1) * d02(2) - d02(1) * d01(2));
     const Eigen::Vector3d cross(
       d01(1) * d02(2) - d01(2) * d02(1),
       d01(2) * d02(0) - d01(0) * d02(2),
@@ -93,16 +96,16 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
     const double l12 = d12.norm();
 
-    // possible bag. maybe the commented one is correct
-    // const Eigen::Vector3d v(
-    //   (d12(1) * cross(2) - cross(2) * d12(1)),
-    //   (d12(2) * cross(0) - cross(0) * d12(2)),
-    //   (d12(0) * cross(1) - cross(1) * d12(0)));
-
     const Eigen::Vector3d v(
-      (d12(1) * cross(2) - d12(2) * cross(1)),
-      (d12(2) * cross(0) - d12(0) * cross(2)),
-      (d12(0) * cross(1) - d12(1) * cross(0)));
+      (d12(1) * cross(2) - cross(2) * d12(1)),
+      (d12(2) * cross(0) - cross(0) * d12(2)),
+      (d12(0) * cross(1) - cross(1) * d12(0)));
+
+    // This is the auther's version. But this is possibly a bug
+    // const Eigen::Vector3d v(
+    //   (d12(1) * cross(2) - d12(2) * cross(1)),
+    //   (d12(2) * cross(0) - d12(0) * cross(2)),
+    //   (d12(0) * cross(1) - d12(1) * cross(0)));
 
     const double ld2 = a012 / l12;
 
