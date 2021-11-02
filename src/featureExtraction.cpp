@@ -22,9 +22,9 @@ private:
 
 enum class CurvatureLabel
 {
-  kDefault = 0,
-  kEdge = 1,
-  kSurface = -1
+  Default = 0,
+  Corner = 1,
+  Surface = -1
 };
 
 void neighborPicked(
@@ -153,7 +153,7 @@ public:
 
     std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN);
     for (unsigned int i = 5; i < points->size() - 5; i++) {
-      label[i] = CurvatureLabel::kDefault;
+      label[i] = CurvatureLabel::Default;
     }
 
     for (int i = 0; i < N_SCAN; i++) {
@@ -179,7 +179,7 @@ public:
           n_picked++;
 
           corner->push_back(points->at(index));
-          label[index] = CurvatureLabel::kEdge;
+          label[index] = CurvatureLabel::Corner;
 
           neighborPicked(column_index, index, neighbor_picked);
         }
@@ -190,13 +190,13 @@ public:
             continue;
           }
 
-          label[index] = CurvatureLabel::kSurface;
+          label[index] = CurvatureLabel::Surface;
 
           neighborPicked(column_index, index, neighbor_picked);
         }
 
         for (int k = sp; k <= ep; k++) {
-          if (label[k] == CurvatureLabel::kDefault || label[k] == CurvatureLabel::kEdge) {
+          if (label[k] == CurvatureLabel::Default || label[k] == CurvatureLabel::Corner) {
             surface_scan->push_back(points->at(k));
           }
         }
