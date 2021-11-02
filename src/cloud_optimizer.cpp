@@ -107,11 +107,11 @@ CloudOptimizer::run(const Vector6d & posevec) const
     //   (d12(2) * cross(0) - d12(0) * cross(2)),
     //   (d12(0) * cross(1) - d12(1) * cross(0)));
 
-    const double s = 1 - 0.9 * fabs(a012 / l12);
-
-    if (s <= 0.1) {
+    if (fabs(a012 / l12) >= 1.0) {
       continue;
     }
+
+    const double s = 1 - 0.9 * fabs(a012 / l12);
     edge_points[i] = point;
     edge_coeffs[i] = (s / l12) * Eigen::Vector4d(v(0) / a012, v(1) / a012, v(2) / a012, a012);
     edge_flags[i] = true;
