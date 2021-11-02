@@ -148,18 +148,17 @@ CloudOptimizer::run(const Vector6d & posevec) const
       continue;
     }
 
-    const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
+    const Eigen::Vector4d y = toHomogeneous(x);
     const Eigen::Vector4d q = toHomogeneous(getXYZ(map_point));
-    const float pd2 = y.transpose() * q;
-    const float s = 1 - 0.9 * fabs(pd2) / sqrt(getXYZ(map_point).norm());
+    const double pd2 = y.dot(q);
+    const double s = 1 - 0.9 * fabs(pd2 / x.norm()) / sqrt(getXYZ(map_point).norm());
 
     if (s <= 0.1) {
       continue;
     }
 
     surface_points[i] = point;
-    const double norm = x.norm();
-    surface_coeffs[i] = s * Eigen::Vector4d(x(0) / norm, x(1) / norm, x(2) / norm, pd2);
+    surface_coeffs[i] = (s / x.norm()) * Eigen::Vector4d(x(0), x(1), x(2), pd2);
     surface_flags[i] = true;
   }
 
