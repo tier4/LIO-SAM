@@ -240,21 +240,19 @@ double interpolatePitch(const double p0, const double p1, const double weight)
 
 pcl::PointCloud<PointType>::Ptr mapFusion(
   const std::vector<pcl::PointCloud<PointType>::Ptr> & cloud,
-  const pcl::PointCloud<PointType>::Ptr & points,
   const pcl::PointCloud<StampedPose> & poses6dof,
+  const std::vector<int> & indices,
   const double radius)
 {
   pcl::PointCloud<PointType>::Ptr fused(new pcl::PointCloud<PointType>());
 
   const Eigen::Vector3d latest = getXYZ(poses6dof.back());
 
-  for (auto & p : *points) {
-    const double distance = (getXYZ(p) - latest).norm();
+  for (const int index : indices) {
+    const double distance = (getXYZ(poses6dof.at(index)) - latest).norm();
     if (distance > radius) {
       continue;
     }
-
-    const int index = static_cast<int>(p.intensity);
 
     const Vector6d v = makePosevec(poses6dof.at(index));
     *fused += transform(*cloud[index], v);
@@ -290,12 +288,13 @@ public:
 
     const auto r = kdtree.radiusSearch(points3d->back(), radius_);
     const std::vector<int> indices = std::get<0>(r);
+    const auto points = downsample(comprehend(*points3d, indices), keyframe_density_);
 
-    auto points = downsample(comprehend(*points3d, indices), keyframe_density_);
+    std::vector<int> point_indices;
     for (auto & p : *points) {
       const int index = std::get<0>(kdtree.closestPoint(p));
       const auto closest = points3d->at(index);
-      p.intensity = closest.intensity;
+      point_indices.push_back(closest.intensity);
     }
 
     // also extract some latest key frames in case the robot rotates in one position
@@ -303,11 +302,11 @@ public:
       if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
         break;
       }
-      points->push_back(points3d->at(i));
+      point_indices.push_back(points3d->at(i).intensity);
     }
 
-    const auto edge = mapFusion(edge_cloud_, points, poses6dof, radius_);
-    const auto surface = mapFusion(surface_cloud_, points, poses6dof, radius_);
+    const auto edge = mapFusion(edge_cloud_, poses6dof, point_indices, radius_);
+    const auto surface = mapFusion(surface_cloud_, poses6dof, point_indices, radius_);
     return {
       downsample(edge, edge_leaf_size_),
       downsample(surface, surface_leaf_size_)
