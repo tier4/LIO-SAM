@@ -318,43 +318,61 @@ private:
   const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_;
 };
 
-std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
-extractSurroundingKeyFrames(
-  const ros::Time & timestamp,
-  const pcl::PointCloud<PointType>::Ptr & points3d,
-  const pcl::PointCloud<StampedPose> & poses6dof,
-  const MapFusion & map_fusion,
-  const float radius,
-  const float keyframe_density,
-  const float edge_leaf_size,
-  const float surface_leaf_size)
+class SurroundingKeyframeExtraction
 {
-  const KDTree<PointType> kdtree(points3d);
-
-  const auto r = kdtree.radiusSearch(points3d->back(), radius);
-  const std::vector<int> indices = std::get<0>(r);
-
-  auto points = downsample(comprehend(*points3d, indices), keyframe_density);
-  for (auto & p : *points) {
-    const int index = std::get<0>(kdtree.closestPoint(p));
-    const auto closest = points3d->at(index);
-    p.intensity = closest.intensity;
+public:
+  SurroundingKeyframeExtraction(
+    const float radius,
+    const float keyframe_density,
+    const float edge_leaf_size,
+    const float surface_leaf_size)
+  : radius_(radius),
+    keyframe_density_(keyframe_density),
+    edge_leaf_size_(edge_leaf_size),
+    surface_leaf_size_(surface_leaf_size)
+  {
   }
 
-  // also extract some latest key frames in case the robot rotates in one position
-  for (int i = points3d->size() - 1; i >= 0; --i) {
-    if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
-      break;
+  std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
+  operator()(
+    const ros::Time & timestamp,
+    const pcl::PointCloud<PointType>::Ptr & points3d,
+    const pcl::PointCloud<StampedPose> & poses6dof,
+    const MapFusion & map_fusion) const
+  {
+    const KDTree<PointType> kdtree(points3d);
+
+    const auto r = kdtree.radiusSearch(points3d->back(), radius_);
+    const std::vector<int> indices = std::get<0>(r);
+
+    auto points = downsample(comprehend(*points3d, indices), keyframe_density_);
+    for (auto & p : *points) {
+      const int index = std::get<0>(kdtree.closestPoint(p));
+      const auto closest = points3d->at(index);
+      p.intensity = closest.intensity;
     }
-    points->push_back(points3d->at(i));
+
+    // also extract some latest key frames in case the robot rotates in one position
+    for (int i = points3d->size() - 1; i >= 0; --i) {
+      if (timestamp.toSec() - poses6dof.at(i).time >= 10.0) {
+        break;
+      }
+      points->push_back(points3d->at(i));
+    }
+
+    const auto [edge, surface] = map_fusion(points, poses6dof, radius_);
+    return {
+      downsample(edge, edge_leaf_size_),
+      downsample(surface, surface_leaf_size_)
+    };
   }
 
-  const auto [edge, surface] = map_fusion(points, poses6dof, radius);
-  return {
-    downsample(edge, edge_leaf_size),
-    downsample(surface, surface_leaf_size)
-  };
-}
+private:
+  const float radius_;
+  const float keyframe_density_;
+  const float edge_leaf_size_;
+  const float surface_leaf_size_;
+};
 
 class mapOptimization : public ParamServer
 {
@@ -368,6 +386,7 @@ public:
 
   const ros::Publisher pubRecentKeyFrame;
   const ros::Subscriber subCloud;
+  SurroundingKeyframeExtraction extract_keyframes_;
 
   Vector6d posevec;
 
@@ -399,6 +418,10 @@ public:
     subCloud(nh.subscribe<lio_sam::cloud_info>(
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
+    extract_keyframes_(
+      SurroundingKeyframeExtraction(
+        surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
+        mappingEdgeLeafSize, mappingSurfLeafSize)),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<PointType>()),
     incremental_odometry(std::nullopt),
@@ -432,11 +455,9 @@ public:
 
     bool is_degenerate = false;
     if (!points3d->empty()) {
-      const auto [edge_map, surface_map] = extractSurroundingKeyFrames(
+      const auto [edge_map, surface_map] = extract_keyframes_(
         timestamp, points3d, poses6dof,
-        MapFusion(edge_cloud_, surface_cloud_),
-        surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
-        mappingEdgeLeafSize, mappingSurfLeafSize
+        MapFusion(edge_cloud_, surface_cloud_)
       );
 
       try {
