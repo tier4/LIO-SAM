@@ -143,8 +143,8 @@ public:
 
     for (unsigned int i = 5; i < points->size() - 6; ++i) {
       // parallel beam
-      const float ratio1 = std::abs(float(range[i - 1] - range[i])) / range[i];
-      const float ratio2 = std::abs(float(range[i + 1] - range[i])) / range[i];
+      const float ratio1 = std::abs(range[i - 1] - range[i]) / range[i];
+      const float ratio2 = std::abs(range[i + 1] - range[i]) / range[i];
 
       if (ratio1 > 0.02 && ratio2 > 0.02) {
         neighbor_picked[i] = true;
