@@ -55,7 +55,28 @@
 #include <tuple>
 #include <mutex>
 
+template<typename T>
+sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<T> & pointcloud)
+{
+  sensor_msgs::PointCloud2 msg;
+  pcl::toROSMsg(pointcloud, msg);
+  return msg;
+}
+
+template<typename T>
+sensor_msgs::PointCloud2 toRosMsg(
+  const pcl::PointCloud<T> & pointcloud,
+  const ros::Time stamp,
+  const std::string frame)
+{
+  sensor_msgs::PointCloud2 msg = toRosMsg(pointcloud);
+  msg.header.stamp = stamp;
+  msg.header.frame_id = frame;
+  return msg;
+}
+
 sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud);
+
 sensor_msgs::PointCloud2 toRosMsg(
   const pcl::PointCloud<PointType> & pointcloud,
   const ros::Time stamp,
@@ -183,6 +204,8 @@ pcl::KdTreeFLANN<T> makeKDTree(const typename pcl::PointCloud<T>::Ptr & pointclo
   kdtree.setInputCloud(pointcloud);
   return kdtree;
 }
+
+pcl::PointXYZ makePointXYZ(const Eigen::Vector3d & v);
 
 tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg);
 

@@ -1,5 +1,10 @@
 #include "utility.hpp"
 
+pcl::PointXYZ makePointXYZ(const Eigen::Vector3d & v)
+{
+  return pcl::PointXYZ(v(0), v(1), v(2));
+}
+
 tf::Pose poseMsgToTF(const geometry_msgs::Pose & msg)
 {
   tf::Pose pose;

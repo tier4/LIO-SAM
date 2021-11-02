@@ -279,7 +279,7 @@ public:
   std::tuple<pcl::PointCloud<PointType>::Ptr, pcl::PointCloud<PointType>::Ptr>
   operator()(
     const ros::Time & timestamp,
-    const pcl::PointCloud<PointType>::Ptr & points3d,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & points3d,
     const pcl::PointCloud<StampedPose> & poses6dof,
     const std::vector<pcl::PointCloud<PointType>::Ptr> & edge_cloud_,
     const std::vector<pcl::PointCloud<PointType>::Ptr> & surface_cloud_,
@@ -289,11 +289,12 @@ public:
     assert(points3d->size() == poses6dof.size());
     assert(points3d->size() == indices_.size());
     assert(points3d->size() == timestamps_.size());
-    const KDTree<PointType> kdtree(points3d);
+    const KDTree<pcl::PointXYZ> kdtree(points3d);
 
     const auto r = kdtree.radiusSearch(points3d->back(), radius_);
     const std::vector<int> indices = std::get<0>(r);
-    const auto points = downsample(comprehend(*points3d, indices), keyframe_density_);
+    const auto points =
+      downsample<pcl::PointXYZ>(comprehend(*points3d, indices), keyframe_density_);
 
     std::vector<int> point_indices;
     for (auto & p : *points) {
@@ -312,8 +313,8 @@ public:
     const auto edge = mapFusion(edge_cloud_, poses6dof, point_indices, radius_);
     const auto surface = mapFusion(surface_cloud_, poses6dof, point_indices, radius_);
     return {
-      downsample(edge, edge_leaf_size_),
-      downsample(surface, surface_leaf_size_)
+      downsample<PointType>(edge, edge_leaf_size_),
+      downsample<PointType>(surface, surface_leaf_size_)
     };
   }
 
@@ -343,7 +344,7 @@ public:
   std::vector<pcl::PointCloud<PointType>::Ptr> edge_cloud_;
   std::vector<pcl::PointCloud<PointType>::Ptr> surface_cloud_;
 
-  pcl::PointCloud<PointType>::Ptr points3d;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr points3d;
   pcl::PointCloud<StampedPose> poses6dof;
 
   std::mutex mtx;
@@ -375,7 +376,7 @@ public:
         surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
         mappingEdgeLeafSize, mappingSurfLeafSize)),
     posevec(Vector6d::Zero()),
-    points3d(new pcl::PointCloud<PointType>()),
+    points3d(new pcl::PointCloud<pcl::PointXYZ>()),
     incremental_odometry(std::nullopt),
     last_time_sec(-1.0)
   {
@@ -437,7 +438,7 @@ public:
       // size can be used as index
       timestamps_.push_back(timestamp);
       indices_.push_back(points3d->size());
-      points3d->push_back(makePoint(posevec.tail(3), points3d->size()));
+      points3d->push_back(makePointXYZ(posevec.tail(3)));
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
