@@ -75,13 +75,6 @@ sensor_msgs::PointCloud2 toRosMsg(
   return msg;
 }
 
-sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud);
-
-sensor_msgs::PointCloud2 toRosMsg(
-  const pcl::PointCloud<PointType> & pointcloud,
-  const ros::Time stamp,
-  const std::string frame);
-
 inline Eigen::Vector3d pointToEigen(const geometry_msgs::Point & p)
 {
   return Eigen::Vector3d(p.x, p.y, p.z);

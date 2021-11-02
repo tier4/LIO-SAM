@@ -86,24 +86,6 @@ geometry_msgs::TransformStamped poseToTransform(
   return transform;
 }
 
-sensor_msgs::PointCloud2 toRosMsg(const pcl::PointCloud<PointType> & pointcloud)
-{
-  sensor_msgs::PointCloud2 msg;
-  pcl::toROSMsg(pointcloud, msg);
-  return msg;
-}
-
-sensor_msgs::PointCloud2 toRosMsg(
-  const pcl::PointCloud<PointType> & pointcloud,
-  const ros::Time stamp,
-  const std::string frame)
-{
-  sensor_msgs::PointCloud2 msg = toRosMsg(pointcloud);
-  msg.header.stamp = stamp;
-  msg.header.frame_id = frame;
-  return msg;
-}
-
 nav_msgs::Odometry makeOdometry(
   const ros::Time & timestamp,
   const std::string & frame_id,
