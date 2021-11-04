@@ -52,8 +52,8 @@ public:
   // LOAM
   float edgeThreshold;
   float surfThreshold;
-  int edgeFeatureMinValidNum;
-  int surfFeatureMinValidNum;
+  int min_edge_cloud;
+  int min_surface_cloud;
 
   // voxel filter paprams
   float surface_leaf_size;
@@ -61,7 +61,7 @@ public:
   float mappingSurfLeafSize;
 
   // CPU Params
-  int numberOfCores;
+  int n_cores;
   double mappingProcessInterval;
 
   // Surrounding map

@@ -53,14 +53,14 @@ ParamServer::ParamServer()
 
   nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
   nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);
-  nh.param<int>("lio_sam/edgeFeatureMinValidNum", edgeFeatureMinValidNum, 10);
-  nh.param<int>("lio_sam/surfFeatureMinValidNum", surfFeatureMinValidNum, 100);
+  nh.param<int>("lio_sam/edgeFeatureMinValidNum", min_edge_cloud, 10);
+  nh.param<int>("lio_sam/surfFeatureMinValidNum", min_surface_cloud, 100);
 
   nh.param<float>("lio_sam/odometrySurfLeafSize", surface_leaf_size, 0.2);
   nh.param<float>("lio_sam/mappingEdgeLeafSize", mappingEdgeLeafSize, 0.2);
   nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
 
-  nh.param<int>("lio_sam/numberOfCores", numberOfCores, 2);
+  nh.param<int>("lio_sam/numberOfCores", n_cores, 2);
   nh.param<double>(
     "lio_sam/mappingProcessInterval", mappingProcessInterval,
     0.15);

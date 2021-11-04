@@ -150,14 +150,14 @@ Vector6d makePosevec(const StampedPose & p)
 
 pcl::PointCloud<pcl::PointXYZ> transform(
   const pcl::PointCloud<pcl::PointXYZ> & input, const Vector6d & posevec,
-  const int numberOfCores = 2)
+  const int n_cores = 2)
 {
   pcl::PointCloud<pcl::PointXYZ> output;
 
   output.resize(input.size());
   const Eigen::Affine3d affine = getTransformation(posevec);
 
-  #pragma omp parallel for num_threads(numberOfCores)
+  #pragma omp parallel for num_threads(n_cores)
   for (unsigned int i = 0; i < input.size(); ++i) {
     output.at(i) = transform(affine, input.at(i));
   }
@@ -413,10 +413,10 @@ public:
       );
 
       if (
-        static_cast<int>(edge->size()) > edgeFeatureMinValidNum ||
-        static_cast<int>(surface->size()) > surfFeatureMinValidNum)
+        static_cast<int>(edge->size()) > min_edge_cloud ||
+        static_cast<int>(surface->size()) > min_surface_cloud)
       {
-        const CloudOptimizer cloud_optimizer(numberOfCores, edge, surface, edge_map, surface_map);
+        const CloudOptimizer cloud_optimizer(n_cores, edge, surface, edge_map, surface_map);
 
         std::tie(posevec, is_degenerate) = scan2MapOptimization(
           cloud_optimizer, msg->imu_orientation_available, msg->imu_orientation, posevec
