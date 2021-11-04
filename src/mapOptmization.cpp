@@ -259,10 +259,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
   return fused;
 }
 
-class SurroundingKeyframeExtraction
+class KeyframeExtraction
 {
 public:
-  SurroundingKeyframeExtraction(
+  KeyframeExtraction(
     const float radius,
     const float keyframe_density,
     const float edge_leaf_size,
@@ -335,7 +335,7 @@ public:
 
   const ros::Publisher pubRecentKeyFrame;
   const ros::Subscriber subCloud;
-  const SurroundingKeyframeExtraction extract_keyframes_;
+  const KeyframeExtraction extract_keyframes_;
 
   Vector6d posevec;
 
@@ -370,7 +370,7 @@ public:
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
     extract_keyframes_(
-      SurroundingKeyframeExtraction(
+      KeyframeExtraction(
         surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
         mappingEdgeLeafSize, mappingSurfLeafSize)),
     posevec(Vector6d::Zero()),
