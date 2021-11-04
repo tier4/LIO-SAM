@@ -13,7 +13,7 @@ bool LMOptimization(
   const std::vector<Eigen::Vector3d> & points,
   const std::vector<Eigen::Vector3d> & coeffs,
   const Eigen::VectorXd & b,
-  const int iterCount, bool & isDegenerate, Vector6d & posevec)
+  const int iter, bool & is_degenerate, Vector6d & posevec)
 {
   // This optimization is from the original loam_velodyne by Ji Zhang,
   // need to cope with coordinate transformation
@@ -60,16 +60,16 @@ bool LMOptimization(
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::VectorXd AtB = A.transpose() * b;
 
-  if (iterCount == 0) {
+  if (iter == 0) {
     const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
     const Eigen::VectorXd eigenvalues = es.eigenvalues();
 
-    isDegenerate = (eigenvalues.array() < 100.0).any();
+    is_degenerate = (eigenvalues.array() < 100.0).any();
   }
 
   const Eigen::VectorXd dx = solveLinear(AtA, AtB);
 
-  if (!isDegenerate) {
+  if (!is_degenerate) {
     posevec += dx;
   }
 
@@ -88,13 +88,13 @@ std::tuple<Vector6d, bool> optimizePose(
 {
   Vector6d posevec = initial_posevec;
 
-  bool isDegenerate = false;
-  for (int iterCount = 0; iterCount < 30; iterCount++) {
+  bool is_degenerate = false;
+  for (int iter = 0; iter < 30; iter++) {
     const auto [points, coeffs, b_vector] = cloud_optimizer.run(posevec);
     const Eigen::Map<const Eigen::VectorXd> b(b_vector.data(), b_vector.size());
-    if (LMOptimization(points, coeffs, b, iterCount, isDegenerate, posevec)) {
+    if (LMOptimization(points, coeffs, b, iter, is_degenerate, posevec)) {
       break;
     }
   }
-  return {posevec, isDegenerate};
+  return {posevec, is_degenerate};
 }
