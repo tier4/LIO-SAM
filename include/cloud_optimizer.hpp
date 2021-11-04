@@ -29,15 +29,6 @@ public:
     edge_kdtree_(KDTree<pcl::PointXYZ>(edge_map_downsampled)),
     surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map_downsampled))
   {
-    if (
-      static_cast<int>(edge_downsampled->size()) <= edgeFeatureMinValidNum ||
-      static_cast<int>(surface_downsampled->size()) <= surfFeatureMinValidNum)
-    {
-      throw std::runtime_error(
-              fmt::format(
-                "Not enough features! Only %d edge and %d planar features available.",
-                edge_downsampled->size(), surface_downsampled->size()));
-    }
   }
 
   std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
