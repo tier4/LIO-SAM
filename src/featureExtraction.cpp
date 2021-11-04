@@ -224,8 +224,8 @@ public:
       *surface += *downsample<pcl::PointXYZ>(surface_scan, surface_leaf_size);
     }
 
-    const auto edge_downsampled = downsample<pcl::PointXYZ>(edge, mappingEdgeLeafSize);
-    const auto surface_downsampled = downsample<pcl::PointXYZ>(surface, mappingSurfLeafSize);
+    const auto edge_downsampled = downsample<pcl::PointXYZ>(edge, map_edge_leaf_size);
+    const auto surface_downsampled = downsample<pcl::PointXYZ>(surface, map_surface_leaf_size);
 
     lio_sam::cloud_info cloud_info = *msg; // new cloud info
     // save newly extracted features

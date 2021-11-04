@@ -57,22 +57,16 @@ ParamServer::ParamServer()
   nh.param<int>("lio_sam/surfFeatureMinValidNum", min_surface_cloud, 100);
 
   nh.param<float>("lio_sam/odometrySurfLeafSize", surface_leaf_size, 0.2);
-  nh.param<float>("lio_sam/mappingEdgeLeafSize", mappingEdgeLeafSize, 0.2);
-  nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
+  nh.param<float>("lio_sam/mappingEdgeLeafSize", map_edge_leaf_size, 0.2);
+  nh.param<float>("lio_sam/mappingSurfLeafSize", map_surface_leaf_size, 0.2);
 
   nh.param<int>("lio_sam/numberOfCores", n_cores, 2);
-  nh.param<double>(
-    "lio_sam/mappingProcessInterval", mappingProcessInterval,
-    0.15);
+  nh.param<double>("lio_sam/mappingProcessInterval", map_process_interval, 0.15);
 
   nh.param<float>("lio_sam/keyframe_distance_threshold", keyframe_distance_threshold, 1.0);
   nh.param<float>("lio_sam/keyframe_angle_threshold", keyframe_angle_threshold, 0.2);
-  nh.param<float>(
-    "lio_sam/surroundingKeyframeDensity",
-    surroundingKeyframeDensity, 1.0);
-  nh.param<float>(
-    "lio_sam/surroundingKeyframeSearchRadius",
-    surroundingKeyframeSearchRadius, 50.0);
+  nh.param<float>("lio_sam/surroundingKeyframeDensity", keyframe_density, 1.0);
+  nh.param<float>("lio_sam/surroundingKeyframeSearchRadius", keyframe_search_radius, 50.0);
 
   nh.param<bool>("lio_sam/loopClosureEnableFlag", loopClosureEnableFlag, false);
   nh.param<float>("lio_sam/loopClosureFrequency", loopClosureFrequency, 1.0);

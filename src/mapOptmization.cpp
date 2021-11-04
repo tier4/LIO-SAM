@@ -371,8 +371,8 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     extract_keyframes_(
       KeyframeExtraction(
-        surroundingKeyframeSearchRadius, surroundingKeyframeDensity,
-        mappingEdgeLeafSize, mappingSurfLeafSize)),
+        keyframe_search_radius, keyframe_density,
+        map_edge_leaf_size, map_surface_leaf_size)),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<pcl::PointXYZ>()),
     incremental_odometry(std::nullopt),
@@ -387,7 +387,7 @@ public:
 
     std::lock_guard<std::mutex> lock(mtx);
 
-    if (timestamp.toSec() - last_time_sec < mappingProcessInterval) {
+    if (timestamp.toSec() - last_time_sec < map_process_interval) {
       return;
     }
 

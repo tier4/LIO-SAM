@@ -57,18 +57,18 @@ public:
 
   // voxel filter paprams
   float surface_leaf_size;
-  float mappingEdgeLeafSize;
-  float mappingSurfLeafSize;
+  float map_edge_leaf_size;
+  float map_surface_leaf_size;
 
   // CPU Params
   int n_cores;
-  double mappingProcessInterval;
+  double map_process_interval;
 
   // Surrounding map
   float keyframe_distance_threshold;
   float keyframe_angle_threshold;
-  float surroundingKeyframeDensity;
-  float surroundingKeyframeSearchRadius;
+  float keyframe_density;
+  float keyframe_search_radius;
 
   // Loop closure
   bool loopClosureEnableFlag;
