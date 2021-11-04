@@ -247,8 +247,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
   const Eigen::Vector3d latest = getXYZ(poses6dof.back());
 
   for (const int index : position_indices) {
-    const double distance = (getXYZ(poses6dof.at(index)) - latest).norm();
-    if (distance > radius) {
+    const Eigen::Vector3d position = getXYZ(poses6dof.at(index));
+    if ((position - latest).norm() > radius) {
       continue;
     }
 
@@ -321,7 +321,7 @@ public:
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> surface_cloud_;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr positions;
-  pcl::PointCloud<StampedPose> poses6dof;
+  pcl::PointCloud<StampedPose> poses6dof_;
 
   std::mutex mtx;
 
@@ -381,10 +381,10 @@ public:
 
     bool is_degenerate = false;
     if (!positions->empty()) {
-      const auto position_indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
+      const auto indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
       const float radius = keyframe_search_radius;
-      const auto edge_fused = mapFusion(edge_cloud_, poses6dof, position_indices, radius);
-      const auto surface_fused = mapFusion(surface_cloud_, poses6dof, position_indices, radius);
+      const auto edge_fused = mapFusion(edge_cloud_, poses6dof_, indices, radius);
+      const auto surface_fused = mapFusion(surface_cloud_, poses6dof_, indices, radius);
       const auto edge_map = downsample<pcl::PointXYZ>(edge_fused, map_edge_leaf_size);
       const auto surface_map = downsample<pcl::PointXYZ>(surface_fused, map_surface_leaf_size);
 
@@ -406,16 +406,16 @@ public:
     }
 
     if (
-      poses6dof.empty() ||
+      poses6dof_.empty() ||
       isKeyframe(
-        makePosevec(poses6dof.back()), posevec,
+        makePosevec(poses6dof_.back()), posevec,
         keyframe_angle_threshold, keyframe_distance_threshold))
     {
       // size can be used as index
       timestamps_.push_back(timestamp);
       indices_.push_back(positions->size());
       positions->push_back(makePointXYZ(posevec.tail(3)));
-      poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
+      poses6dof_.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
       edge_cloud_.push_back(edge);
