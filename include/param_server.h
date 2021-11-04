@@ -17,7 +17,6 @@ public:
   std::string pointCloudTopic;
   std::string imuTopic;
   std::string odomTopic;
-  std::string gpsTopic;
 
   //Frames
   std::string lidarFrame;
@@ -27,9 +26,6 @@ public:
 
   // GPS Settings
   bool useImuHeadingInitialization;
-  bool useGpsElevation;
-  float gpsCovThreshold;
-  float poseCovThreshold;
 
   // Lidar Sensor Configuration
   SensorType sensor;
@@ -68,9 +64,4 @@ public:
   float keyframe_angle_threshold;
   float keyframe_density;
   float keyframe_search_radius;
-
-  // global map visualization radius
-  float globalMapVisualizationSearchRadius;
-  float globalMapVisualizationPoseDensity;
-  float globalMapVisualizationLeafSize;
 };
