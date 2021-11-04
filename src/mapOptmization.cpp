@@ -262,31 +262,17 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
 class KeyframeExtraction
 {
 public:
-  KeyframeExtraction(
-    const float radius,
-    const float keyframe_density,
-    const float edge_leaf_size,
-    const float surface_leaf_size)
-  : radius_(radius),
-    keyframe_density_(keyframe_density),
-    edge_leaf_size_(edge_leaf_size),
-    surface_leaf_size_(surface_leaf_size)
+  KeyframeExtraction(const float radius, const float keyframe_density)
+  : radius_(radius), keyframe_density_(keyframe_density)
   {
   }
 
-  std::tuple<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>
-  operator()(
+  std::vector<int> operator()(
     const ros::Time & timestamp,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & points3d,
-    const pcl::PointCloud<StampedPose> & poses6dof,
-    const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> & edge_cloud_,
-    const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> & surface_cloud_,
     const std::vector<int> & indices_,
     const std::vector<ros::Time> & timestamps_) const
   {
-    assert(points3d->size() == poses6dof.size());
-    assert(points3d->size() == indices_.size());
-    assert(points3d->size() == timestamps_.size());
     const KDTree<pcl::PointXYZ> kdtree(points3d);
 
     const auto r = kdtree.radiusSearch(points3d->back(), radius_);
@@ -307,20 +293,12 @@ public:
       }
       point_indices.push_back(indices_.at(i));
     }
-
-    const auto edge = mapFusion(edge_cloud_, poses6dof, point_indices, radius_);
-    const auto surface = mapFusion(surface_cloud_, poses6dof, point_indices, radius_);
-    return {
-      downsample<pcl::PointXYZ>(edge, edge_leaf_size_),
-      downsample<pcl::PointXYZ>(surface, surface_leaf_size_)
-    };
+    return point_indices;
   }
 
 private:
   const float radius_;
   const float keyframe_density_;
-  const float edge_leaf_size_;
-  const float surface_leaf_size_;
 };
 
 class mapOptimization : public ParamServer
@@ -369,10 +347,7 @@ public:
     subCloud(nh.subscribe<lio_sam::cloud_info>(
         "lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler,
         this, ros::TransportHints().tcpNoDelay())),
-    extract_keyframes_(
-      KeyframeExtraction(
-        keyframe_search_radius, keyframe_density,
-        map_edge_leaf_size, map_surface_leaf_size)),
+    extract_keyframes_(KeyframeExtraction(keyframe_search_radius, keyframe_density)),
     posevec(Vector6d::Zero()),
     points3d(new pcl::PointCloud<pcl::PointXYZ>()),
     incremental_odometry(std::nullopt),
@@ -406,11 +381,12 @@ public:
 
     bool is_degenerate = false;
     if (!points3d->empty()) {
-      const auto [edge_map, surface_map] = extract_keyframes_(
-        timestamp, points3d,
-        poses6dof,
-        edge_cloud_, surface_cloud_, indices_, timestamps_
-      );
+      const auto point_indices = extract_keyframes_(timestamp, points3d, indices_, timestamps_);
+      const float radius = keyframe_search_radius;
+      const auto edge_fused = mapFusion(edge_cloud_, poses6dof, point_indices, radius);
+      const auto surface_fused = mapFusion(surface_cloud_, poses6dof, point_indices, radius);
+      const auto edge_map = downsample<pcl::PointXYZ>(edge_fused, map_edge_leaf_size);
+      const auto surface_map = downsample<pcl::PointXYZ>(surface_fused, map_surface_leaf_size);
 
       if (
         static_cast<int>(edge->size()) > min_edge_cloud ||
