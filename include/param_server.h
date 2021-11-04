@@ -70,15 +70,6 @@ public:
   float keyframe_density;
   float keyframe_search_radius;
 
-  // Loop closure
-  bool loopClosureEnableFlag;
-  float loopClosureFrequency;
-  int surroundingKeyframeSize;
-  float historyKeyframeSearchRadius;
-  float historyKeyframeSearchTimeDiff;
-  int historyKeyframeSearchNum;
-  float historyKeyframeFitnessScore;
-
   // global map visualization radius
   float globalMapVisualizationSearchRadius;
   float globalMapVisualizationPoseDensity;
