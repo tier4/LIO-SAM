@@ -269,16 +269,16 @@ public:
 
   std::vector<int> operator()(
     const ros::Time & timestamp,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & points3d,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & positions,
     const std::vector<int> & indices_,
     const std::vector<ros::Time> & timestamps_) const
   {
-    const KDTree<pcl::PointXYZ> kdtree(points3d);
+    const KDTree<pcl::PointXYZ> kdtree(positions);
 
-    const auto r = kdtree.radiusSearch(points3d->back(), radius_);
+    const auto r = kdtree.radiusSearch(positions->back(), radius_);
     const std::vector<int> indices = std::get<0>(r);
     const auto points =
-      downsample<pcl::PointXYZ>(comprehend(*points3d, indices), keyframe_density_);
+      downsample<pcl::PointXYZ>(comprehend(*positions, indices), keyframe_density_);
 
     std::vector<int> point_indices;
     for (auto & p : *points) {
@@ -287,7 +287,7 @@ public:
     }
 
     // also extract some latest key frames in case the robot rotates in one position
-    for (int i = points3d->size() - 1; i >= 0; --i) {
+    for (int i = positions->size() - 1; i >= 0; --i) {
       if (timestamp.toSec() - timestamps_.at(i).toSec() >= 10.0) {
         break;
       }
@@ -320,7 +320,7 @@ public:
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> edge_cloud_;
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> surface_cloud_;
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr points3d;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr positions;
   pcl::PointCloud<StampedPose> poses6dof;
 
   std::mutex mtx;
@@ -349,7 +349,7 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     extract_keyframes_(KeyframeExtraction(keyframe_search_radius, keyframe_density)),
     posevec(Vector6d::Zero()),
-    points3d(new pcl::PointCloud<pcl::PointXYZ>()),
+    positions(new pcl::PointCloud<pcl::PointXYZ>()),
     incremental_odometry(std::nullopt),
     last_time_sec(-1.0)
   {
@@ -380,8 +380,8 @@ public:
     const auto surface = getPointCloud<pcl::PointXYZ>(msg->cloud_surface);
 
     bool is_degenerate = false;
-    if (!points3d->empty()) {
-      const auto point_indices = extract_keyframes_(timestamp, points3d, indices_, timestamps_);
+    if (!positions->empty()) {
+      const auto point_indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
       const float radius = keyframe_search_radius;
       const auto edge_fused = mapFusion(edge_cloud_, poses6dof, point_indices, radius);
       const auto surface_fused = mapFusion(surface_cloud_, poses6dof, point_indices, radius);
@@ -413,8 +413,8 @@ public:
     {
       // size can be used as index
       timestamps_.push_back(timestamp);
-      indices_.push_back(points3d->size());
-      points3d->push_back(makePointXYZ(posevec.tail(3)));
+      indices_.push_back(positions->size());
+      positions->push_back(makePointXYZ(posevec.tail(3)));
       poses6dof.push_back(makeStampedPose(posevec, timestamp.toSec()));
 
       // save key frame cloud
@@ -461,12 +461,12 @@ public:
       pubLaserOdometryIncremental.publish(p);
     }
 
-    if (points3d->empty()) {
+    if (positions->empty()) {
       return;
     }
 
     // publish key poses
-    pubKeyPoses.publish(toRosMsg(*points3d, timestamp, odometryFrame));
+    pubKeyPoses.publish(toRosMsg(*positions, timestamp, odometryFrame));
     const auto output = transform(*edge, posevec) + transform(*surface, posevec);
     pubRecentKeyFrame.publish(toRosMsg(output, timestamp, odometryFrame));
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
@@ -478,7 +478,7 @@ public:
     const geometry_msgs::Pose & scan_start_imu_pose)
   {
     // initialization
-    if (points3d->empty()) {
+    if (positions->empty()) {
       posevec = initPosevec(vector3ToEigen(imu_orientation), useImuHeadingInitialization);
       return;
     }
@@ -512,7 +512,7 @@ public:
     const bool imu_orientation_available, const geometry_msgs::Vector3 & imu_orientation,
     const Vector6d & initial_posevec) const
   {
-    assert(!points3d->empty());
+    assert(!positions->empty());
 
     auto [posevec, is_degenerate] = optimizePose(cloud_optimizer, initial_posevec);
 
