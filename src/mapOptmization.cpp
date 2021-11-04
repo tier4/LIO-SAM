@@ -416,9 +416,7 @@ public:
         static_cast<int>(edge->size()) > edgeFeatureMinValidNum ||
         static_cast<int>(surface->size()) > surfFeatureMinValidNum)
       {
-        const CloudOptimizer cloud_optimizer(
-          numberOfCores, edgeFeatureMinValidNum, surfFeatureMinValidNum,
-          edge, surface, edge_map, surface_map);
+        const CloudOptimizer cloud_optimizer(numberOfCores, edge, surface, edge_map, surface_map);
 
         std::tie(posevec, is_degenerate) = scan2MapOptimization(
           cloud_optimizer, msg->imu_orientation_available, msg->imu_orientation, posevec

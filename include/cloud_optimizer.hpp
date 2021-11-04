@@ -15,8 +15,6 @@ class CloudOptimizer
 public:
   CloudOptimizer(
     const int numberOfCores,
-    const int edgeFeatureMinValidNum,
-    const int surfFeatureMinValidNum,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map_,
