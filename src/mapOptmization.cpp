@@ -239,14 +239,14 @@ double interpolatePitch(const double p0, const double p1, const double weight)
 pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
   const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> & cloud,
   const pcl::PointCloud<StampedPose> & poses6dof,
-  const std::vector<int> & indices,
+  const std::vector<int> & position_indices,
   const double radius)
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr fused(new pcl::PointCloud<pcl::PointXYZ>());
 
   const Eigen::Vector3d latest = getXYZ(poses6dof.back());
 
-  for (const int index : indices) {
+  for (const int index : position_indices) {
     const double distance = (getXYZ(poses6dof.at(index)) - latest).norm();
     if (distance > radius) {
       continue;
@@ -277,13 +277,13 @@ public:
 
     const auto r = kdtree.radiusSearch(positions->back(), radius_);
     const std::vector<int> indices = std::get<0>(r);
-    const auto points =
-      downsample<pcl::PointXYZ>(comprehend(*positions, indices), keyframe_density_);
+    const auto close_positions = comprehend(*positions, indices);
+    const auto points = downsample<pcl::PointXYZ>(close_positions, keyframe_density_);
 
-    std::vector<int> point_indices;
-    for (auto & p : *points) {
+    std::vector<int> position_indices;
+    for (auto & p : *positions) {
       const int index = std::get<0>(kdtree.closestPoint(p));
-      point_indices.push_back(index);
+      position_indices.push_back(index);
     }
 
     // also extract some latest key frames in case the robot rotates in one position
@@ -291,9 +291,9 @@ public:
       if (timestamp.toSec() - timestamps_.at(i).toSec() >= 10.0) {
         break;
       }
-      point_indices.push_back(indices_.at(i));
+      position_indices.push_back(indices_.at(i));
     }
-    return point_indices;
+    return position_indices;
   }
 
 private:
@@ -381,10 +381,10 @@ public:
 
     bool is_degenerate = false;
     if (!positions->empty()) {
-      const auto point_indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
+      const auto position_indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
       const float radius = keyframe_search_radius;
-      const auto edge_fused = mapFusion(edge_cloud_, poses6dof, point_indices, radius);
-      const auto surface_fused = mapFusion(surface_cloud_, poses6dof, point_indices, radius);
+      const auto edge_fused = mapFusion(edge_cloud_, poses6dof, position_indices, radius);
+      const auto surface_fused = mapFusion(surface_cloud_, poses6dof, position_indices, radius);
       const auto edge_map = downsample<pcl::PointXYZ>(edge_fused, map_edge_leaf_size);
       const auto surface_map = downsample<pcl::PointXYZ>(surface_fused, map_surface_leaf_size);
 
