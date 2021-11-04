@@ -55,7 +55,7 @@ bool LMOptimization(
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::VectorXd AtB = A.transpose() * b;
 
-  const Eigen::VectorXd matX = AtA.householderQr().solve(AtB);
+  const Eigen::VectorXd dx = AtA.householderQr().solve(AtB);
 
   if (iterCount == 0) {
     const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
@@ -65,13 +65,13 @@ bool LMOptimization(
   }
 
   if (!isDegenerate) {
-    posevec += matX;
+    posevec += dx;
   }
 
-  const float deltaR = rad2deg(matX.head(3)).norm();
-  const float deltaT = (100 * matX.tail(3)).norm();
+  const float dr = rad2deg(dx.head(3)).norm();
+  const float dt = (100 * dx.tail(3)).norm();
 
-  if (deltaR < 0.05 && deltaT < 0.05) {
+  if (dr < 0.05 && dt < 0.05) {
     return true; // converged
   }
   return false; // keep optimizing
