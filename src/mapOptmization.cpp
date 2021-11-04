@@ -280,13 +280,16 @@ public:
     const KDTree<pcl::PointXYZ> kdtree(positions);
 
     const auto f = [&](const pcl::PointXYZ & p) {return std::get<0>(kdtree.closestPoint(p));};
-    auto close = *positions | ranges::views::transform(f);
+    const auto indices = std::get<0>(kdtree.radiusSearch(positions->back(), radius_));
+    const auto close = comprehend(*positions, indices);
+    const auto downsampled = downsample<pcl::PointXYZ>(close, keyframe_density_);
+    auto surrounding = *downsampled | ranges::views::transform(f);
 
     const double current = current_timestamp.toSec();
     const auto is_recent = [&](int i) {return current - timestamps_.at(i).toSec() < 10.0;};
     const int n = timestamps_.size();
     auto recent = ranges::views::iota(0, n) | ranges::views::filter(is_recent);
-    auto merged = ranges::views::concat(close, recent);
+    auto merged = ranges::views::concat(surrounding, recent);
     return recent | ranges::to_vector;
   }
 
