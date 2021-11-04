@@ -4,6 +4,11 @@
 
 #include <Eigen/Eigenvalues>
 
+Eigen::VectorXd solveLinear(const Eigen::MatrixXd & A, const Eigen::VectorXd & b)
+{
+  return A.householderQr().solve(b);
+}
+
 bool LMOptimization(
   const std::vector<Eigen::Vector3d> & points,
   const std::vector<Eigen::Vector3d> & coeffs,
@@ -55,14 +60,14 @@ bool LMOptimization(
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::VectorXd AtB = A.transpose() * b;
 
-  const Eigen::VectorXd dx = AtA.householderQr().solve(AtB);
-
   if (iterCount == 0) {
     const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
     const Eigen::VectorXd eigenvalues = es.eigenvalues();
 
     isDegenerate = (eigenvalues.array() < 100.0).any();
   }
+
+  const Eigen::VectorXd dx = solveLinear(AtA, AtB);
 
   if (!isDegenerate) {
     posevec += dx;
