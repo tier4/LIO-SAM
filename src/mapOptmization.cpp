@@ -21,8 +21,9 @@
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/inference/Symbol.h>
-
 #include <gtsam/nonlinear/ISAM2.h>
+
+#include "range/v3/all.hpp"
 
 using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
@@ -236,22 +237,25 @@ double interpolatePitch(const double p0, const double p1, const double weight)
   return interpolate(Eigen::Vector3d(0, p0, 0), Eigen::Vector3d(0, p1, 0), weight)(1);
 }
 
+std::vector<int> findClosePositions(
+  const pcl::PointCloud<StampedPose> & poses6dof,
+  const std::vector<int> & input_indices,
+  const StampedPose & query,
+  const double radius)
+{
+  const Eigen::Vector3d p = getXYZ(query);
+  const auto f = [&](int i) {return (getXYZ(poses6dof.at(i)) - p).norm() <= radius;};
+  return input_indices | ranges::views::filter(f) | ranges::to_vector;
+}
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
   const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> & cloud,
   const pcl::PointCloud<StampedPose> & poses6dof,
-  const std::vector<int> & position_indices,
-  const double radius)
+  const std::vector<int> & indices)
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr fused(new pcl::PointCloud<pcl::PointXYZ>());
 
-  const Eigen::Vector3d latest = getXYZ(poses6dof.back());
-
-  for (const int index : position_indices) {
-    const Eigen::Vector3d position = getXYZ(poses6dof.at(index));
-    if ((position - latest).norm() > radius) {
-      continue;
-    }
-
+  for (const int index : indices) {
     const Vector6d v = makePosevec(poses6dof.at(index));
     *fused += transform(*cloud[index], v);
   }
@@ -381,10 +385,12 @@ public:
 
     bool is_degenerate = false;
     if (!positions->empty()) {
-      const auto indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
+      const auto keyframe_indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
       const float radius = keyframe_search_radius;
-      const auto edge_fused = mapFusion(edge_cloud_, poses6dof_, indices, radius);
-      const auto surface_fused = mapFusion(surface_cloud_, poses6dof_, indices, radius);
+      const auto latest = poses6dof_.back();
+      const auto indices = findClosePositions(poses6dof_, keyframe_indices, latest, radius);
+      const auto edge_fused = mapFusion(edge_cloud_, poses6dof_, indices);
+      const auto surface_fused = mapFusion(surface_cloud_, poses6dof_, indices);
       const auto edge_map = downsample<pcl::PointXYZ>(edge_fused, map_edge_leaf_size);
       const auto surface_map = downsample<pcl::PointXYZ>(surface_fused, map_surface_leaf_size);
 
