@@ -17,17 +17,17 @@ public:
     const int numberOfCores,
     const int edgeFeatureMinValidNum,
     const int surfFeatureMinValidNum,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_downsampled,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_downsampled,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map_downsampled,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map_downsampled)
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map_,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map_)
   : numberOfCores(numberOfCores),
-    edge_downsampled(edge_downsampled),
-    surface_downsampled(surface_downsampled),
-    edge_map_downsampled(edge_map_downsampled),
-    surface_map_downsampled(surface_map_downsampled),
-    edge_kdtree_(KDTree<pcl::PointXYZ>(edge_map_downsampled)),
-    surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map_downsampled))
+    edge_(edge_),
+    surface_(surface_),
+    edge_map_(edge_map_),
+    surface_map_(surface_map_),
+    edge_kdtree_(KDTree<pcl::PointXYZ>(edge_map_)),
+    surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map_))
   {
   }
 
@@ -36,10 +36,10 @@ public:
 
 private:
   const int numberOfCores;
-  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_downsampled;
-  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_downsampled;
-  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_map_downsampled;
-  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_map_downsampled;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_map_;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_map_;
   const KDTree<pcl::PointXYZ> edge_kdtree_;
   const KDTree<pcl::PointXYZ> surface_kdtree_;
 };

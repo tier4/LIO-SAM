@@ -34,15 +34,15 @@ std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vect
 CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
-  std::vector<Eigen::Vector3d> edge_points(edge_downsampled->size());
-  std::vector<Eigen::Vector3d> edge_coeffs(edge_downsampled->size());
-  std::vector<double> edge_coeffs_b(edge_downsampled->size());
-  std::vector<bool> edge_flags(edge_downsampled->size(), false);
+  std::vector<Eigen::Vector3d> edge_points(edge_->size());
+  std::vector<Eigen::Vector3d> edge_coeffs(edge_->size());
+  std::vector<double> edge_coeffs_b(edge_->size());
+  std::vector<bool> edge_flags(edge_->size(), false);
 
   // edge optimization
   #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < edge_downsampled->size(); i++) {
-    const pcl::PointXYZ point = edge_downsampled->at(i);
+  for (unsigned int i = 0; i < edge_->size(); i++) {
+    const pcl::PointXYZ point = edge_->at(i);
     const pcl::PointXYZ map_point = transform(point_to_map, point);
     const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(map_point, 5);
 
@@ -52,14 +52,14 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
     Eigen::Vector3d c = Eigen::Vector3d::Zero();
     for (int j = 0; j < 5; j++) {
-      c += getXYZ(edge_map_downsampled->at(indices[j]));
+      c += getXYZ(edge_map_->at(indices[j]));
     }
     c /= 5.0;
 
     Eigen::Matrix3d sa = Eigen::Matrix3d::Zero();
 
     for (int j = 0; j < 5; j++) {
-      const Eigen::Vector3d x = getXYZ(edge_map_downsampled->at(indices[j]));
+      const Eigen::Vector3d x = getXYZ(edge_map_->at(indices[j]));
       const Eigen::Vector3d a = x - c;
       sa += a * a.transpose();
     }
@@ -119,15 +119,15 @@ CloudOptimizer::run(const Vector6d & posevec) const
     edge_flags[i] = true;
   }
 
-  std::vector<Eigen::Vector3d> surface_points(surface_downsampled->size());
-  std::vector<Eigen::Vector3d> surface_coeffs(surface_downsampled->size());
-  std::vector<double> surface_coeffs_b(surface_downsampled->size());
-  std::vector<bool> surface_flags(surface_downsampled->size(), false);
+  std::vector<Eigen::Vector3d> surface_points(surface_->size());
+  std::vector<Eigen::Vector3d> surface_coeffs(surface_->size());
+  std::vector<double> surface_coeffs_b(surface_->size());
+  std::vector<bool> surface_flags(surface_->size(), false);
 
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < surface_downsampled->size(); i++) {
-    const pcl::PointXYZ point = surface_downsampled->at(i);
+  for (unsigned int i = 0; i < surface_->size(); i++) {
+    const pcl::PointXYZ point = surface_->at(i);
     const pcl::PointXYZ map_point = transform(point_to_map, point);
     const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(map_point, 5);
 
@@ -136,7 +136,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
     }
 
     const Eigen::Matrix<double, 5, 1> b = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
-    const Eigen::Matrix<double, 5, 3> A = makeMatrixA(surface_map_downsampled, indices);
+    const Eigen::Matrix<double, 5, 3> A = makeMatrixA(surface_map_, indices);
     const Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
 
     if (!validatePlane(A, x)) {
@@ -164,14 +164,14 @@ CloudOptimizer::run(const Vector6d & posevec) const
   std::vector<Eigen::Vector3d> coeffs;
   std::vector<double> b;
 
-  for (unsigned int i = 0; i < edge_downsampled->size(); ++i) {
+  for (unsigned int i = 0; i < edge_->size(); ++i) {
     if (edge_flags[i]) {
       points.push_back(edge_points[i]);
       coeffs.push_back(edge_coeffs[i]);
       b.push_back(edge_coeffs_b[i]);
     }
   }
-  for (unsigned int i = 0; i < surface_downsampled->size(); ++i) {
+  for (unsigned int i = 0; i < surface_->size(); ++i) {
     if (surface_flags[i]) {
       points.push_back(surface_points[i]);
       coeffs.push_back(surface_coeffs[i]);
