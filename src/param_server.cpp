@@ -47,9 +47,9 @@ ParamServer::ParamServer()
   nh.param<float>("lio_sam/imuGyrBiasN", imuGyrBiasN, 0.00003);
   nh.param<float>("lio_sam/imuGravity", imuGravity, 9.80511);
   nh.param<float>("lio_sam/imuRPYWeight", imuRPYWeight, 0.01);
-  nh.param<std::vector<
-      double>>("lio_sam/extrinsicTrans", extTransV, std::vector<double>());
-  extTrans = Eigen::Map<const RowMajorMatrixXd>(extTransV.data(), 3, 1);
+  std::vector<double> v;
+  nh.param<std::vector<double>>("lio_sam/extrinsicTrans", v, std::vector<double>());
+  extTrans = Eigen::Map<const RowMajorMatrixXd>(v.data(), 3, 1);
 
   nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
   nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);

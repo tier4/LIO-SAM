@@ -46,7 +46,6 @@ public:
   float imuGyrBiasN;
   float imuGravity;
   float imuRPYWeight;
-  std::vector < double > extTransV;
   Eigen::Vector3d extTrans;
 
   // LOAM
