@@ -272,32 +272,22 @@ public:
   }
 
   std::vector<int> operator()(
-    const ros::Time & timestamp,
+    const ros::Time & current_timestamp,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & positions,
     const std::vector<int> & indices_,
     const std::vector<ros::Time> & timestamps_) const
   {
     const KDTree<pcl::PointXYZ> kdtree(positions);
 
-    const auto r = kdtree.radiusSearch(positions->back(), radius_);
-    const std::vector<int> indices = std::get<0>(r);
-    const auto close_positions = comprehend(*positions, indices);
-    const auto points = downsample<pcl::PointXYZ>(close_positions, keyframe_density_);
+    const auto f = [&](const pcl::PointXYZ & p) {return std::get<0>(kdtree.closestPoint(p));};
+    auto close = *positions | ranges::views::transform(f);
 
-    std::vector<int> position_indices;
-    for (auto & p : *positions) {
-      const int index = std::get<0>(kdtree.closestPoint(p));
-      position_indices.push_back(index);
-    }
-
-    // also extract some latest key frames in case the robot rotates in one position
-    for (int i = positions->size() - 1; i >= 0; --i) {
-      if (timestamp.toSec() - timestamps_.at(i).toSec() >= 10.0) {
-        break;
-      }
-      position_indices.push_back(indices_.at(i));
-    }
-    return position_indices;
+    const double current = current_timestamp.toSec();
+    const auto is_recent = [&](int i) {return current - timestamps_.at(i).toSec() < 10.0;};
+    const int n = timestamps_.size();
+    auto recent = ranges::views::iota(0, n) | ranges::views::filter(is_recent);
+    auto merged = ranges::views::concat(close, recent);
+    return recent | ranges::to_vector;
   }
 
 private:
