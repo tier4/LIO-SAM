@@ -213,6 +213,14 @@ private:
   gtsam::imuBias::ConstantBias prev_bias_;
 };
 
+gtsam::PriorFactor<gtsam::Pose3> makePrior(
+  const int key,
+  const gtsam::Pose3 & imu_pose,
+  const gtsam::SharedNoiseModel & noise)
+{
+  return gtsam::PriorFactor<gtsam::Pose3>(P(key), imu_pose, noise);
+}
+
 gtsam::ImuFactor makeImuConstraint(
   const int key,
   const gtsam::PreintegratedImuMeasurements & integrator)
@@ -326,9 +334,7 @@ public:
     gtsam::NonlinearFactorGraph graph;
 
     const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
-    const auto noise = getCovariance(is_degenerate);
-    graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
-
+    graph.add(makePrior(key, lidar_pose.compose(lidar_to_imu), getCovariance(is_degenerate)));
     graph.add(makeImuConstraint(key, imu_integrator));
     graph.add(makeBiasConstraint(key, imu_integrator.deltaTij(), between_noise_bias_));
 
