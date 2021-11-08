@@ -213,6 +213,15 @@ private:
   gtsam::imuBias::ConstantBias prev_bias_;
 };
 
+gtsam::BetweenFactor<gtsam::imuBias::ConstantBias> makeBiasConstraint(
+  const int key, const double dt,
+  const Vector6d & between_noise_bias)
+{
+  return gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
+    B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
+    Diagonal::Sigmas(sqrt(dt) * between_noise_bias));
+}
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -316,11 +325,7 @@ public:
     graph.add(
       gtsam::ImuFactor(P(key - 1), V(key - 1), P(key), V(key), B(key - 1), imu_integrator));
 
-    graph.add(
-      gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
-        B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
-        Diagonal::Sigmas(sqrt(imu_integrator.deltaTij()) * between_noise_bias_))
-    );
+    graph.add(makeBiasConstraint(key, imu_integrator.deltaTij(), between_noise_bias_));
 
     const auto [pose, velocity, bias] = state_predition.update(key, imu_integrator, graph);
     prev_pose_ = pose;
