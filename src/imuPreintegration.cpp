@@ -222,14 +222,8 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     imu_incremental_odometry_publisher_(
       nh.advertise<geometry_msgs::TransformStamped>(imu_incremental_odometry_topic, 2000)),
-    imu_to_lidar(
-      gtsam::Pose3(
-        gtsam::Rot3(1, 0, 0, 0),
-        gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()))),
-    lidar_to_imu(
-      gtsam::Pose3(
-        gtsam::Rot3(1, 0, 0, 0),
-        gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()))),
+    imu_to_lidar(gtsam::Pose3(gtsam::Rot3::identity(), -extTrans)),
+    lidar_to_imu(gtsam::Pose3(gtsam::Rot3::identity(), extTrans)),
     integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
     prior_imu_bias_(Vector6d::Zero()),
     between_noise_bias_(

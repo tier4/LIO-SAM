@@ -174,8 +174,7 @@ public:
     if (pubImuPath.getNumSubscribers() == 0) {
       return;
     }
-    const auto path = imu_path.make(stamp, pose, lidar_odometry_time);
-    pubImuPath.publish(path);
+    pubImuPath.publish(imu_path.make(stamp, pose, lidar_odometry_time));
   }
 };
 
