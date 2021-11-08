@@ -326,7 +326,6 @@ public:
   std::mutex mtx;
 
   std::vector<double> timestamps_sec_;
-  std::vector<int> indices_;
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
   ImuOrientationIncrement imu_orientation_increment_;
@@ -413,7 +412,6 @@ public:
     {
       // size can be used as index
       timestamps_sec_.push_back(curr_time_sec);
-      indices_.push_back(positions->size());
       positions->push_back(makePointXYZ(posevec.tail(3)));
       poses6dof_.push_back(makeStampedPose(posevec, curr_time_sec));
 
