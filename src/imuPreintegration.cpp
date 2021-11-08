@@ -213,6 +213,13 @@ private:
   gtsam::imuBias::ConstantBias prev_bias_;
 };
 
+gtsam::ImuFactor makeImuConstraint(
+  const int key,
+  const gtsam::PreintegratedImuMeasurements & integrator)
+{
+  return gtsam::ImuFactor(P(key - 1), V(key - 1), P(key), V(key), B(key - 1), integrator);
+}
+
 gtsam::BetweenFactor<gtsam::imuBias::ConstantBias> makeBiasConstraint(
   const int key, const double dt,
   const Vector6d & between_noise_bias)
@@ -322,9 +329,7 @@ public:
     const auto noise = getCovariance(is_degenerate);
     graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
 
-    graph.add(
-      gtsam::ImuFactor(P(key - 1), V(key - 1), P(key), V(key), B(key - 1), imu_integrator));
-
+    graph.add(makeImuConstraint(key, imu_integrator));
     graph.add(makeBiasConstraint(key, imu_integrator.deltaTij(), between_noise_bias_));
 
     const auto [pose, velocity, bias] = state_predition.update(key, imu_integrator, graph);
