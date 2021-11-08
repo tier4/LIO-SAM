@@ -285,7 +285,6 @@ public:
   std::vector<int> operator()(
     const ros::Time & current_timestamp,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & positions,
-    const std::vector<int> & indices_,
     const std::vector<ros::Time> & timestamps_) const
   {
     const KDTree<pcl::PointXYZ> kdtree(positions);
@@ -386,7 +385,7 @@ public:
 
     bool is_degenerate = false;
     if (!positions->empty()) {
-      const auto keyframe_indices = extract_keyframes_(timestamp, positions, indices_, timestamps_);
+      const auto keyframe_indices = extract_keyframes_(timestamp, positions, timestamps_);
       const float radius = keyframe_search_radius;
       const auto latest = poses6dof_.back();
       const auto indices = findClosePositions(poses6dof_, keyframe_indices, latest, radius);
