@@ -428,11 +428,6 @@ public:
 
     pubLaserOdometryGlobal.publish(odometry);
 
-    // Publish TF
-    tf::TransformBroadcaster br;
-    br.sendTransform(
-      tf::StampedTransform(makeTransform(posevec), timestamp, odometryFrame, "lidar_link"));
-
     // Publish odometry for ROS (incremental)
     if (!incremental_odometry.has_value()) {
       incremental_odometry = getTransformation(posevec);
