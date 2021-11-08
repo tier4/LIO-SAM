@@ -124,7 +124,7 @@ public:
         5, &TransformFusion::lidarOdometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
     subImuOdometry(nh.subscribe<geometry_msgs::TransformStamped>(
-        odomTopic + "_incremental",
+        imu_incremental_odometry_topic,
         2000, &TransformFusion::imuOdometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),

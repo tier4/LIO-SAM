@@ -376,8 +376,8 @@ public:
         &ImageProjection::imuHandler, this,
         ros::TransportHints().tcpNoDelay())),
     subOdom(nh.subscribe<geometry_msgs::TransformStamped>(
-        odomTopic + "_incremental", 2000,
-        &ImageProjection::odometryHandler, this,
+        imu_incremental_odometry_topic,
+        2000, &ImageProjection::odometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
     subLaserCloud(nh.subscribe<sensor_msgs::PointCloud2>(
         pointCloudTopic, 5,

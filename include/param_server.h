@@ -17,6 +17,7 @@ public:
   std::string pointCloudTopic;
   std::string imuTopic;
   std::string odomTopic;
+  std::string imu_incremental_odometry_topic;
 
   //Frames
   std::string lidarFrame;

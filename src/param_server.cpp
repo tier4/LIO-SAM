@@ -7,7 +7,7 @@ ParamServer::ParamServer()
   nh.param<std::string>("lio_sam/pointCloudTopic", pointCloudTopic, "points_raw");
   nh.param<std::string>("lio_sam/imuTopic", imuTopic, "imu_correct");
   nh.param<std::string>("lio_sam/odomTopic", odomTopic, "odometry/imu");
-
+  imu_incremental_odometry_topic = odomTopic + "_incremental";
   nh.param<std::string>("lio_sam/lidarFrame", lidarFrame, "base_link");
   nh.param<std::string>("lio_sam/baselinkFrame", baselinkFrame, "base_link");
   nh.param<std::string>("lio_sam/odometryFrame", odometryFrame, "odom");
