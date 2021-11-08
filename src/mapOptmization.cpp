@@ -398,7 +398,7 @@ public:
         const CloudOptimizer cloud_optimizer(n_cores, edge, surface, edge_map, surface_map);
 
         std::tie(posevec, is_degenerate) = scan2MapOptimization(
-          cloud_optimizer, msg->imu_orientation_available, msg->imu_orientation, posevec
+          cloud_optimizer, posevec
         );
       } else {
         ROS_WARN(
@@ -448,12 +448,6 @@ public:
 
       incremental_odometry = incremental_odometry.value() * increment;
       Vector6d pose = getPoseVec(incremental_odometry.value());
-
-      if (msg->imu_orientation_available && std::abs(msg->imu_orientation.y) < 1.4) {
-        const double weight = 0.1;
-        pose(0) = interpolateRoll(pose(0), msg->imu_orientation.x, weight);
-        pose(1) = interpolatePitch(pose(1), msg->imu_orientation.y, weight);
-      }
 
       auto p = makeOdometry(timestamp, odometryFrame, "odom_mapping", makePose(pose));
       if (is_degenerate) {
@@ -512,19 +506,11 @@ public:
 
   std::tuple<Vector6d, bool> scan2MapOptimization(
     const CloudOptimizer & cloud_optimizer,
-    const bool imu_orientation_available, const geometry_msgs::Vector3 & imu_orientation,
     const Vector6d & initial_posevec) const
   {
     assert(!positions->empty());
 
-    auto [posevec, is_degenerate] = optimizePose(cloud_optimizer, initial_posevec);
-
-    if (imu_orientation_available && std::abs(imu_orientation.y) < 1.4) {
-      posevec(0) = interpolateRoll(posevec(0), imu_orientation.x, imuRPYWeight);
-      posevec(1) = interpolatePitch(posevec(1), imu_orientation.y, imuRPYWeight);
-    }
-
-    return {posevec, is_degenerate};
+    return optimizePose(cloud_optimizer, initial_posevec);
   }
 };
 
