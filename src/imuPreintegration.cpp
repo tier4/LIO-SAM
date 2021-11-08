@@ -177,9 +177,9 @@ class IMUPreintegration : public ParamServer
 public:
   std::mutex mtx;
 
-  const ros::Subscriber subImu;
-  const ros::Subscriber subOdometry;
-  const ros::Publisher pubImuOdometry;
+  const ros::Subscriber imu_subscriber_;
+  const ros::Subscriber incremental_odometry_subscriber_;
+  const ros::Publisher imu_incremental_odometry_publisher_;
 
   const gtsam::Pose3 imu_to_lidar;
   const gtsam::Pose3 lidar_to_imu;
@@ -212,18 +212,22 @@ public:
   const IMUConverter imu_converter_;
 
   IMUPreintegration()
-  : subImu(nh.subscribe<sensor_msgs::Imu>(
+  : imu_subscriber_(
+      nh.subscribe<sensor_msgs::Imu>(
         imuTopic, 2000, &IMUPreintegration::imuHandler,
         this, ros::TransportHints().tcpNoDelay())),
-    subOdometry(nh.subscribe<nav_msgs::Odometry>(
+    incremental_odometry_subscriber_(
+      nh.subscribe<nav_msgs::Odometry>(
         "lio_sam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler,
         this, ros::TransportHints().tcpNoDelay())),
-    pubImuOdometry(
+    imu_incremental_odometry_publisher_(
       nh.advertise<geometry_msgs::TransformStamped>(imu_incremental_odometry_topic, 2000)),
-    imu_to_lidar(gtsam::Pose3(
+    imu_to_lidar(
+      gtsam::Pose3(
         gtsam::Rot3(1, 0, 0, 0),
         gtsam::Point3(-extTrans.x(), -extTrans.y(), -extTrans.z()))),
-    lidar_to_imu(gtsam::Pose3(
+    lidar_to_imu(
+      gtsam::Pose3(
         gtsam::Rot3(1, 0, 0, 0),
         gtsam::Point3(extTrans.x(), extTrans.y(), extTrans.z()))),
     integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
@@ -347,7 +351,7 @@ public:
     // predict odometry
     const gtsam::NavState current_imu = integrator_.predict(prev_state_, prev_bias_);
 
-    pubImuOdometry.publish(
+    imu_incremental_odometry_publisher_.publish(
       makeTransformStamped(
         imu.header.stamp, odometryFrame, "odom_imu",
         makeTransform(current_imu.pose().compose(imu_to_lidar)))
