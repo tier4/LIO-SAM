@@ -351,10 +351,9 @@ public:
     // predict odometry
     const gtsam::NavState current_imu = integrator_.predict(prev_state_, prev_bias_);
 
+    const auto lidar_pose = current_imu.pose().compose(imu_to_lidar);
     imu_incremental_odometry_publisher_.publish(
-      makeTransformStamped(
-        imu.header.stamp, odometryFrame, "odom_imu",
-        makeTransform(current_imu.pose().compose(imu_to_lidar)))
+      makeTransformStamped(imu.header.stamp, odometryFrame, "odom_imu", makeTransform(lidar_pose))
     );
   }
 };
