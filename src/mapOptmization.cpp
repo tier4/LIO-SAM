@@ -264,11 +264,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
 }
 
 auto recentKeyframes(
-  const std::vector<ros::Time> & timestamps_,
-  const ros::Time & current_timestamp)
+  const std::vector<double> & timestamps_,
+  const double & current_timestamp)
 {
-  const double current = current_timestamp.toSec();
-  const auto is_recent = [&](int i) {return current - timestamps_.at(i).toSec() < 10.0;};
+  const auto is_recent = [&](int i) {return current_timestamp - timestamps_.at(i) < 10.0;};
   const int n = timestamps_.size();
   auto recent = ranges::views::iota(0, n) | ranges::views::filter(is_recent);
   return recent;
@@ -283,9 +282,9 @@ public:
   }
 
   std::vector<int> operator()(
-    const ros::Time & current_timestamp,
+    const double & current_timestamp,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & positions,
-    const std::vector<ros::Time> & timestamps_) const
+    const std::vector<double> & timestamps_) const
   {
     const KDTree<pcl::PointXYZ> kdtree(positions);
     const auto r = kdtree.radiusSearch(positions->back(), radius_);
@@ -329,7 +328,7 @@ public:
 
   std::mutex mtx;
 
-  std::vector<ros::Time> timestamps_;
+  std::vector<double> timestamps_sec_;
   std::vector<int> indices_;
   std::vector<geometry_msgs::PoseStamped> path_poses_;
 
@@ -366,11 +365,12 @@ public:
 
     std::lock_guard<std::mutex> lock(mtx);
 
-    if (timestamp.toSec() - last_time_sec < map_process_interval) {
+    const double curr_time_sec = timestamp.toSec();
+    if (curr_time_sec - last_time_sec < map_process_interval) {
       return;
     }
 
-    last_time_sec = timestamp.toSec();
+    last_time_sec = curr_time_sec;
 
     // save current transformation before any processing
     const Eigen::Affine3d front = getTransformation(posevec);
@@ -385,7 +385,7 @@ public:
 
     bool is_degenerate = false;
     if (!positions->empty()) {
-      const auto keyframe_indices = extract_keyframes_(timestamp, positions, timestamps_);
+      const auto keyframe_indices = extract_keyframes_(curr_time_sec, positions, timestamps_sec_);
       const float radius = keyframe_search_radius;
       const auto latest = poses6dof_.back();
       const auto indices = findClosePositions(poses6dof_, keyframe_indices, latest, radius);
@@ -418,17 +418,17 @@ public:
         keyframe_angle_threshold, keyframe_distance_threshold))
     {
       // size can be used as index
-      timestamps_.push_back(timestamp);
+      timestamps_sec_.push_back(curr_time_sec);
       indices_.push_back(positions->size());
       positions->push_back(makePointXYZ(posevec.tail(3)));
-      poses6dof_.push_back(makeStampedPose(posevec, timestamp.toSec()));
+      poses6dof_.push_back(makeStampedPose(posevec, curr_time_sec));
 
       // save key frame cloud
       edge_cloud_.push_back(edge);
       surface_cloud_.push_back(surface);
 
       path_poses_.push_back(
-        makePoseStamped(makePose(posevec), odometryFrame, timestamp.toSec()));
+        makePoseStamped(makePose(posevec), odometryFrame, curr_time_sec));
     }
 
     const nav_msgs::Odometry odometry = makeOdometry(
