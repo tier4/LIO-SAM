@@ -164,12 +164,9 @@ public:
     const auto back = odom_msg->transform;
     const auto pose = affineToPose(latestOdometry(front, back, lidar_odom));
 
-    // publish latest odometry
-    nav_msgs::Odometry odometry;
-    odometry.header = odom_msg->header;
-    odometry.child_frame_id = odom_msg->child_frame_id;
-    odometry.pose.pose = pose;
-    pubImuOdometry.publish(odometry);
+    const auto header = odom_msg->header;
+    const auto child_frame_id = odom_msg->child_frame_id;
+    pubImuOdometry.publish(makeOdometry(header.stamp, header.frame_id, child_frame_id, pose));
 
     broadcaster.sendTransform(odom_to_baselink.get(pose, stamp));
 

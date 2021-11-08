@@ -419,8 +419,7 @@ public:
       edge_cloud_.push_back(edge);
       surface_cloud_.push_back(surface);
 
-      path_poses_.push_back(
-        makePoseStamped(makePose(posevec), odometryFrame, curr_time_sec));
+      path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, curr_time_sec));
     }
 
     const nav_msgs::Odometry odometry = makeOdometry(
