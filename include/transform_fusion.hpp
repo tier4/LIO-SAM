@@ -102,7 +102,6 @@ public:
   const ros::Subscriber subLaserOdometry;
   const ros::Subscriber subImuOdometry;
 
-  const ros::Publisher pubImuOdometry;
   const ros::Publisher pubImuPath;
 
   geometry_msgs::Transform lidar_odom;
@@ -127,7 +126,6 @@ public:
         imu_incremental_odometry_topic,
         2000, &TransformFusion::imuOdometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
-    pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
     pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
     odom_to_baselink(OdomToBaselink(lidarFrame, odometryFrame, baselinkFrame)),
     lidar_odometry_time(-1.0),
@@ -155,7 +153,6 @@ public:
 
     odometry_queue_.push_back(*odom_msg);
 
-    // get latest odometry (at current IMU stamp)
     if (lidar_odometry_time == -1) {
       return;
     }
@@ -164,10 +161,6 @@ public:
     const auto front = odometry_queue_.front().transform;
     const auto back = odom_msg->transform;
     const auto pose = affineToPose(latestOdometry(front, back, lidar_odom));
-
-    const auto header = odom_msg->header;
-    const auto child_frame_id = odom_msg->child_frame_id;
-    pubImuOdometry.publish(makeOdometry(header.stamp, header.frame_id, child_frame_id, pose));
 
     broadcaster.sendTransform(odom_to_baselink.get(pose, stamp));
 
