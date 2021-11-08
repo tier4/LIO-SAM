@@ -80,8 +80,6 @@ using Diagonal = gtsam::noiseModel::Diagonal;
 
 gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & pose)
 {
-  const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
-
   gtsam::NonlinearFactorGraph graph;
 
   const Diagonal::shared_ptr pose_noise(Diagonal::Sigmas(1e-2 * Vector6d::Ones()));
@@ -103,6 +101,7 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & pose)
   values.insert(V(0), velocity);
   values.insert(B(0), bias);
 
+  const gtsam::ISAM2Params params(gtsam::ISAM2GaussNewtonParams(), 0.1, 1);
   gtsam::ISAM2 optimizer = gtsam::ISAM2(params);
   optimizer.update(graph, values);
   return optimizer;
@@ -119,7 +118,6 @@ void imuPreIntegration(
   double last_imu_time = -1;
   popOldMessages(time_threshold, last_imu_time, imu_queue);
 
-  // repropogate
   if (imu_queue.empty()) {
     return;
   }
@@ -172,6 +170,49 @@ Diagonal::shared_ptr getCovariance(const bool is_degenerate)
   return Diagonal::Sigmas((Vector6d() << 0.05, 0.05, 0.05, 0.1, 0.1, 0.1).finished());
 }
 
+class StatePrediction
+{
+public:
+  StatePrediction(const gtsam::Pose3 & pose)
+  : optimizer(initOptimizer(pose))
+  {
+  }
+
+  StatePrediction() {}
+
+  std::tuple<gtsam::Pose3, gtsam::Vector3, gtsam::imuBias::ConstantBias> update(
+    const int key,
+    const gtsam::PreintegratedImuMeasurements & imu_integrator,
+    const gtsam::NonlinearFactorGraph & graph)
+  {
+    const gtsam::NavState state = imu_integrator.predict(
+      gtsam::NavState(prev_pose_, prev_velocity_), prev_bias_);
+    gtsam::Values values;
+    values.insert(P(key), state.pose());
+    values.insert(V(key), state.v());
+    values.insert(B(key), prev_bias_);
+
+    // optimize
+    optimizer.update(graph, values);
+    optimizer.update();
+
+    const gtsam::Values result = optimizer.calculateEstimate();
+    const gtsam::Pose3 pose = result.at<gtsam::Pose3>(P(key));
+    const gtsam::Vector3 velocity = result.at<gtsam::Vector3>(V(key));
+    const gtsam::imuBias::ConstantBias bias = result.at<gtsam::imuBias::ConstantBias>(B(key));
+    prev_pose_ = pose;
+    prev_velocity_ = velocity;
+    prev_bias_ = bias;
+    return {pose, velocity, bias};
+  }
+
+private:
+  gtsam::ISAM2 optimizer;
+  gtsam::Pose3 prev_pose_;
+  gtsam::Vector3 prev_velocity_;
+  gtsam::imuBias::ConstantBias prev_bias_;
+};
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -211,6 +252,7 @@ public:
   int key = 1;
 
   const IMUConverter imu_converter_;
+  StatePrediction state_predition;
 
   IMUPreintegration()
   : imu_subscriber_(
@@ -249,22 +291,21 @@ public:
 
     const gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
 
-    auto imuIntegratorOpt_ = gtsam::PreintegratedImuMeasurements(integration_params_, prev_bias_);
+    auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, prev_bias_);
 
     // 0. initialize system
     if (!systemInitialized) {
       // pop old IMU message
       popOldMessages(odom_time - delta_t, last_imu_time_opt, imuQueOpt);
 
-      optimizer = initOptimizer(lidar_pose.compose(lidar_to_imu));
-
+      state_predition = StatePrediction(lidar_pose.compose(lidar_to_imu));
       key = 1;
       systemInitialized = true;
       return;
     }
 
     // 1. integrate imu data and optimize
-    imuIntegration(odom_time - delta_t, last_imu_time_opt, imuIntegratorOpt_, imuQueOpt);
+    imuIntegration(odom_time - delta_t, last_imu_time_opt, imu_integrator, imuQueOpt);
 
     gtsam::NonlinearFactorGraph graph;
 
@@ -273,37 +314,21 @@ public:
     graph.add(gtsam::PriorFactor<gtsam::Pose3>(P(key), lidar_pose.compose(lidar_to_imu), noise));
 
     graph.add(
-      gtsam::ImuFactor(P(key - 1), V(key - 1), P(key), V(key), B(key - 1), imuIntegratorOpt_));
+      gtsam::ImuFactor(P(key - 1), V(key - 1), P(key), V(key), B(key - 1), imu_integrator));
 
     graph.add(
       gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>(
         B(key - 1), B(key), gtsam::imuBias::ConstantBias(),
-        Diagonal::Sigmas(sqrt(imuIntegratorOpt_.deltaTij()) * between_noise_bias_))
+        Diagonal::Sigmas(sqrt(imu_integrator.deltaTij()) * between_noise_bias_))
     );
 
-    // insert predicted values
-    const gtsam::NavState state = imuIntegratorOpt_.predict(
-      gtsam::NavState(prev_pose_, prev_velocity_), prev_bias_);
-
-    gtsam::Values values;
-    values.insert(P(key), state.pose());
-    values.insert(V(key), state.v());
-    values.insert(B(key), prev_bias_);
-
-    // optimize
-    optimizer.update(graph, values);
-    optimizer.update();
-
-    // Overwrite the beginning of the preintegration for the next step.
-    const gtsam::Values result = optimizer.calculateEstimate();
-    const gtsam::Pose3 pose = result.at<gtsam::Pose3>(P(key));
-    const gtsam::Vector3 velocity = result.at<gtsam::Vector3>(V(key));
-    const gtsam::imuBias::ConstantBias bias = result.at<gtsam::imuBias::ConstantBias>(B(key));
+    const auto [pose, velocity, bias] = state_predition.update(key, imu_integrator, graph);
     prev_pose_ = pose;
     prev_velocity_ = velocity;
     prev_bias_ = bias;
+
     // check optimization
-    if (failureDetection(velocity, prev_bias_)) {
+    if (failureDetection(velocity, bias)) {
       last_imu_time = -1;
       doneFirstOpt = false;
       systemInitialized = false;
