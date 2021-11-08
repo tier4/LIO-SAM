@@ -263,12 +263,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
   return fused;
 }
 
-auto recentKeyframes(
-  const std::vector<double> & timestamps_,
-  const double & current_timestamp)
+auto recentKeyframes(const std::vector<double> & timestamps, const double & current_timestamp)
 {
-  const auto is_recent = [&](int i) {return current_timestamp - timestamps_.at(i) < 10.0;};
-  const int n = timestamps_.size();
+  const auto is_recent = [&](int i) {return current_timestamp - timestamps.at(i) < 10.0;};
+  const int n = timestamps.size();
   auto recent = ranges::views::iota(0, n) | ranges::views::filter(is_recent);
   return recent;
 }
@@ -284,7 +282,7 @@ public:
   std::vector<int> operator()(
     const double & current_timestamp,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & positions,
-    const std::vector<double> & timestamps_) const
+    const std::vector<double> & timestamps) const
   {
     const KDTree<pcl::PointXYZ> kdtree(positions);
     const auto r = kdtree.radiusSearch(positions->back(), radius_);
@@ -294,7 +292,7 @@ public:
     auto f = [&kdtree](const pcl::PointXYZ & p) {return std::get<0>(kdtree.closestPoint(p));};
     auto surrounding = *points | ranges::views::transform(f);
 
-    auto recent = recentKeyframes(timestamps_, current_timestamp);
+    auto recent = recentKeyframes(timestamps, current_timestamp);
     auto merged = ranges::views::concat(surrounding, recent);
     return merged | ranges::to_vector;
   }
