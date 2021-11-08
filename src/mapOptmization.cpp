@@ -267,8 +267,7 @@ auto recentKeyframes(const std::vector<double> & timestamps, const double & curr
 {
   const auto is_recent = [&](int i) {return current_timestamp - timestamps.at(i) < 10.0;};
   const int n = timestamps.size();
-  auto recent = ranges::views::iota(0, n) | ranges::views::filter(is_recent);
-  return recent;
+  return ranges::views::iota(0, n) | ranges::views::filter(is_recent);
 }
 
 class KeyframeExtraction
