@@ -261,9 +261,9 @@ public:
   std::deque<sensor_msgs::Imu> imuQueOpt;
   std::deque<sensor_msgs::Imu> imu_queue;
 
-  gtsam::Pose3 prev_pose_;
-  gtsam::Vector3 prev_velocity_;
-  gtsam::imuBias::ConstantBias prev_bias_;
+  gtsam::Pose3 pose_;
+  gtsam::Vector3 velocity_;
+  gtsam::imuBias::ConstantBias bias_;
 
   bool doneFirstOpt = false;
   double last_imu_time = -1;
@@ -315,7 +315,7 @@ public:
 
     const gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
 
-    auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, prev_bias_);
+    auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, bias_);
 
     // 0. initialize system
     if (!systemInitialized) {
@@ -338,13 +338,10 @@ public:
     graph.add(makeImuConstraint(key, imu_integrator));
     graph.add(makeBiasConstraint(key, imu_integrator.deltaTij(), between_noise_bias_));
 
-    const auto [pose, velocity, bias] = state_predition.update(key, imu_integrator, graph);
-    prev_pose_ = pose;
-    prev_velocity_ = velocity;
-    prev_bias_ = bias;
+    std::tie(pose_, velocity_, bias_) = state_predition.update(key, imu_integrator, graph);
 
     // check optimization
-    if (failureDetection(velocity, bias)) {
+    if (failureDetection(velocity_, bias_)) {
       last_imu_time = -1;
       doneFirstOpt = false;
       systemInitialized = false;
@@ -352,7 +349,7 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    imuPreIntegration(odom_time - delta_t, bias, integration_params_, integrator_, imu_queue);
+    imuPreIntegration(odom_time - delta_t, bias_, integration_params_, integrator_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
@@ -388,8 +385,7 @@ public:
     integrator_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
 
     // predict odometry
-    const gtsam::NavState current_imu = integrator_.predict(
-      gtsam::NavState(prev_pose_, prev_velocity_), prev_bias_);
+    const auto current_imu = integrator_.predict(gtsam::NavState(pose_, velocity_), bias_);
 
     const auto lidar_pose = current_imu.pose().compose(imu_to_lidar);
     imu_incremental_odometry_publisher_.publish(
