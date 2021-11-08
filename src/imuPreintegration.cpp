@@ -109,8 +109,8 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & pose)
 
 void imuPreIntegration(
   const double time_threshold,
-  const gtsam::imuBias::ConstantBias & prev_odom_bias_,
-  const boost::shared_ptr<gtsam::PreintegrationParams> & integration_params_,
+  const gtsam::imuBias::ConstantBias & bias,
+  const boost::shared_ptr<gtsam::PreintegrationParams> & params,
   gtsam::PreintegratedImuMeasurements & integrator,
   std::deque<sensor_msgs::Imu> & imu_queue)
 {
@@ -123,7 +123,7 @@ void imuPreIntegration(
   }
 
   // reset bias use the newly optimized bias
-  integrator = gtsam::PreintegratedImuMeasurements(integration_params_, prev_odom_bias_);
+  integrator = gtsam::PreintegratedImuMeasurements(params, bias);
   // integrate imu message from the beginning of this optimization
   for (unsigned int i = 0; i < imu_queue.size(); ++i) {
     const sensor_msgs::Imu & msg = imu_queue[i];
