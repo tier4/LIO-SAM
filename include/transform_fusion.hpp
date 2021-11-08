@@ -111,7 +111,7 @@ public:
   const OdomToBaselink odom_to_baselink;
   tf::TransformBroadcaster broadcaster;
 
-  double lidar_odometry_time = -1;
+  double lidar_odometry_time;
   std::deque<geometry_msgs::TransformStamped> odometry_queue_;
 
   tf::TransformBroadcaster tf_map_to_odom;
@@ -130,6 +130,7 @@ public:
     pubImuOdometry(nh.advertise<nav_msgs::Odometry>(odomTopic, 2000)),
     pubImuPath(nh.advertise<nav_msgs::Path>("lio_sam/imu/path", 1)),
     odom_to_baselink(OdomToBaselink(lidarFrame, odometryFrame, baselinkFrame)),
+    lidar_odometry_time(-1.0),
     imu_path(ImuPath(odometryFrame))
   {
   }
