@@ -174,7 +174,10 @@ class StatePrediction
 {
 public:
   StatePrediction(const gtsam::Pose3 & pose)
-  : optimizer(initOptimizer(pose))
+  : optimizer(initOptimizer(pose)),
+    prev_pose_(gtsam::Pose3::identity()),
+    prev_velocity_(gtsam::Vector3::Zero()),
+    prev_bias_(gtsam::imuBias::ConstantBias::identity())
   {
   }
 
