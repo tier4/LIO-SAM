@@ -298,9 +298,10 @@ public:
     const gtsam::Values result = optimizer.calculateEstimate();
     const gtsam::Pose3 pose = result.at<gtsam::Pose3>(P(key));
     const gtsam::Vector3 velocity = result.at<gtsam::Vector3>(V(key));
+    const gtsam::imuBias::ConstantBias bias = result.at<gtsam::imuBias::ConstantBias>(B(key));
     prev_pose_ = pose;
     prev_velocity_ = velocity;
-    prev_bias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
+    prev_bias_ = bias;
     // check optimization
     if (failureDetection(velocity, prev_bias_)) {
       last_imu_time = -1;
@@ -310,7 +311,7 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    imuPreIntegration(odom_time - delta_t, prev_bias_, integration_params_, integrator_, imu_queue);
+    imuPreIntegration(odom_time - delta_t, bias, integration_params_, integrator_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
