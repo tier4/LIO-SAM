@@ -196,7 +196,8 @@ public:
   std::deque<sensor_msgs::Imu> imuQueOpt;
   std::deque<sensor_msgs::Imu> imu_queue;
 
-  gtsam::NavState prev_state_;
+  gtsam::Pose3 prev_pose_;
+  gtsam::Vector3 prev_velocity_;
   gtsam::imuBias::ConstantBias prev_bias_;
 
   bool doneFirstOpt = false;
@@ -281,7 +282,8 @@ public:
     );
 
     // insert predicted values
-    const gtsam::NavState state = imuIntegratorOpt_.predict(prev_state_, prev_bias_);
+    const gtsam::NavState state = imuIntegratorOpt_.predict(
+      gtsam::NavState(prev_pose_, prev_velocity_), prev_bias_);
 
     gtsam::Values values;
     values.insert(P(key), state.pose());
@@ -296,7 +298,8 @@ public:
     const gtsam::Values result = optimizer.calculateEstimate();
     const gtsam::Pose3 pose = result.at<gtsam::Pose3>(P(key));
     const gtsam::Vector3 velocity = result.at<gtsam::Vector3>(V(key));
-    prev_state_ = gtsam::NavState(pose, velocity);
+    prev_pose_ = pose;
+    prev_velocity_ = velocity;
     prev_bias_ = result.at<gtsam::imuBias::ConstantBias>(B(key));
     // check optimization
     if (failureDetection(velocity, prev_bias_)) {
@@ -343,7 +346,8 @@ public:
     integrator_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
 
     // predict odometry
-    const gtsam::NavState current_imu = integrator_.predict(prev_state_, prev_bias_);
+    const gtsam::NavState current_imu = integrator_.predict(
+      gtsam::NavState(prev_pose_, prev_velocity_), prev_bias_);
 
     const auto lidar_pose = current_imu.pose().compose(imu_to_lidar);
     imu_incremental_odometry_publisher_.publish(
