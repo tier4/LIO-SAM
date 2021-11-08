@@ -396,10 +396,7 @@ public:
         static_cast<int>(surface->size()) > min_surface_cloud)
       {
         const CloudOptimizer cloud_optimizer(n_cores, edge, surface, edge_map, surface_map);
-
-        std::tie(posevec, is_degenerate) = scan2MapOptimization(
-          cloud_optimizer, posevec
-        );
+        std::tie(posevec, is_degenerate) = optimizePose(cloud_optimizer, posevec);
       } else {
         ROS_WARN(
           "Not enough features! Only %d edge and %d planar features available.",
@@ -502,15 +499,6 @@ public:
     if (imu_orientation_available) {
       imu_orientation_increment_.init(makeAffine(vector3ToEigen(imu_orientation)));
     }
-  }
-
-  std::tuple<Vector6d, bool> scan2MapOptimization(
-    const CloudOptimizer & cloud_optimizer,
-    const Vector6d & initial_posevec) const
-  {
-    assert(!positions->empty());
-
-    return optimizePose(cloud_optimizer, initial_posevec);
   }
 };
 
