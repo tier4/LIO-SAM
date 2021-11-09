@@ -270,7 +270,7 @@ public:
   IMUPreintegration()
   : imu_subscriber_(
       nh.subscribe<sensor_msgs::Imu>(
-        imuTopic, 2000, &IMUPreintegration::imuHandler,
+        imuTopic, 2000, &IMUPreintegration::estimateImuOdometry,
         this, ros::TransportHints().tcpNoDelay())),
     incremental_odometry_subscriber_(
       nh.subscribe<nav_msgs::Odometry>(
@@ -365,7 +365,7 @@ public:
     }
   }
 
-  void imuHandler(const sensor_msgs::Imu::ConstPtr & imu_raw)
+  void estimateImuOdometry(const sensor_msgs::Imu::ConstPtr & imu_raw)
   {
     std::lock_guard<std::mutex> lock(mtx);
 
