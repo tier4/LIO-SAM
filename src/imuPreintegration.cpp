@@ -224,7 +224,7 @@ public:
     const boost::shared_ptr<gtsam::PreintegrationParams> integration_params)
   : integration_params_(integration_params) {}
 
-  bool isAvailable()
+  bool isAvailable() const
   {
     return !imu_queue.empty();
   }
@@ -239,9 +239,7 @@ public:
     imu_queue.push_back(imu);
   }
 
-  void build(
-    const gtsam::imuBias::ConstantBias & bias_,
-    const double lidar_time)
+  void build(const gtsam::imuBias::ConstantBias & bias_, const double lidar_time)
   {
     std::tie(imu_integrator_, last_imu_time_) = makeIntegrator(
       integration_params_, bias_, last_imu_time_, imu_queue, lidar_time);
@@ -250,7 +248,7 @@ public:
     }
   }
 
-  gtsam::PreintegratedImuMeasurements get()
+  gtsam::PreintegratedImuMeasurements get() const
   {
     return imu_integrator_;
   }
