@@ -354,20 +354,22 @@ public:
     integrator_ = makeIntegrator(integration_params_, bias_, last_imu_time, imu_queue);
   }
 
+  sensor_msgs::Imu extrinsicTransform(const sensor_msgs::Imu & imu_raw) const
+  {
+    try {
+      return imu_extrinsic_.transform(imu_raw);
+    } catch (const std::runtime_error & e) {
+      ROS_ERROR(e.what());
+      ros::shutdown();
+      return sensor_msgs::Imu();
+    }
+  }
+
   void imuHandler(const sensor_msgs::Imu::ConstPtr & imu_raw)
   {
     std::lock_guard<std::mutex> lock(mtx);
 
-    const sensor_msgs::Imu imu = [&] {
-        try {
-          return imu_extrinsic_.transform(*imu_raw);
-        } catch (const std::runtime_error & e) {
-          ROS_ERROR(e.what());
-          ros::shutdown();
-          return sensor_msgs::Imu();
-        }
-      } ();
-
+    const sensor_msgs::Imu imu = extrinsicTransform(*imu_raw);
     imuQueOpt.push_back(imu);
     imu_queue.push_back(imu);
 
