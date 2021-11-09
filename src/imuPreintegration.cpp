@@ -272,8 +272,6 @@ public:
 
   gtsam::ISAM2 optimizer;
 
-  const double delta_t = 0;
-
   int key = 1;
 
   const IMUConverter imu_converter_;
@@ -321,7 +319,7 @@ public:
     // 0. initialize system
     if (!systemInitialized) {
       // pop old IMU message
-      popOldMessages(odom_time - delta_t, last_imu_time_opt, imuQueOpt);
+      popOldMessages(odom_time, last_imu_time_opt, imuQueOpt);
 
       state_predition = StatePrediction(imu_pose);
       key = 1;
@@ -332,7 +330,7 @@ public:
     auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, bias_);
 
     // 1. integrate imu data and optimize
-    imuIntegration(odom_time - delta_t, last_imu_time_opt, imu_integrator, imuQueOpt);
+    imuIntegration(odom_time, last_imu_time_opt, imu_integrator, imuQueOpt);
 
     gtsam::NonlinearFactorGraph graph;
 
@@ -352,7 +350,7 @@ public:
     }
 
     // 2. after optiization, re-propagate imu odometry preintegration
-    imuPreIntegration(odom_time - delta_t, bias_, integration_params_, integrator_, imu_queue);
+    imuPreIntegration(odom_time, bias_, integration_params_, integrator_, imu_queue);
 
     ++key;
     doneFirstOpt = true;
