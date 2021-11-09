@@ -240,7 +240,7 @@ public:
   gtsam::Vector3 velocity_;
   gtsam::imuBias::ConstantBias bias_;
 
-  bool doneFirstOpt = false;
+  bool bias_estimated_ = false;
   double last_imu_time_ = -1;
   double last_imu_time_opt = -1;
 
@@ -318,13 +318,13 @@ public:
     // check optimization
     if (failureDetection(velocity_, bias_)) {
       last_imu_time_ = -1;
-      doneFirstOpt = false;
+      bias_estimated_ = false;
       systemInitialized = false;
       return;
     }
 
     ++key;
-    doneFirstOpt = true;
+    bias_estimated_ = true;
 
     double last_imu_time = -1;
 
@@ -347,7 +347,7 @@ public:
 
     const double imu_time = timeInSec(imu.header);
 
-    if (!doneFirstOpt || last_imu_time_ < 0) {
+    if (!bias_estimated_ || last_imu_time_ < 0) {
       last_imu_time_ = imu_time;
       return;
     }
