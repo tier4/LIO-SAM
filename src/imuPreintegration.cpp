@@ -132,9 +132,10 @@ gtsam::PreintegratedImuMeasurements makeIntegrator(
 }
 
 void imuIntegration(
-  const double lidar_time, double & last_imu_time,
-  gtsam::PreintegratedImuMeasurements & integrator,
-  const std::deque<sensor_msgs::Imu> & imus)
+  const double lidar_time,
+  const std::deque<sensor_msgs::Imu> & imus,
+  double & last_imu_time,
+  gtsam::PreintegratedImuMeasurements & integrator)
 {
   for (unsigned int i = 0; i < imus.size() && timeInSec(imus[i].header) < lidar_time; i++) {
     const sensor_msgs::Imu & imu = imus[i];
@@ -319,7 +320,7 @@ public:
     auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, bias_);
 
     // 1. integrate imu data and optimize
-    imuIntegration(lidar_time, last_imu_time_opt, imu_integrator, imuQueOpt);
+    imuIntegration(lidar_time, imuQueOpt, last_imu_time_opt, imu_integrator);
 
     gtsam::NonlinearFactorGraph graph;
 
