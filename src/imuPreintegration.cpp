@@ -214,8 +214,8 @@ gtsam::BetweenFactor<gtsam::imuBias::ConstantBias> makeBiasConstraint(
 class ImuIntegratorFactory
 {
 private:
-  double last_imu_time_opt = -1;
-  std::deque<sensor_msgs::Imu> imuQueOpt;
+  double last_imu_time_ = -1;
+  std::deque<sensor_msgs::Imu> imu_queue;
   gtsam::PreintegratedImuMeasurements imu_integrator_;
   const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
 
@@ -226,27 +226,27 @@ public:
 
   bool isAvailable()
   {
-    return !imuQueOpt.empty();
+    return !imu_queue.empty();
   }
 
   void init(const double lidar_time)
   {
-    popOldMessages(lidar_time, last_imu_time_opt, imuQueOpt);
+    popOldMessages(lidar_time, last_imu_time_, imu_queue);
   }
 
   void push(const sensor_msgs::Imu & imu)
   {
-    imuQueOpt.push_back(imu);
+    imu_queue.push_back(imu);
   }
 
   void build(
     const gtsam::imuBias::ConstantBias & bias_,
     const double lidar_time)
   {
-    std::tie(imu_integrator_, last_imu_time_opt) = makeIntegrator(
-      integration_params_, bias_, last_imu_time_opt, imuQueOpt, lidar_time);
-    while (!imuQueOpt.empty() && timeInSec(imuQueOpt.front().header) < lidar_time) {
-      imuQueOpt.pop_front();
+    std::tie(imu_integrator_, last_imu_time_) = makeIntegrator(
+      integration_params_, bias_, last_imu_time_, imu_queue, lidar_time);
+    while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < lidar_time) {
+      imu_queue.pop_front();
     }
   }
 
