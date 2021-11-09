@@ -316,13 +316,14 @@ public:
     }
 
     const gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
+    const gtsam::Pose3 imu_pose = lidar_pose.compose(lidar_to_imu);
 
     // 0. initialize system
     if (!systemInitialized) {
       // pop old IMU message
       popOldMessages(odom_time - delta_t, last_imu_time_opt, imuQueOpt);
 
-      state_predition = StatePrediction(lidar_pose.compose(lidar_to_imu));
+      state_predition = StatePrediction(imu_pose);
       key = 1;
       systemInitialized = true;
       return;
@@ -336,7 +337,7 @@ public:
     gtsam::NonlinearFactorGraph graph;
 
     const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
-    graph.add(makePrior(key, lidar_pose.compose(lidar_to_imu), getCovariance(is_degenerate)));
+    graph.add(makePrior(key, imu_pose, getCovariance(is_degenerate)));
     graph.add(makeImuConstraint(key, imu_integrator));
     graph.add(makeBiasConstraint(key, imu_integrator.deltaTij(), between_noise_bias_));
 
