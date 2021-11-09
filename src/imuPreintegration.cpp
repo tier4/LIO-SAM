@@ -131,25 +131,6 @@ gtsam::PreintegratedImuMeasurements makeIntegrator(
   return integrator;
 }
 
-void imuPreIntegration(
-  const double lidar_time,
-  const gtsam::imuBias::ConstantBias & bias,
-  const boost::shared_ptr<gtsam::PreintegrationParams> & params,
-  gtsam::PreintegratedImuMeasurements & integrator,
-  std::deque<sensor_msgs::Imu> & imu_queue)
-{
-  // first pop imu message older than current correction data
-  double last_imu_time = -1;
-
-  popOldMessages(lidar_time, last_imu_time, imu_queue);
-
-  if (imu_queue.empty()) {
-    return;
-  }
-
-  integrator = makeIntegrator(params, bias, last_imu_time, imu_queue);
-}
-
 void imuIntegration(
   const double lidar_time, double & last_imu_time,
   gtsam::PreintegratedImuMeasurements & integrator,
@@ -278,7 +259,7 @@ public:
   gtsam::imuBias::ConstantBias bias_;
 
   bool doneFirstOpt = false;
-  double last_imu_time = -1;
+  double last_imu_time_ = -1;
   double last_imu_time_opt = -1;
 
   gtsam::ISAM2 optimizer;
@@ -354,17 +335,24 @@ public:
 
     // check optimization
     if (failureDetection(velocity_, bias_)) {
-      last_imu_time = -1;
+      last_imu_time_ = -1;
       doneFirstOpt = false;
       systemInitialized = false;
       return;
     }
 
-    // 2. after optiization, re-propagate imu odometry preintegration
-    imuPreIntegration(lidar_time, bias_, integration_params_, integrator_, imu_queue);
-
     ++key;
     doneFirstOpt = true;
+
+    double last_imu_time = -1;
+
+    popOldMessages(lidar_time, last_imu_time, imu_queue);
+
+    if (imu_queue.empty()) {
+      return;
+    }
+
+    integrator_ = makeIntegrator(integration_params_, bias_, last_imu_time, imu_queue);
   }
 
   void imuHandler(const sensor_msgs::Imu::ConstPtr & imu_raw)
@@ -389,8 +377,8 @@ public:
     }
 
     const double imu_time = timeInSec(imu.header);
-    const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
-    last_imu_time = imu_time;
+    const double dt = (last_imu_time_ < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time_);
+    last_imu_time_ = imu_time;
 
     const Eigen::Vector3d linear_acceleration = vector3ToEigen(imu.linear_acceleration);
     const Eigen::Vector3d angular_velocity = vector3ToEigen(imu.angular_velocity);
