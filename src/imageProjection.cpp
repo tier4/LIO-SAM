@@ -367,7 +367,7 @@ private:
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
 
   std::deque<sensor_msgs::Imu> imu_buffer;
-  const IMUConverter imu_converter_;
+  const IMUExtrinsic imu_extrinsic_;
 
 public:
   ImageProjection()
@@ -387,7 +387,7 @@ public:
     pubLaserCloudInfo(
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1)),
     projection_(PointCloudProjection(range_min, range_max, downsampleRate, N_SCAN, Horizon_SCAN)),
-    imu_converter_(IMUConverter(extRot, extQRPY))
+    imu_extrinsic_(IMUExtrinsic(extRot, extQRPY))
   {
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
@@ -396,7 +396,7 @@ public:
 
   void imuHandler(const sensor_msgs::Imu::ConstPtr & imuMsg)
   {
-    const sensor_msgs::Imu msg = imu_converter_.imuConverter(*imuMsg);
+    const sensor_msgs::Imu msg = imu_extrinsic_.transform(*imuMsg);
 
     std::lock_guard<std::mutex> lock1(imuLock);
     imu_buffer.push_back(msg);

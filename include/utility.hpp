@@ -207,16 +207,14 @@ tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy);
 Eigen::Vector3d interpolate(
   const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight);
 
-class IMUConverter
+class IMUExtrinsic
 {
 public:
-  IMUConverter(
+  IMUExtrinsic(
     const Eigen::Matrix3d & extRot,
     const Eigen::Quaterniond & extQRPY)
-  : extRot(extRot), extQRPY(extQRPY)
-  {
-  }
-  sensor_msgs::Imu imuConverter(const sensor_msgs::Imu & imu_in) const;
+  : extRot(extRot), extQRPY(extQRPY) {}
+  sensor_msgs::Imu transform(const sensor_msgs::Imu & imu_in) const;
 
 private:
   const Eigen::Matrix3d extRot;

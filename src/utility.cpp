@@ -297,7 +297,7 @@ geometry_msgs::Pose affineToPose(const Eigen::Affine3d & affine)
   return pose;
 }
 
-sensor_msgs::Imu IMUConverter::imuConverter(const sensor_msgs::Imu & imu_in) const
+sensor_msgs::Imu IMUExtrinsic::transform(const sensor_msgs::Imu & imu_in) const
 {
   sensor_msgs::Imu imu_out = imu_in;
   // rotate acceleration

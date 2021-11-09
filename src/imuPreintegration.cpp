@@ -246,7 +246,7 @@ public:
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
 
   const gtsam::Vector between_noise_bias_;
-  const IMUConverter imu_converter_;
+  const IMUExtrinsic imu_extrinsic_;
 
   gtsam::PreintegratedImuMeasurements integrator_;
 
@@ -286,7 +286,7 @@ public:
       (Vector6d() <<
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
-    imu_converter_(IMUConverter(extRot, extQRPY)),
+    imu_extrinsic_(IMUExtrinsic(extRot, extQRPY)),
     integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     systemInitialized(false),
     bias_(gtsam::imuBias::ConstantBias::identity())
@@ -360,7 +360,7 @@ public:
 
     const sensor_msgs::Imu imu = [&] {
         try {
-          return imu_converter_.imuConverter(*imu_raw);
+          return imu_extrinsic_.transform(*imu_raw);
         } catch (const std::runtime_error & e) {
           ROS_ERROR(e.what());
           ros::shutdown();
