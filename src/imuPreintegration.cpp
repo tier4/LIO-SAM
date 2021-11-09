@@ -134,21 +134,19 @@ gtsam::PreintegratedImuMeasurements makeIntegrator(
 void imuIntegration(
   const double lidar_time, double & last_imu_time,
   gtsam::PreintegratedImuMeasurements & integrator,
-  std::deque<sensor_msgs::Imu> & imu_queue)
+  const std::deque<sensor_msgs::Imu> & imus)
 {
-  while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < lidar_time) {
-    // pop and integrate imu data that is between two optimizations
-    const sensor_msgs::Imu & front = imu_queue.front();
-    const double imu_time = timeInSec(front.header);
+  for (unsigned int i = 0; i < imus.size() && timeInSec(imus[i].header) < lidar_time; i++) {
+    const sensor_msgs::Imu & imu = imus[i];
+    const double imu_time = timeInSec(imu.header);
 
     integrator.integrateMeasurement(
-      vector3ToEigen(front.linear_acceleration),
-      vector3ToEigen(front.angular_velocity),
+      vector3ToEigen(imu.linear_acceleration),
+      vector3ToEigen(imu.angular_velocity),
       imu_time - last_imu_time
     );
 
     last_imu_time = imu_time;
-    imu_queue.pop_front();
   }
 }
 
@@ -331,6 +329,10 @@ public:
     graph.add(makeBiasConstraint(key, imu_integrator.deltaTij(), between_noise_bias_));
 
     std::tie(pose_, velocity_, bias_) = state_predition.update(key, imu_integrator, graph);
+
+    while (!imuQueOpt.empty() && timeInSec(imuQueOpt.front().header) < lidar_time) {
+      imuQueOpt.pop_front();
+    }
 
     // check optimization
     if (failureDetection(velocity_, bias_)) {
