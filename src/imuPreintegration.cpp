@@ -128,12 +128,11 @@ void imuPreIntegration(
   for (unsigned int i = 0; i < imu_queue.size(); ++i) {
     const sensor_msgs::Imu & msg = imu_queue[i];
     const double imu_time = timeInSec(msg.header);
-    const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
 
     integrator.integrateMeasurement(
       vector3ToEigen(msg.linear_acceleration),
       vector3ToEigen(msg.angular_velocity),
-      dt
+      imu_time - last_imu_time
     );
 
     last_imu_time = imu_time;
