@@ -299,7 +299,8 @@ public:
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
     integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
-    systemInitialized(false)
+    systemInitialized(false),
+    bias_(gtsam::imuBias::ConstantBias::identity())
   {
   }
 
@@ -316,8 +317,6 @@ public:
 
     const gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
 
-    auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, bias_);
-
     // 0. initialize system
     if (!systemInitialized) {
       // pop old IMU message
@@ -328,6 +327,8 @@ public:
       systemInitialized = true;
       return;
     }
+
+    auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, bias_);
 
     // 1. integrate imu data and optimize
     imuIntegration(odom_time - delta_t, last_imu_time_opt, imu_integrator, imuQueOpt);
