@@ -148,12 +148,11 @@ void imuIntegration(
     // pop and integrate imu data that is between two optimizations
     const sensor_msgs::Imu & front = imu_queue.front();
     const double imu_time = timeInSec(front.header);
-    const double dt = (last_imu_time < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time);
 
     integrator.integrateMeasurement(
       vector3ToEigen(front.linear_acceleration),
       vector3ToEigen(front.angular_velocity),
-      dt
+      imu_time - last_imu_time
     );
 
     last_imu_time = imu_time;
