@@ -107,17 +107,19 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & pose)
   return optimizer;
 }
 
-gtsam::PreintegratedImuMeasurements makeIntegrator(
+std::tuple<gtsam::PreintegratedImuMeasurements, double>
+makeIntegrator(
   const boost::shared_ptr<gtsam::PreintegrationParams> & params,
   const gtsam::imuBias::ConstantBias & bias,
   const double last_imu_time,
-  const std::deque<sensor_msgs::Imu> & imu_queue)
+  const std::deque<sensor_msgs::Imu> & imus,
+  const double max_time = std::numeric_limits<double>::max())
 {
   auto integrator = gtsam::PreintegratedImuMeasurements(params, bias);
 
   double last = last_imu_time;
-  for (unsigned int i = 0; i < imu_queue.size(); ++i) {
-    const sensor_msgs::Imu & msg = imu_queue[i];
+  for (unsigned int i = 0; i < imus.size() && timeInSec(imus[i].header) < max_time; ++i) {
+    const sensor_msgs::Imu & msg = imus[i];
     const double imu_time = timeInSec(msg.header);
 
     integrator.integrateMeasurement(
@@ -128,27 +130,7 @@ gtsam::PreintegratedImuMeasurements makeIntegrator(
 
     last = imu_time;
   }
-  return integrator;
-}
-
-void imuIntegration(
-  const double lidar_time,
-  const std::deque<sensor_msgs::Imu> & imus,
-  double & last_imu_time,
-  gtsam::PreintegratedImuMeasurements & integrator)
-{
-  for (unsigned int i = 0; i < imus.size() && timeInSec(imus[i].header) < lidar_time; i++) {
-    const sensor_msgs::Imu & imu = imus[i];
-    const double imu_time = timeInSec(imu.header);
-
-    integrator.integrateMeasurement(
-      vector3ToEigen(imu.linear_acceleration),
-      vector3ToEigen(imu.angular_velocity),
-      imu_time - last_imu_time
-    );
-
-    last_imu_time = imu_time;
-  }
+  return {integrator, last};
 }
 
 Diagonal::shared_ptr getCovariance(const bool is_degenerate)
@@ -317,11 +299,9 @@ public:
       return;
     }
 
-    auto imu_integrator = gtsam::PreintegratedImuMeasurements(integration_params_, bias_);
-
-    // 1. integrate imu data and optimize
-    imuIntegration(lidar_time, imuQueOpt, last_imu_time_opt, imu_integrator);
-
+    const auto [imu_integrator, last] = makeIntegrator(
+      integration_params_, bias_, last_imu_time_opt, imuQueOpt, lidar_time);
+    last_imu_time_opt = last;
     gtsam::NonlinearFactorGraph graph;
 
     const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
@@ -354,7 +334,7 @@ public:
       return;
     }
 
-    integrator_ = makeIntegrator(integration_params_, bias_, last_imu_time, imu_queue);
+    integrator_ = std::get<0>(makeIntegrator(integration_params_, bias_, last_imu_time, imu_queue));
   }
 
   void estimateImuOdometry(const sensor_msgs::Imu::ConstPtr & imu_raw)
