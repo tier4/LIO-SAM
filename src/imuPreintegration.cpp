@@ -379,16 +379,14 @@ public:
       return;
     }
 
-    const double dt = imu_time - last_imu_time_;
+    integrator_.integrateMeasurement(
+      vector3ToEigen(imu.linear_acceleration),
+      vector3ToEigen(imu.angular_velocity),
+      imu_time - last_imu_time_
+    );
     last_imu_time_ = imu_time;
 
-    const Eigen::Vector3d linear_acceleration = vector3ToEigen(imu.linear_acceleration);
-    const Eigen::Vector3d angular_velocity = vector3ToEigen(imu.angular_velocity);
-    integrator_.integrateMeasurement(linear_acceleration, angular_velocity, dt);
-
-    // predict odometry
     const auto current_imu = integrator_.predict(gtsam::NavState(pose_, velocity_), bias_);
-
     const auto lidar_pose = current_imu.pose().compose(imu_to_lidar);
     imu_incremental_odometry_publisher_.publish(
       makeTransformStamped(imu.header.stamp, odometryFrame, "odom_imu", makeTransform(lidar_pose))
