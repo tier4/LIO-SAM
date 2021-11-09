@@ -211,6 +211,51 @@ gtsam::BetweenFactor<gtsam::imuBias::ConstantBias> makeBiasConstraint(
     Diagonal::Sigmas(sqrt(dt) * between_noise_bias));
 }
 
+class ImuIntegratorFactory
+{
+private:
+  double last_imu_time_opt = -1;
+  std::deque<sensor_msgs::Imu> imuQueOpt;
+  gtsam::PreintegratedImuMeasurements imu_integrator_;
+  const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
+
+public:
+  ImuIntegratorFactory(
+    const boost::shared_ptr<gtsam::PreintegrationParams> integration_params)
+  : integration_params_(integration_params) {}
+
+  bool isAvailable()
+  {
+    return !imuQueOpt.empty();
+  }
+
+  void init(const double lidar_time)
+  {
+    popOldMessages(lidar_time, last_imu_time_opt, imuQueOpt);
+  }
+
+  void push(const sensor_msgs::Imu & imu)
+  {
+    imuQueOpt.push_back(imu);
+  }
+
+  void build(
+    const gtsam::imuBias::ConstantBias & bias_,
+    const double lidar_time)
+  {
+    std::tie(imu_integrator_, last_imu_time_opt) = makeIntegrator(
+      integration_params_, bias_, last_imu_time_opt, imuQueOpt, lidar_time);
+    while (!imuQueOpt.empty() && timeInSec(imuQueOpt.front().header) < lidar_time) {
+      imuQueOpt.pop_front();
+    }
+  }
+
+  gtsam::PreintegratedImuMeasurements get()
+  {
+    return imu_integrator_;
+  }
+};
+
 class IMUPreintegration : public ParamServer
 {
 public:
@@ -233,7 +278,6 @@ public:
 
   bool systemInitialized;
 
-  std::deque<sensor_msgs::Imu> imuQueOpt;
   std::deque<sensor_msgs::Imu> imu_queue;
 
   gtsam::Pose3 pose_;
@@ -242,10 +286,10 @@ public:
 
   bool bias_estimated_;
   double last_imu_time_ = -1;
-  double last_imu_time_opt = -1;
 
   int key = 1;
 
+  ImuIntegratorFactory integrator_factory;
   StatePrediction state_predition;
 
   IMUPreintegration()
@@ -270,8 +314,9 @@ public:
     imu_extrinsic_(IMUExtrinsic(extRot, extQRPY)),
     integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     systemInitialized(false),
-    bias_(gtsam::imuBias::ConstantBias::identity())
+    bias_(gtsam::imuBias::ConstantBias::identity()),
     bias_estimated_(false),
+    integrator_factory(ImuIntegratorFactory(integration_params_))
   {
   }
 
@@ -282,7 +327,7 @@ public:
     const double lidar_time = timeInSec(odom_msg->header);
 
     // make sure we have imu data to integrate
-    if (imuQueOpt.empty()) {
+    if (!integrator_factory.isAvailable()) {
       return;
     }
 
@@ -292,7 +337,7 @@ public:
     // 0. initialize system
     if (!systemInitialized) {
       // pop old IMU message
-      popOldMessages(lidar_time, last_imu_time_opt, imuQueOpt);
+      integrator_factory.init(lidar_time);
 
       state_predition = StatePrediction(imu_pose);
       key = 1;
@@ -300,9 +345,9 @@ public:
       return;
     }
 
-    const auto [imu_integrator, last] = makeIntegrator(
-      integration_params_, bias_, last_imu_time_opt, imuQueOpt, lidar_time);
-    last_imu_time_opt = last;
+    integrator_factory.build(bias_, lidar_time);
+    const auto imu_integrator = integrator_factory.get();
+
     gtsam::NonlinearFactorGraph graph;
 
     const bool is_degenerate = odom_msg->pose.covariance[0] == 1;
@@ -311,10 +356,6 @@ public:
     graph.add(makeBiasConstraint(key, imu_integrator.deltaTij(), between_noise_bias_));
 
     std::tie(pose_, velocity_, bias_) = state_predition.update(key, imu_integrator, graph);
-
-    while (!imuQueOpt.empty() && timeInSec(imuQueOpt.front().header) < lidar_time) {
-      imuQueOpt.pop_front();
-    }
 
     // check optimization
     if (failureDetection(velocity_, bias_)) {
@@ -343,7 +384,7 @@ public:
     std::lock_guard<std::mutex> lock(mtx);
 
     const sensor_msgs::Imu imu = extrinsicTransform(*imu_raw);
-    imuQueOpt.push_back(imu);
+    integrator_factory.push(imu);
     imu_queue.push_back(imu);
 
     const double imu_time = timeInSec(imu.header);
