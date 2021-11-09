@@ -108,7 +108,7 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & pose)
 }
 
 void imuPreIntegration(
-  const double time_threshold,
+  const double lidar_time,
   const gtsam::imuBias::ConstantBias & bias,
   const boost::shared_ptr<gtsam::PreintegrationParams> & params,
   gtsam::PreintegratedImuMeasurements & integrator,
@@ -116,7 +116,7 @@ void imuPreIntegration(
 {
   // first pop imu message older than current correction data
   double last_imu_time = -1;
-  popOldMessages(time_threshold, last_imu_time, imu_queue);
+  popOldMessages(lidar_time, last_imu_time, imu_queue);
 
   if (imu_queue.empty()) {
     return;
@@ -140,11 +140,11 @@ void imuPreIntegration(
 }
 
 void imuIntegration(
-  const double time_threshold, double & last_imu_time,
+  const double lidar_time, double & last_imu_time,
   gtsam::PreintegratedImuMeasurements & integrator,
   std::deque<sensor_msgs::Imu> & imu_queue)
 {
-  while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < time_threshold) {
+  while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < lidar_time) {
     // pop and integrate imu data that is between two optimizations
     const sensor_msgs::Imu & front = imu_queue.front();
     const double imu_time = timeInSec(front.header);
