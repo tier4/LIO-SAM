@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 
 #include "matrix_type.h"
 
@@ -44,6 +45,8 @@ public:
   float imuGravity;
   float imuRPYWeight;
   Eigen::Vector3d extTrans;
+  Eigen::Matrix3d extRot;
+  Eigen::Quaterniond extQRPY;
 
   // LOAM
   float edgeThreshold;

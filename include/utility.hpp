@@ -210,13 +210,17 @@ Eigen::Vector3d interpolate(
 class IMUConverter
 {
 public:
-  IMUConverter();
+  IMUConverter(
+    const Eigen::Matrix3d & extRot,
+    const Eigen::Quaterniond & extQRPY)
+  : extRot(extRot), extQRPY(extQRPY)
+  {
+  }
   sensor_msgs::Imu imuConverter(const sensor_msgs::Imu & imu_in) const;
 
 private:
-  ros::NodeHandle nh;
-  Eigen::Matrix3d extRot;
-  Eigen::Quaterniond extQRPY;
+  const Eigen::Matrix3d extRot;
+  const Eigen::Quaterniond extQRPY;
 };
 
 #endif

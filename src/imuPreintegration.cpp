@@ -246,6 +246,7 @@ public:
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
 
   const gtsam::Vector between_noise_bias_;
+  const IMUConverter imu_converter_;
 
   gtsam::PreintegratedImuMeasurements integrator_;
 
@@ -262,11 +263,8 @@ public:
   double last_imu_time_ = -1;
   double last_imu_time_opt = -1;
 
-  gtsam::ISAM2 optimizer;
-
   int key = 1;
 
-  const IMUConverter imu_converter_;
   StatePrediction state_predition;
 
   IMUPreintegration()
@@ -288,6 +286,7 @@ public:
       (Vector6d() <<
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
+    imu_converter_(IMUConverter(extRot, extQRPY)),
     integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     systemInitialized(false),
     bias_(gtsam::imuBias::ConstantBias::identity())

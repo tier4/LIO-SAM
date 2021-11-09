@@ -297,17 +297,6 @@ geometry_msgs::Pose affineToPose(const Eigen::Affine3d & affine)
   return pose;
 }
 
-IMUConverter::IMUConverter()
-{
-  std::vector<double> extRotV;
-  std::vector<double> extRPYV;
-  nh.param<std::vector<double>>("lio_sam/extrinsicRot", extRotV, std::vector<double>());
-  nh.param<std::vector<double>>("lio_sam/extrinsicRPY", extRPYV, std::vector<double>());
-  extRot = Eigen::Map<const RowMajorMatrixXd>(extRotV.data(), 3, 3);
-  Eigen::Matrix3d extRPY = Eigen::Map<const RowMajorMatrixXd>(extRPYV.data(), 3, 3);
-  extQRPY = Eigen::Quaterniond(extRPY);
-}
-
 sensor_msgs::Imu IMUConverter::imuConverter(const sensor_msgs::Imu & imu_in) const
 {
   sensor_msgs::Imu imu_out = imu_in;

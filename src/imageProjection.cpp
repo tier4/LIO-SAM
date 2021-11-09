@@ -386,7 +386,8 @@ public:
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1)),
     pubLaserCloudInfo(
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1)),
-    projection_(PointCloudProjection(range_min, range_max, downsampleRate, N_SCAN, Horizon_SCAN))
+    projection_(PointCloudProjection(range_min, range_max, downsampleRate, N_SCAN, Horizon_SCAN)),
+    imu_converter_(IMUConverter(extRot, extQRPY))
   {
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
   }
