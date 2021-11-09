@@ -240,7 +240,7 @@ public:
   gtsam::Vector3 velocity_;
   gtsam::imuBias::ConstantBias bias_;
 
-  bool bias_estimated_ = false;
+  bool bias_estimated_;
   double last_imu_time_ = -1;
   double last_imu_time_opt = -1;
 
@@ -271,6 +271,7 @@ public:
     integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
     systemInitialized(false),
     bias_(gtsam::imuBias::ConstantBias::identity())
+    bias_estimated_(false),
   {
   }
 
