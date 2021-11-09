@@ -372,12 +372,14 @@ public:
     imuQueOpt.push_back(imu);
     imu_queue.push_back(imu);
 
-    if (!doneFirstOpt) {
+    const double imu_time = timeInSec(imu.header);
+
+    if (!doneFirstOpt || last_imu_time_ < 0) {
+      last_imu_time_ = imu_time;
       return;
     }
 
-    const double imu_time = timeInSec(imu.header);
-    const double dt = (last_imu_time_ < 0) ? (1.0 / 500.0) : (imu_time - last_imu_time_);
+    const double dt = imu_time - last_imu_time_;
     last_imu_time_ = imu_time;
 
     const Eigen::Vector3d linear_acceleration = vector3ToEigen(imu.linear_acceleration);
