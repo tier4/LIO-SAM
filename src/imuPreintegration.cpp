@@ -107,6 +107,30 @@ gtsam::ISAM2 initOptimizer(const gtsam::Pose3 & pose)
   return optimizer;
 }
 
+gtsam::PreintegratedImuMeasurements makeIntegrator(
+  const boost::shared_ptr<gtsam::PreintegrationParams> & params,
+  const gtsam::imuBias::ConstantBias & bias,
+  const double last_imu_time,
+  const std::deque<sensor_msgs::Imu> & imu_queue)
+{
+  auto integrator = gtsam::PreintegratedImuMeasurements(params, bias);
+
+  double last = last_imu_time;
+  for (unsigned int i = 0; i < imu_queue.size(); ++i) {
+    const sensor_msgs::Imu & msg = imu_queue[i];
+    const double imu_time = timeInSec(msg.header);
+
+    integrator.integrateMeasurement(
+      vector3ToEigen(msg.linear_acceleration),
+      vector3ToEigen(msg.angular_velocity),
+      imu_time - last
+    );
+
+    last = imu_time;
+  }
+  return integrator;
+}
+
 void imuPreIntegration(
   const double lidar_time,
   const gtsam::imuBias::ConstantBias & bias,
@@ -116,27 +140,14 @@ void imuPreIntegration(
 {
   // first pop imu message older than current correction data
   double last_imu_time = -1;
+
   popOldMessages(lidar_time, last_imu_time, imu_queue);
 
   if (imu_queue.empty()) {
     return;
   }
 
-  // reset bias use the newly optimized bias
-  integrator = gtsam::PreintegratedImuMeasurements(params, bias);
-  // integrate imu message from the beginning of this optimization
-  for (unsigned int i = 0; i < imu_queue.size(); ++i) {
-    const sensor_msgs::Imu & msg = imu_queue[i];
-    const double imu_time = timeInSec(msg.header);
-
-    integrator.integrateMeasurement(
-      vector3ToEigen(msg.linear_acceleration),
-      vector3ToEigen(msg.angular_velocity),
-      imu_time - last_imu_time
-    );
-
-    last_imu_time = imu_time;
-  }
+  integrator = makeIntegrator(params, bias, last_imu_time, imu_queue);
 }
 
 void imuIntegration(
