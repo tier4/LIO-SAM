@@ -255,7 +255,7 @@ public:
         this, ros::TransportHints().tcpNoDelay())),
     incremental_odometry_subscriber_(
       nh.subscribe<nav_msgs::Odometry>(
-        "lio_sam/mapping/odometry_incremental", 5, &IMUPreintegration::odometryHandler,
+        "lio_sam/mapping/odometry_incremental", 5, &IMUPreintegration::estimateBias,
         this, ros::TransportHints().tcpNoDelay())),
     imu_incremental_odometry_publisher_(
       nh.advertise<geometry_msgs::TransformStamped>(imu_incremental_odometry_topic, 2000)),
@@ -274,7 +274,7 @@ public:
   {
   }
 
-  void odometryHandler(const nav_msgs::Odometry::ConstPtr & odom_msg)
+  void estimateBias(const nav_msgs::Odometry::ConstPtr & odom_msg)
   {
     std::lock_guard<std::mutex> lock(mtx);
 
