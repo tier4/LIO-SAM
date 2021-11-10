@@ -431,12 +431,6 @@ public:
     }
 
     lio_sam::cloud_info cloud_info;
-    cloud_info.ring_start_indices.assign(N_SCAN, 0);
-    cloud_info.end_ring_indices.assign(N_SCAN, 0);
-
-    cloud_info.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
-    cloud_info.point_range.assign(N_SCAN * Horizon_SCAN, 0);
-
     {
       std::lock_guard<std::mutex> lock1(imuLock);
       dropBefore(scan_start_time - 0.01, imu_buffer);
@@ -471,6 +465,12 @@ public:
 
     cloud_info.imu_odometry_available = imu_odometry_available;
     cloud_info.imu_orientation_available = imu_available;
+
+    cloud_info.ring_start_indices.assign(N_SCAN, 0);
+    cloud_info.end_ring_indices.assign(N_SCAN, 0);
+
+    cloud_info.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
+    cloud_info.point_range.assign(N_SCAN * Horizon_SCAN, 0);
 
     pcl::PointCloud<pcl::PointXYZ> extractedCloud;
     int count = 0;
