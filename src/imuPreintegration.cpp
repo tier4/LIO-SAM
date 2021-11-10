@@ -57,23 +57,16 @@ void popOldMessages(
   }
 }
 
-bool failureDetection(
-  const gtsam::Vector3 & velocity,
-  const gtsam::imuBias::ConstantBias & bias)
+bool validateVelocity(const Eigen::Vector3d & velocity)
 {
-  if (velocity.norm() > 30) {
-    ROS_WARN("Large velocity, reset IMU-preintegration!");
-    return true;
-  }
+  return velocity.norm() <= 30;
+}
 
+bool validateBias(const gtsam::imuBias::ConstantBias & bias)
+{
   const Eigen::Vector3d ba = bias.accelerometer();
   const Eigen::Vector3d bg = bias.gyroscope();
-  if (ba.norm() > 1.0 || bg.norm() > 1.0) {
-    ROS_WARN("Large bias, reset IMU-preintegration!");
-    return true;
-  }
-
-  return false;
+  return ba.norm() <= 1.0 && bg.norm() <= 1.0;
 }
 
 using Diagonal = gtsam::noiseModel::Diagonal;
@@ -332,9 +325,7 @@ public:
     const gtsam::Pose3 lidar_pose = makeGtsamPose(odom_msg->pose.pose);
     const gtsam::Pose3 imu_pose = lidar_pose.compose(lidar_to_imu);
 
-    // 0. initialize system
     if (!systemInitialized) {
-      // pop old IMU message
       integrator_factory.init(lidar_time);
 
       state_predition = StatePrediction(imu_pose);
@@ -355,8 +346,16 @@ public:
 
     std::tie(pose_, velocity_, bias_) = state_predition.update(key, imu_integrator, graph);
 
-    // check optimization
-    if (failureDetection(velocity_, bias_)) {
+    if (!validateBias(bias_)) {
+      ROS_WARN("Large bias, reset IMU-preintegration!");
+      last_imu_time_ = -1;
+      bias_estimated_ = false;
+      systemInitialized = false;
+      return;
+    }
+
+    if (!validateVelocity(velocity_)) {
+      ROS_WARN("Large velocity, reset IMU-preintegration!");
       last_imu_time_ = -1;
       bias_estimated_ = false;
       systemInitialized = false;
