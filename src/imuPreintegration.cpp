@@ -107,16 +107,13 @@ makeIntegrator(
   const boost::shared_ptr<gtsam::PreintegrationParams> & params,
   const gtsam::imuBias::ConstantBias & bias,
   const double last_imu_time,
-  const std::deque<sensor_msgs::Imu> & imus,
-  const double max_time = std::numeric_limits<double>::max())
+  const std::vector<sensor_msgs::Imu> & imus)
 {
   auto integrator = gtsam::PreintegratedImuMeasurements(params, bias);
 
   double last = last_imu_time;
 
-  const auto f = [&](const sensor_msgs::Imu & imu) {return timeInSec(imu.header) < max_time;};
-  auto filtered = imus | ranges::views::filter(f);
-  for (const sensor_msgs::Imu & imu : filtered) {
+  for (const sensor_msgs::Imu & imu : imus) {
     const double imu_time = timeInSec(imu.header);
 
     integrator.integrateMeasurement(
@@ -238,8 +235,10 @@ public:
 
   void build(const gtsam::imuBias::ConstantBias & bias_, const double lidar_time)
   {
+    const auto f = [&](const sensor_msgs::Imu & imu) {return timeInSec(imu.header) < lidar_time;};
+    const auto imus = imu_queue | ranges::views::filter(f) | ranges::to_vector;
     std::tie(imu_integrator_, last_imu_time_) = makeIntegrator(
-      integration_params_, bias_, last_imu_time_, imu_queue, lidar_time);
+      integration_params_, bias_, last_imu_time_, imus);
     while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < lidar_time) {
       imu_queue.pop_front();
     }
@@ -377,7 +376,8 @@ public:
       return;
     }
 
-    integrator_ = std::get<0>(makeIntegrator(integration_params_, bias_, last_imu_time, imu_queue));
+    const auto imus = imu_queue | ranges::to_vector;
+    integrator_ = std::get<0>(makeIntegrator(integration_params_, bias_, last_imu_time, imus));
   }
 
   void estimateImuOdometry(const sensor_msgs::Imu::ConstPtr & imu_raw)
