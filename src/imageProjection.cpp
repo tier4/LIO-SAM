@@ -313,34 +313,14 @@ Eigen::Vector3d findImuOrientation(
   return imu_orientation;
 }
 
-bool checkImuTime(
+bool scanTimesAreWithinImu(
   const std::deque<sensor_msgs::Imu> & imu_buffer,
   const double scan_start_time,
   const double scan_end_time)
 {
-
-  std::lock_guard<std::mutex> lock1(imuLock);
-  std::lock_guard<std::mutex> lock2(odoLock);
-
-  // make sure IMU data available for the scan
-  if (imu_buffer.empty()) {
-    ROS_DEBUG("IMU queue empty ...");
-    return false;
-  }
-
-  if (timeInSec(imu_buffer.front().header) > scan_start_time) {
-    ROS_DEBUG("IMU time = %f", timeInSec(imu_buffer.front().header));
-    ROS_DEBUG("LiDAR time = %f", scan_start_time);
-    ROS_DEBUG("Timestamp of IMU data too late");
-    return false;
-  }
-
-  if (timeInSec(imu_buffer.back().header) < scan_end_time) {
-    ROS_DEBUG("Timestamp of IMU data too early");
-    return false;
-  }
-
-  return true;
+  return !imu_buffer.empty() &&
+         timeInSec(imu_buffer.front().header) <= scan_start_time &&
+         timeInSec(imu_buffer.back().header) >= scan_end_time;
 }
 
 geometry_msgs::TransformStamped odomNextOf(
@@ -446,7 +426,7 @@ public:
     const double scan_start_time = timeInSec(cloud_msg.header);
     const double scan_end_time = scan_start_time + input_cloud.back().time;
 
-    if (!checkImuTime(imu_buffer, scan_start_time, scan_end_time)) {
+    if (!scanTimesAreWithinImu(imu_buffer, scan_start_time, scan_end_time)) {
       return;
     }
 
