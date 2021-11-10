@@ -18,6 +18,8 @@
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam_unstable/nonlinear/IncrementalFixedLagSmoother.h>
 
+#include "range/v3/all.hpp"
+
 using gtsam::symbol_shorthand::P; // Pose3 (x,y,z,r,p,y)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
@@ -111,13 +113,15 @@ makeIntegrator(
   auto integrator = gtsam::PreintegratedImuMeasurements(params, bias);
 
   double last = last_imu_time;
-  for (unsigned int i = 0; i < imus.size() && timeInSec(imus[i].header) < max_time; ++i) {
-    const sensor_msgs::Imu & msg = imus[i];
-    const double imu_time = timeInSec(msg.header);
+
+  const auto f = [&](const sensor_msgs::Imu & imu) {return timeInSec(imu.header) < max_time;};
+  auto filtered = imus | ranges::views::filter(f);
+  for (const sensor_msgs::Imu & imu : filtered) {
+    const double imu_time = timeInSec(imu.header);
 
     integrator.integrateMeasurement(
-      vector3ToEigen(msg.linear_acceleration),
-      vector3ToEigen(msg.angular_velocity),
+      vector3ToEigen(imu.linear_acceleration),
+      vector3ToEigen(imu.angular_velocity),
       imu_time - last
     );
 
