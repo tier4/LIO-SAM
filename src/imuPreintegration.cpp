@@ -371,10 +371,6 @@ public:
 
     popOldMessages(lidar_time, last_imu_time, imu_queue);
 
-    if (imu_queue.empty()) {
-      return;
-    }
-
     const auto imus = imu_queue | ranges::to_vector;
     integrator_ = std::get<0>(makeIntegrator(params_, bias_, last_imu_time, imus));
   }
