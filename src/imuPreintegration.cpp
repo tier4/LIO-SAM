@@ -210,13 +210,13 @@ class ImuIntegratorFactory
 private:
   double last_imu_time_ = -1;
   std::deque<sensor_msgs::Imu> imu_queue;
-  gtsam::PreintegratedImuMeasurements imu_integrator_;
-  const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
+  gtsam::PreintegratedImuMeasurements integrator_;
+  const boost::shared_ptr<gtsam::PreintegrationParams> params_;
 
 public:
   ImuIntegratorFactory(
     const boost::shared_ptr<gtsam::PreintegrationParams> integration_params)
-  : integration_params_(integration_params) {}
+  : params_(integration_params) {}
 
   bool isAvailable() const
   {
@@ -237,8 +237,7 @@ public:
   {
     const auto f = [&](const sensor_msgs::Imu & imu) {return timeInSec(imu.header) < lidar_time;};
     const auto imus = imu_queue | ranges::views::filter(f) | ranges::to_vector;
-    std::tie(imu_integrator_, last_imu_time_) = makeIntegrator(
-      integration_params_, bias_, last_imu_time_, imus);
+    std::tie(integrator_, last_imu_time_) = makeIntegrator(params_, bias_, last_imu_time_, imus);
     while (!imu_queue.empty() && timeInSec(imu_queue.front().header) < lidar_time) {
       imu_queue.pop_front();
     }
@@ -246,7 +245,7 @@ public:
 
   gtsam::PreintegratedImuMeasurements get() const
   {
-    return imu_integrator_;
+    return integrator_;
   }
 };
 
@@ -262,7 +261,7 @@ public:
   const gtsam::Pose3 imu_to_lidar;
   const gtsam::Pose3 lidar_to_imu;
 
-  const boost::shared_ptr<gtsam::PreintegrationParams> integration_params_;
+  const boost::shared_ptr<gtsam::PreintegrationParams> params_;
   const gtsam::imuBias::ConstantBias prior_imu_bias_;
 
   const gtsam::Vector between_noise_bias_;
@@ -299,18 +298,18 @@ public:
       nh.advertise<geometry_msgs::TransformStamped>(imu_incremental_odometry_topic, 2000)),
     imu_to_lidar(gtsam::Pose3(gtsam::Rot3::identity(), -extTrans)),
     lidar_to_imu(gtsam::Pose3(gtsam::Rot3::identity(), extTrans)),
-    integration_params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
+    params_(initialIntegrationParams(imuGravity, imuAccNoise, imuGyrNoise)),
     prior_imu_bias_(Vector6d::Zero()),
     between_noise_bias_(
       (Vector6d() <<
         imuAccBiasN, imuAccBiasN, imuAccBiasN,
         imuGyrBiasN, imuGyrBiasN, imuGyrBiasN).finished()),
     imu_extrinsic_(IMUExtrinsic(extRot, extQRPY)),
-    integrator_(gtsam::PreintegratedImuMeasurements(integration_params_, prior_imu_bias_)),
+    integrator_(gtsam::PreintegratedImuMeasurements(params_, prior_imu_bias_)),
     systemInitialized(false),
     bias_(gtsam::imuBias::ConstantBias::identity()),
     bias_estimated_(false),
-    integrator_factory(ImuIntegratorFactory(integration_params_))
+    integrator_factory(ImuIntegratorFactory(params_))
   {
   }
 
@@ -377,7 +376,7 @@ public:
     }
 
     const auto imus = imu_queue | ranges::to_vector;
-    integrator_ = std::get<0>(makeIntegrator(integration_params_, bias_, last_imu_time, imus));
+    integrator_ = std::get<0>(makeIntegrator(params_, bias_, last_imu_time, imus));
   }
 
   void estimateImuOdometry(const sensor_msgs::Imu::ConstPtr & imu_raw)
