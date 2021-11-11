@@ -134,28 +134,6 @@ int findIndex(const std::vector<double> & imu_timestamps, const double point_tim
   return imu_timestamps.size() - 1;
 }
 
-Eigen::Vector3d calcRotation(
-  const std::vector<Eigen::Vector3d> & angles,
-  const std::vector<double> & timestamps,
-  const double time)
-{
-  const int i = findIndex(timestamps, time);
-
-  if (i == 0 || i == static_cast<int>(timestamps.size()) - 1) {
-    return angles[i];
-  }
-
-  return interpolate3d(angles[i - 1], angles[i], timestamps[i - 1], timestamps[i], time);
-}
-
-Eigen::Vector3d calcPosition(
-  const Eigen::Vector3d & p,
-  const double start, const double end, const double time)
-{
-  const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
-  return interpolate3d(zero, p, 0., end - start, time);
-}
-
 int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
 {
   const float angle = rad2deg(atan2(x, y));
@@ -256,13 +234,29 @@ std::vector<pcl::PointXYZ> projectWithoutImu(
 std::vector<pcl::PointXYZ> projectWithImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const Eigen::MatrixXd & range_matrix,
-  const std::vector<double> & imu_timestamps,
+  const std::vector<double> & timestamps,
   const std::vector<Eigen::Vector3d> & angles,
   const int N_SCAN, const int Horizon_SCAN,
   const double scan_start_time,
   const double scan_end_time,
   const Eigen::Vector3d & translation_within_scan)
 {
+  const auto calcPosition = [&](const double time) {
+      const Eigen::Vector3d p = translation_within_scan;
+      const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
+      const double interval = scan_end_time - scan_start_time;
+      return interpolate3d(zero, p, 0., interval, time);
+    };
+
+  const auto calcRotation = [&](const double time) {
+      const double t = scan_start_time + time;
+      const int i = findIndex(timestamps, t);
+      if (i == 0 || i == static_cast<int>(timestamps.size()) - 1) {
+        return angles[i];
+      }
+      return interpolate3d(angles[i - 1], angles[i], timestamps[i - 1], timestamps[i], t);
+    };
+
   const auto f = [&](const PointXYZIRT & p) {
       const Eigen::Vector3d q(p.x, p.y, p.z);
 
@@ -281,10 +275,7 @@ std::vector<pcl::PointXYZ> projectWithImu(
       continue;
     }
 
-    const Eigen::Affine3d transform = makeAffine(
-      calcRotation(angles, imu_timestamps, scan_start_time + time),
-      calcPosition(translation_within_scan, scan_start_time, scan_end_time, time)
-    );
+    const Eigen::Affine3d transform = makeAffine(calcRotation(time), calcPosition(time));
 
     if (!start_inverse.has_value()) {
       start_inverse = transform.inverse();
