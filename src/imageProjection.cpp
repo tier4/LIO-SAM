@@ -537,7 +537,7 @@ public:
     cloud_info.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
     cloud_info.point_range.assign(N_SCAN * Horizon_SCAN, 0);
 
-    pcl::PointCloud<pcl::PointXYZ> extractedCloud;
+    pcl::PointCloud<pcl::PointXYZ> cloud;
     int count = 0;
     // extract segmented cloud for lidar odometry
     for (int i = 0; i < N_SCAN; ++i) {
@@ -554,7 +554,7 @@ public:
         // save range info
         cloud_info.point_range[count] = range;
         // save extracted cloud
-        extractedCloud.push_back(output_points[j + i * Horizon_SCAN]);
+        cloud.push_back(output_points[j + i * Horizon_SCAN]);
         // size of extracted cloud
         count += 1;
       }
@@ -563,7 +563,7 @@ public:
     }
 
     cloud_info.header = cloud_msg.header;
-    cloud_info.cloud_deskewed = toRosMsg(extractedCloud, cloud_msg.header.stamp, lidarFrame);
+    cloud_info.cloud_deskewed = toRosMsg(cloud, cloud_msg.header.stamp, lidarFrame);
     pubExtractedCloud.publish(cloud_info.cloud_deskewed);
     pubLaserCloudInfo.publish(cloud_info);
   }
