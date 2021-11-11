@@ -3,6 +3,8 @@
 #include "param_server.h"
 #include "lio_sam/cloud_info.h"
 
+#include "range/v3/all.hpp"
+
 struct VelodynePointXYZIRT
 {
   PCL_ADD_POINT4D PCL_ADD_INTENSITY;
@@ -223,34 +225,44 @@ public:
 
     const bool imu_available = imu_timestamps.size() > 1;
 
-    bool is_first_point = true;
-    Eigen::Affine3d start_inverse;
+    const auto f = [&](const PointXYZIRT & p) {
+        const Eigen::Vector3d q(p.x, p.y, p.z);
+
+        const int row_index = p.ring;
+        const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
+
+        return std::make_tuple(q, p.time, row_index, column_index);
+      };
 
     Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
 
-    std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
-
-    for (const PointXYZIRT & p : input_points) {
-      const Eigen::Vector3d q(p.x, p.y, p.z);
-
+    auto iterator = input_points | ranges::views::transform(f);
+    for (const auto & [q, time, row_index, column_index] : iterator) {
       const float range = q.norm();
       if (range < range_min || range_max < range) {
         continue;
       }
 
-      const int row_index = p.ring;
-
       if (row_index % downsampleRate != 0) {
         continue;
       }
-
-      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
 
       if (range_matrix(row_index, column_index) >= 0) {
         continue;
       }
 
       range_matrix(row_index, column_index) = range;
+    }
+
+    bool is_first_point = true;
+    Eigen::Affine3d start_inverse;
+    std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
+
+    iterator = input_points | ranges::views::transform(f);
+    for (const auto & [q, time, row_index, column_index] : iterator) {
+      if (range_matrix(row_index, column_index) < 0) {
+        continue;
+      }
 
       const int index = column_index + row_index * Horizon_SCAN;
 
@@ -260,8 +272,8 @@ public:
       }
 
       const Eigen::Affine3d transform = makeAffine(
-        calcRotation(scan_start_time, angles, imu_timestamps, p.time),
-        calcPosition(imu_incremental_odometry, scan_start_time, scan_end_time, p.time)
+        calcRotation(scan_start_time, angles, imu_timestamps, time),
+        calcPosition(imu_incremental_odometry, scan_start_time, scan_end_time, time)
       );
 
       if (is_first_point) {
@@ -459,11 +471,11 @@ public:
       const Eigen::Affine3d p1 = transformToAffine(msg1.transform);
       imu_incremental_odometry = (p0.inverse() * p1).translation();
     }
+    cloud_info.imu_odometry_available = imu_odometry_available;
 
     const auto [range_matrix, output_points, imu_available] = projection_.compute(
       imu_buffer, input_cloud, scan_start_time, scan_end_time, imu_incremental_odometry);
 
-    cloud_info.imu_odometry_available = imu_odometry_available;
     cloud_info.imu_orientation_available = imu_available;
 
     cloud_info.ring_start_indices.assign(N_SCAN, 0);
