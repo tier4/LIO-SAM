@@ -236,7 +236,7 @@ public:
 
     Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
 
-    auto iterator = input_points | ranges::views::transform(f);
+    const auto iterator = input_points | ranges::views::transform(f);
     for (const auto & [q, time, row_index, column_index] : iterator) {
       const float range = q.norm();
       if (range < range_min || range_max < range) {
@@ -254,20 +254,25 @@ public:
       range_matrix(row_index, column_index) = range;
     }
 
+    if (!imu_available) {
+      std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
+      for (const auto & [q, time, row_index, column_index] : iterator) {
+        if (range_matrix(row_index, column_index) < 0) {
+          continue;
+        }
+
+        const int index = column_index + row_index * Horizon_SCAN;
+        output_points[index] = makePointXYZ(q);
+      }
+      return {range_matrix, output_points, imu_available};
+    }
+
     bool is_first_point = true;
     Eigen::Affine3d start_inverse;
     std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
 
-    iterator = input_points | ranges::views::transform(f);
     for (const auto & [q, time, row_index, column_index] : iterator) {
       if (range_matrix(row_index, column_index) < 0) {
-        continue;
-      }
-
-      const int index = column_index + row_index * Horizon_SCAN;
-
-      if (!imu_available) {
-        output_points[index] = makePointXYZ(q);
         continue;
       }
 
@@ -281,7 +286,7 @@ public:
         is_first_point = false;
       }
 
-      // transform points to start
+      const int index = column_index + row_index * Horizon_SCAN;
       output_points[index] = makePointXYZ((start_inverse * transform) * q);
     }
 
