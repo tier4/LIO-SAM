@@ -149,12 +149,11 @@ Eigen::Vector3d calcRotation(
 }
 
 Eigen::Vector3d calcPosition(
-  const Eigen::Vector3d & translation_within_scan,
-  const double scan_start_time, const double scan_end_time, const double time)
+  const Eigen::Vector3d & p,
+  const double start, const double end, const double time)
 {
   const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
-  const double t = scan_start_time + time;
-  return interpolate3d(zero, translation_within_scan, scan_start_time, scan_end_time, t);
+  return interpolate3d(zero, p, 0., end - start, time);
 }
 
 int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
