@@ -258,6 +258,53 @@ std::vector<pcl::PointXYZ> projectWithoutImu(
   return output_points;
 }
 
+std::vector<pcl::PointXYZ> projectWithImu(
+  const pcl::PointCloud<PointXYZIRT> & input_points,
+  const Eigen::MatrixXd & range_matrix,
+  const std::vector<double> & imu_timestamps,
+  const std::vector<Eigen::Vector3d> & angles,
+  const int N_SCAN, const int Horizon_SCAN,
+  const double scan_start_time,
+  const double scan_end_time,
+  const Eigen::Vector3d & imu_incremental_odometry)
+{
+  const auto f = [&](const PointXYZIRT & p) {
+      const Eigen::Vector3d q(p.x, p.y, p.z);
+
+      const int row_index = p.ring;
+      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
+
+      return std::make_tuple(q, p.time, row_index, column_index);
+    };
+
+  const auto iterator = input_points | ranges::views::transform(f);
+
+  bool is_first_point = true;
+  Eigen::Affine3d start_inverse;
+  std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
+
+  for (const auto & [q, time, row_index, column_index] : iterator) {
+    if (range_matrix(row_index, column_index) < 0) {
+      continue;
+    }
+
+    const Eigen::Affine3d transform = makeAffine(
+      calcRotation(scan_start_time, angles, imu_timestamps, time),
+      calcPosition(imu_incremental_odometry, scan_start_time, scan_end_time, time)
+    );
+
+    if (is_first_point) {
+      start_inverse = transform.inverse();
+      is_first_point = false;
+    }
+
+    const int index = column_index + row_index * Horizon_SCAN;
+    output_points[index] = makePointXYZ((start_inverse * transform) * q);
+  }
+
+  return output_points;
+}
+
 class PointCloudProjection
 {
 public:
@@ -278,17 +325,7 @@ public:
     const Eigen::Vector3d & imu_incremental_odometry) const
   {
     const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
-
     const bool imu_available = imu_timestamps.size() > 1;
-
-    const auto f = [&](const PointXYZIRT & p) {
-        const Eigen::Vector3d q(p.x, p.y, p.z);
-
-        const int row_index = p.ring;
-        const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
-
-        return std::make_tuple(q, p.time, row_index, column_index);
-      };
 
     const Eigen::MatrixXd range_matrix = makeRangeMatrix(
       input_points, range_min, range_max, N_SCAN, Horizon_SCAN);
@@ -299,31 +336,12 @@ public:
       return {range_matrix, output_points, imu_available};
     }
 
-    bool is_first_point = true;
-    Eigen::Affine3d start_inverse;
-    std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
-
-    const auto iterator = input_points | ranges::views::transform(f);
-
-    for (const auto & [q, time, row_index, column_index] : iterator) {
-      if (range_matrix(row_index, column_index) < 0) {
-        continue;
-      }
-
-      const Eigen::Affine3d transform = makeAffine(
-        calcRotation(scan_start_time, angles, imu_timestamps, time),
-        calcPosition(imu_incremental_odometry, scan_start_time, scan_end_time, time)
-      );
-
-      if (is_first_point) {
-        start_inverse = transform.inverse();
-        is_first_point = false;
-      }
-
-      const int index = column_index + row_index * Horizon_SCAN;
-      output_points[index] = makePointXYZ((start_inverse * transform) * q);
-    }
-
+    const auto output_points = projectWithImu(
+      input_points, range_matrix,
+      imu_timestamps, angles,
+      N_SCAN, Horizon_SCAN,
+      scan_start_time, scan_end_time,
+      imu_incremental_odometry);
     return {range_matrix, output_points, imu_available};
   }
 
