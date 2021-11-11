@@ -116,7 +116,7 @@ pcl::PointCloud<PointXYZIRT> convert(
   throw std::runtime_error("Unknown sensor type");
 }
 
-Eigen::Vector3d interpolatePose(
+Eigen::Vector3d interpolate3d(
   const Eigen::Vector3d & rot0, const Eigen::Vector3d & rot1,
   const double t0, const double t1, const double t)
 {
@@ -147,7 +147,7 @@ Eigen::Vector3d calcRotation(
     return angles[index];
   }
 
-  return interpolatePose(
+  return interpolate3d(
     angles[index - 1], angles[index - 0],
     imu_timestamps[index - 1], imu_timestamps[index - 0],
     point_time
