@@ -118,10 +118,10 @@ pcl::PointCloud<PointXYZIRT> convert(
 }
 
 Eigen::Vector3d interpolate3d(
-  const Eigen::Vector3d & rot0, const Eigen::Vector3d & rot1,
+  const Eigen::Vector3d & v0, const Eigen::Vector3d & v1,
   const double t0, const double t1, const double t)
 {
-  return rot1 * (t - t0) / (t1 - t0) + rot0 * (t1 - t) / (t1 - t0);
+  return v1 * (t - t0) / (t1 - t0) + v0 * (t1 - t) / (t1 - t0);
 }
 
 int findIndex(const std::vector<double> & imu_timestamps, const double point_time)
@@ -152,7 +152,9 @@ Eigen::Vector3d calcPosition(
   const Eigen::Vector3d & translation_within_scan,
   const double scan_start_time, const double scan_end_time, const double time)
 {
-  return translation_within_scan * time / (scan_end_time - scan_start_time);
+  const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
+  const double t = scan_start_time + time;
+  return interpolate3d(zero, translation_within_scan, scan_start_time, scan_end_time, t);
 }
 
 int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
