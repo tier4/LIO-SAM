@@ -93,6 +93,8 @@ nav_msgs::Odometry makeOdometry(
   const std::string & child_frame_id,
   const geometry_msgs::Pose & pose);
 
+Eigen::Affine3d makeAffine(const Eigen::Quaterniond & q, const Eigen::Vector3d & t);
+
 Eigen::Affine3d makeAffine(
   const Eigen::Vector3d & rpy = Eigen::Vector3d::Zero(),
   const Eigen::Vector3d & point = Eigen::Vector3d::Zero());
@@ -206,6 +208,10 @@ tf::Quaternion rpyToTfQuaternion(const Eigen::Vector3d & rpy);
 
 Eigen::Vector3d interpolate(
   const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight);
+
+Eigen::Quaterniond interpolate(
+  const Eigen::Quaterniond & q0, const Eigen::Quaterniond & q1,
+  const double & t0, const double t1, const double t);
 
 class IMUExtrinsic
 {

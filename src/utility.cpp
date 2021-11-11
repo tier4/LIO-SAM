@@ -38,6 +38,14 @@ tf::Quaternion interpolate(
   return q0.slerp(q1, weight);
 }
 
+Eigen::Quaterniond interpolate(
+  const Eigen::Quaterniond & q0, const Eigen::Quaterniond & q1,
+  const double & t0, const double t1, const double t)
+{
+  const double r = (t - t0) / (t1 - t0);
+  return q0.slerp(r, q1);
+}
+
 Eigen::Vector3d interpolate(
   const Eigen::Vector3d & rpy0, const Eigen::Vector3d & rpy1, const tfScalar weight)
 {
@@ -114,6 +122,14 @@ PointType makePoint(const Eigen::Vector3d & point, const float intensity)
   p.z = q(2);
   p.intensity = intensity;
   return p;
+}
+
+Eigen::Affine3d makeAffine(const Eigen::Quaterniond & q, const Eigen::Vector3d & t)
+{
+  Eigen::Affine3d affine = Eigen::Affine3d::Identity();
+  affine.rotate(q);
+  affine.translate(t);
+  return affine;
 }
 
 Eigen::Affine3d makeAffine(const Eigen::Vector3d & rpy, const Eigen::Vector3d & point)

@@ -143,15 +143,15 @@ int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
   return column_index;
 }
 
-std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdometry(
+std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalOdometry(
   const double scan_end_time,
   const std::deque<sensor_msgs::Imu> & imu_buffer)
 {
   std::vector<double> timestamps;
-  std::vector<Eigen::Vector3d> angles;
+  std::vector<Eigen::Quaterniond> quaternions;  // TODO replace with quaternion
 
   if (imu_buffer.empty()) {
-    return {timestamps, angles};
+    return {timestamps, quaternions};
   }
 
   for (const sensor_msgs::Imu & imu : imu_buffer) {
@@ -162,17 +162,19 @@ std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdom
     }
 
     if (timestamps.size() == 0) {
-      angles.push_back(Eigen::Vector3d::Zero());
+      quaternions.push_back(Eigen::Quaterniond::Identity());
       timestamps.push_back(time);
       continue;
     }
 
     const Eigen::Vector3d angular = vector3ToEigen(imu.angular_velocity);
     const double dt = time - timestamps.back();
-    angles.push_back(angles.back() + angular * dt);
+    const Eigen::Vector3d w = angular * dt;
+    Eigen::Quaterniond dq(Eigen::AngleAxis(w.norm(), w.normalized()));
+    quaternions.push_back(quaternions.back() * dq);
     timestamps.push_back(time);
   }
-  return {timestamps, angles};
+  return {timestamps, quaternions};
 }
 
 Eigen::MatrixXd makeRangeMatrix(
@@ -235,7 +237,7 @@ std::vector<pcl::PointXYZ> projectWithImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const Eigen::MatrixXd & range_matrix,
   const std::vector<double> & timestamps,
-  const std::vector<Eigen::Vector3d> & angles,
+  const std::vector<Eigen::Quaterniond> & quaternions,
   const int N_SCAN, const int Horizon_SCAN,
   const double scan_start_time,
   const double scan_end_time,
@@ -252,9 +254,9 @@ std::vector<pcl::PointXYZ> projectWithImu(
       const double t = scan_start_time + time;
       const int i = findIndex(timestamps, t);
       if (i == 0 || i == static_cast<int>(timestamps.size()) - 1) {
-        return angles[i];
+        return quaternions[i];
       }
-      return interpolate3d(angles[i - 1], angles[i], timestamps[i - 1], timestamps[i], t);
+      return interpolate(quaternions[i - 1], quaternions[i], timestamps[i - 1], timestamps[i], t);
     };
 
   const auto f = [&](const PointXYZIRT & p) {
@@ -468,7 +470,7 @@ public:
     }
     cloud_info.imu_odometry_available = imu_odometry_available;
 
-    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
+    const auto [imu_timestamps, quaternions] = imuIncrementalOdometry(scan_end_time, imu_buffer);
     const bool imu_available = imu_timestamps.size() > 1;
 
     const Eigen::MatrixXd range_matrix = makeRangeMatrix(
@@ -478,7 +480,7 @@ public:
     if (imu_available) {
       output_points = projectWithImu(
         input_points, range_matrix,
-        imu_timestamps, angles,
+        imu_timestamps, quaternions,
         N_SCAN, Horizon_SCAN,
         scan_start_time, scan_end_time,
         translation_within_scan);
