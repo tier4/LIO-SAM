@@ -275,10 +275,8 @@ std::vector<pcl::PointXYZ> projectWithImu(
 
   const auto iterator = input_points | ranges::views::transform(f);
 
-  bool is_first_point = true;
-  Eigen::Affine3d start_inverse;
+  std::optional<Eigen::Affine3d> start_inverse = std::nullopt;
   std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
-
   for (const auto & [q, time, row_index, column_index] : iterator) {
     if (range_matrix(row_index, column_index) < 0) {
       continue;
@@ -289,13 +287,12 @@ std::vector<pcl::PointXYZ> projectWithImu(
       calcPosition(translation_within_scan, scan_start_time, scan_end_time, time)
     );
 
-    if (is_first_point) {
+    if (!start_inverse.has_value()) {
       start_inverse = transform.inverse();
-      is_first_point = false;
     }
 
     const int index = column_index + row_index * Horizon_SCAN;
-    output_points[index] = makePointXYZ((start_inverse * transform) * q);
+    output_points[index] = makePointXYZ((start_inverse.value() * transform) * q);
   }
 
   return output_points;
