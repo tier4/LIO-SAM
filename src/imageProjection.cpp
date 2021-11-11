@@ -404,6 +404,19 @@ public:
     imu_odometry_queue_.push_back(*odometryMsg);
   }
 
+  pcl::PointCloud<PointXYZIRT> msgToPointCloud(
+    const sensor_msgs::PointCloud2 cloud_msg,
+    const SensorType & sensor)
+  {
+    try {
+      return convert(cloud_msg, sensor);
+    } catch (const std::runtime_error & e) {
+      ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
+      ros::shutdown();
+      return pcl::PointCloud<PointXYZIRT>();
+    }
+  }
+
   void cloudHandler(const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg)
   {
     cloudQueue.push_back(*laserCloudMsg);
@@ -414,15 +427,7 @@ public:
     const sensor_msgs::PointCloud2 cloud_msg = cloudQueue.front();
     cloudQueue.pop_front();
 
-    const pcl::PointCloud<PointXYZIRT> input_points = [&] {
-        try {
-          return convert(cloud_msg, sensor);
-        } catch (const std::runtime_error & e) {
-          ROS_ERROR_STREAM("Unknown sensor type: " << int(sensor));
-          ros::shutdown();
-          return pcl::PointCloud<PointXYZIRT>();
-        }
-      } ();
+    const pcl::PointCloud<PointXYZIRT> input_points = msgToPointCloud(cloud_msg, sensor);
 
     if (!input_points.is_dense) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
