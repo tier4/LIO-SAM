@@ -202,6 +202,41 @@ std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdom
   return {timestamps, angles};
 }
 
+Eigen::MatrixXd makeRangeMatrix(
+  const pcl::PointCloud<PointXYZIRT> & input_points,
+  const int downsampleRate,
+  const float range_min, const float range_max,
+  const int N_SCAN, const int Horizon_SCAN)
+{
+  const auto f = [&](const PointXYZIRT & p) {
+      const Eigen::Vector3d q(p.x, p.y, p.z);
+      const int row_index = p.ring;
+      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
+      return std::make_tuple(q.norm(), row_index, column_index);
+    };
+
+  const auto iterator = input_points | ranges::views::transform(f);
+
+  Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
+  for (const auto & [range, row_index, column_index] : iterator) {
+    if (range < range_min || range_max < range) {
+      continue;
+    }
+
+    if (row_index % downsampleRate != 0) {
+      continue;
+    }
+
+    if (range_matrix(row_index, column_index) >= 0) {
+      continue;
+    }
+
+    range_matrix(row_index, column_index) = range;
+  }
+
+  return range_matrix;
+}
+
 class PointCloudProjection
 {
 public:
@@ -234,26 +269,11 @@ public:
         return std::make_tuple(q, p.time, row_index, column_index);
       };
 
-    Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
+
+    const auto range_matrix = makeRangeMatrix(
+      input_points, downsampleRate, range_min, range_max, N_SCAN, Horizon_SCAN);
 
     const auto iterator = input_points | ranges::views::transform(f);
-    for (const auto & [q, time, row_index, column_index] : iterator) {
-      const float range = q.norm();
-      if (range < range_min || range_max < range) {
-        continue;
-      }
-
-      if (row_index % downsampleRate != 0) {
-        continue;
-      }
-
-      if (range_matrix(row_index, column_index) >= 0) {
-        continue;
-      }
-
-      range_matrix(row_index, column_index) = range;
-    }
-
     if (!imu_available) {
       std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
       for (const auto & [q, time, row_index, column_index] : iterator) {
