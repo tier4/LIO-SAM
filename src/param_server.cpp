@@ -29,7 +29,6 @@ ParamServer::ParamServer()
 
   nh.param<int>("lio_sam/N_SCAN", N_SCAN, 16);
   nh.param<int>("lio_sam/Horizon_SCAN", Horizon_SCAN, 1800);
-  nh.param<int>("lio_sam/downsampleRate", downsampleRate, 1);
   nh.param<float>("lio_sam/lidarMinRange", range_min, 1.0);
   nh.param<float>("lio_sam/lidarMaxRange", range_max, 1000.0);
 

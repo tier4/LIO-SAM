@@ -33,7 +33,6 @@ public:
   SensorType sensor;
   int N_SCAN;
   int Horizon_SCAN;
-  int downsampleRate;
   float range_min;
   float range_max;
 

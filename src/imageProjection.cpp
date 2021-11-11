@@ -204,7 +204,6 @@ std::tuple<std::vector<double>, std::vector<Eigen::Vector3d>> imuIncrementalOdom
 
 Eigen::MatrixXd makeRangeMatrix(
   const pcl::PointCloud<PointXYZIRT> & input_points,
-  const int downsampleRate,
   const float range_min, const float range_max,
   const int N_SCAN, const int Horizon_SCAN)
 {
@@ -223,10 +222,6 @@ Eigen::MatrixXd makeRangeMatrix(
       continue;
     }
 
-    if (row_index % downsampleRate != 0) {
-      continue;
-    }
-
     if (range_matrix(row_index, column_index) >= 0) {
       continue;
     }
@@ -242,9 +237,9 @@ class PointCloudProjection
 public:
   PointCloudProjection(
     const float range_min, const float range_max,
-    const int downsampleRate, const int N_SCAN, const int Horizon_SCAN)
+    const int N_SCAN, const int Horizon_SCAN)
   : range_min(range_min), range_max(range_max),
-    downsampleRate(downsampleRate), N_SCAN(N_SCAN), Horizon_SCAN(Horizon_SCAN)
+    N_SCAN(N_SCAN), Horizon_SCAN(Horizon_SCAN)
   {
   }
 
@@ -271,7 +266,7 @@ public:
 
 
     const auto range_matrix = makeRangeMatrix(
-      input_points, downsampleRate, range_min, range_max, N_SCAN, Horizon_SCAN);
+      input_points, range_min, range_max, N_SCAN, Horizon_SCAN);
 
     const auto iterator = input_points | ranges::views::transform(f);
     if (!imu_available) {
@@ -316,7 +311,6 @@ public:
 private:
   const float range_min;
   const float range_max;
-  const int downsampleRate;
   const int N_SCAN;
   const int Horizon_SCAN;
 };
@@ -403,7 +397,7 @@ public:
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1)),
     pubLaserCloudInfo(
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1)),
-    projection_(PointCloudProjection(range_min, range_max, downsampleRate, N_SCAN, Horizon_SCAN)),
+    projection_(PointCloudProjection(range_min, range_max, N_SCAN, Horizon_SCAN)),
     imu_extrinsic_(IMUExtrinsic(extRot, extQRPY))
   {
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
