@@ -232,6 +232,32 @@ Eigen::MatrixXd makeRangeMatrix(
   return range_matrix;
 }
 
+std::vector<pcl::PointXYZ> projectWithoutImu(
+  const pcl::PointCloud<PointXYZIRT> & input_points,
+  const Eigen::MatrixXd & range_matrix,
+  const int N_SCAN, const int Horizon_SCAN)
+{
+  const auto f = [&](const PointXYZIRT & p) {
+      const Eigen::Vector3d q(p.x, p.y, p.z);
+
+      const int row_index = p.ring;
+      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
+
+      return std::make_tuple(makePointXYZ(q), row_index, column_index);
+    };
+  const auto iterator = input_points | ranges::views::transform(f);
+  std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
+  for (const auto & [q, row_index, column_index] : iterator) {
+    if (range_matrix(row_index, column_index) < 0) {
+      continue;
+    }
+
+    const int index = column_index + row_index * Horizon_SCAN;
+    output_points[index] = q;
+  }
+  return output_points;
+}
+
 class PointCloudProjection
 {
 public:
@@ -264,27 +290,20 @@ public:
         return std::make_tuple(q, p.time, row_index, column_index);
       };
 
-
-    const auto range_matrix = makeRangeMatrix(
+    const Eigen::MatrixXd range_matrix = makeRangeMatrix(
       input_points, range_min, range_max, N_SCAN, Horizon_SCAN);
 
-    const auto iterator = input_points | ranges::views::transform(f);
     if (!imu_available) {
-      std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
-      for (const auto & [q, time, row_index, column_index] : iterator) {
-        if (range_matrix(row_index, column_index) < 0) {
-          continue;
-        }
-
-        const int index = column_index + row_index * Horizon_SCAN;
-        output_points[index] = makePointXYZ(q);
-      }
+      const auto output_points = projectWithoutImu(
+        input_points, range_matrix, N_SCAN, Horizon_SCAN);
       return {range_matrix, output_points, imu_available};
     }
 
     bool is_first_point = true;
     Eigen::Affine3d start_inverse;
     std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
+
+    const auto iterator = input_points | ranges::views::transform(f);
 
     for (const auto & [q, time, row_index, column_index] : iterator) {
       if (range_matrix(row_index, column_index) < 0) {
