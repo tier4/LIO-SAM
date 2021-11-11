@@ -410,7 +410,7 @@ private:
   const ros::Publisher pubLaserCloudInfo;
   const PointCloudProjection projection_;
 
-  std::deque<geometry_msgs::TransformStamped> odomQueue;
+  std::deque<geometry_msgs::TransformStamped> imu_odometry_queue_;
 
   std::deque<sensor_msgs::PointCloud2> cloudQueue;
 
@@ -425,7 +425,7 @@ public:
         ros::TransportHints().tcpNoDelay())),
     subOdom(nh.subscribe<geometry_msgs::TransformStamped>(
         imu_incremental_odometry_topic,
-        2000, &ImageProjection::odometryHandler, this,
+        2000, &ImageProjection::imuOdometryHandler, this,
         ros::TransportHints().tcpNoDelay())),
     subLaserCloud(nh.subscribe<sensor_msgs::PointCloud2>(
         pointCloudTopic, 5,
@@ -450,10 +450,10 @@ public:
     imu_buffer.push_back(msg);
   }
 
-  void odometryHandler(const geometry_msgs::TransformStamped::ConstPtr & odometryMsg)
+  void imuOdometryHandler(const geometry_msgs::TransformStamped::ConstPtr & odometryMsg)
   {
     std::lock_guard<std::mutex> lock2(odoLock);
-    odomQueue.push_back(*odometryMsg);
+    imu_odometry_queue_.push_back(*odometryMsg);
   }
 
   void cloudHandler(const sensor_msgs::PointCloud2ConstPtr & laserCloudMsg)
@@ -508,18 +508,18 @@ public:
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);
-      dropBefore(scan_start_time - 0.01, odomQueue);
+      dropBefore(scan_start_time - 0.01, imu_odometry_queue_);
     }
 
     const bool imu_odometry_available = imuOdometryAvailable(
-      odomQueue, scan_start_time, scan_end_time
+      imu_odometry_queue_, scan_start_time, scan_end_time
     );
 
     Eigen::Vector3d translation_within_scan = Eigen::Vector3d::Zero();
 
     if (imu_odometry_available) {
-      const geometry_msgs::TransformStamped msg0 = odomNextOf(odomQueue, scan_start_time);
-      const geometry_msgs::TransformStamped msg1 = odomNextOf(odomQueue, scan_end_time);
+      const geometry_msgs::TransformStamped msg0 = odomNextOf(imu_odometry_queue_, scan_start_time);
+      const geometry_msgs::TransformStamped msg1 = odomNextOf(imu_odometry_queue_, scan_end_time);
 
       cloud_info.scan_start_imu_pose = transformToPose(msg0.transform);
 
