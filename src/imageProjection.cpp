@@ -137,18 +137,15 @@ int findIndex(const std::vector<double> & imu_timestamps, const double point_tim
 Eigen::Vector3d calcRotation(
   const std::vector<Eigen::Vector3d> & angles,
   const std::vector<double> & timestamps,
-  const double point_time)
+  const double time)
 {
-  const int index = findIndex(timestamps, point_time);
+  const int i = findIndex(timestamps, time);
 
-  if (index == 0 || index == static_cast<int>(timestamps.size()) - 1) {
-    return angles[index];
+  if (i == 0 || i == static_cast<int>(timestamps.size()) - 1) {
+    return angles[i];
   }
 
-  return interpolate3d(
-    angles[index - 1], angles[index],
-    timestamps[index - 1], timestamps[index], point_time
-  );
+  return interpolate3d(angles[i - 1], angles[i], timestamps[i - 1], timestamps[i], time);
 }
 
 Eigen::Vector3d calcPosition(
