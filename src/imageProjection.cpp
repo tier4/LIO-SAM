@@ -135,23 +135,19 @@ int findIndex(const std::vector<double> & imu_timestamps, const double point_tim
 }
 
 Eigen::Vector3d calcRotation(
-  const double scan_start_time,
   const std::vector<Eigen::Vector3d> & angles,
-  const std::vector<double> & imu_timestamps,
-  const double time_from_start)
+  const std::vector<double> & timestamps,
+  const double point_time)
 {
-  const double point_time = scan_start_time + time_from_start;
+  const int index = findIndex(timestamps, point_time);
 
-  const int index = findIndex(imu_timestamps, point_time);
-
-  if (index == 0 || index == static_cast<int>(imu_timestamps.size()) - 1) {
+  if (index == 0 || index == static_cast<int>(timestamps.size()) - 1) {
     return angles[index];
   }
 
   return interpolate3d(
-    angles[index - 1], angles[index - 0],
-    imu_timestamps[index - 1], imu_timestamps[index - 0],
-    point_time
+    angles[index - 1], angles[index],
+    timestamps[index - 1], timestamps[index], point_time
   );
 }
 
@@ -290,7 +286,7 @@ std::vector<pcl::PointXYZ> projectWithImu(
     }
 
     const Eigen::Affine3d transform = makeAffine(
-      calcRotation(scan_start_time, angles, imu_timestamps, time),
+      calcRotation(angles, imu_timestamps, scan_start_time + time),
       calcPosition(translation_within_scan, scan_start_time, scan_end_time, time)
     );
 
