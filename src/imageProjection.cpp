@@ -302,53 +302,6 @@ std::vector<pcl::PointXYZ> projectWithImu(
   return output_points;
 }
 
-class PointCloudProjection
-{
-public:
-  PointCloudProjection(
-    const float range_min, const float range_max,
-    const int N_SCAN, const int Horizon_SCAN)
-  : range_min(range_min), range_max(range_max),
-    N_SCAN(N_SCAN), Horizon_SCAN(Horizon_SCAN)
-  {
-  }
-
-  std::tuple<Eigen::MatrixXd, std::vector<pcl::PointXYZ>, bool>
-  compute(
-    const std::deque<sensor_msgs::Imu> & imu_buffer,
-    const pcl::PointCloud<PointXYZIRT> & input_points,
-    const double scan_start_time,
-    const double scan_end_time,
-    const Eigen::Vector3d & translation_within_scan) const
-  {
-    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
-    const bool imu_available = imu_timestamps.size() > 1;
-
-    const Eigen::MatrixXd range_matrix = makeRangeMatrix(
-      input_points, range_min, range_max, N_SCAN, Horizon_SCAN);
-
-    if (!imu_available) {
-      const auto output_points = projectWithoutImu(
-        input_points, range_matrix, N_SCAN, Horizon_SCAN);
-      return {range_matrix, output_points, imu_available};
-    }
-
-    const auto output_points = projectWithImu(
-      input_points, range_matrix,
-      imu_timestamps, angles,
-      N_SCAN, Horizon_SCAN,
-      scan_start_time, scan_end_time,
-      translation_within_scan);
-    return {range_matrix, output_points, imu_available};
-  }
-
-private:
-  const float range_min;
-  const float range_max;
-  const int N_SCAN;
-  const int Horizon_SCAN;
-};
-
 bool imuOdometryAvailable(
   const std::deque<geometry_msgs::TransformStamped> & odomQueue,
   const double scan_start_time,
@@ -405,7 +358,6 @@ private:
 
   const ros::Publisher pubExtractedCloud;
   const ros::Publisher pubLaserCloudInfo;
-  const PointCloudProjection projection_;
 
   std::deque<geometry_msgs::TransformStamped> imu_odometry_queue_;
 
@@ -431,7 +383,6 @@ public:
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1)),
     pubLaserCloudInfo(
       nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1)),
-    projection_(PointCloudProjection(range_min, range_max, N_SCAN, Horizon_SCAN)),
     imu_extrinsic_(IMUExtrinsic(extRot, extQRPY))
   {
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
@@ -463,7 +414,7 @@ public:
     const sensor_msgs::PointCloud2 cloud_msg = cloudQueue.front();
     cloudQueue.pop_front();
 
-    const pcl::PointCloud<PointXYZIRT> input_cloud = [&] {
+    const pcl::PointCloud<PointXYZIRT> input_points = [&] {
         try {
           return convert(cloud_msg, sensor);
         } catch (const std::runtime_error & e) {
@@ -473,7 +424,7 @@ public:
         }
       } ();
 
-    if (!input_cloud.is_dense) {
+    if (!input_points.is_dense) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
       ros::shutdown();
     }
@@ -489,7 +440,7 @@ public:
     }
 
     const double scan_start_time = timeInSec(cloud_msg.header);
-    const double scan_end_time = scan_start_time + input_cloud.back().time;
+    const double scan_end_time = scan_start_time + input_points.back().time;
 
     if (!scanTimesAreWithinImu(imu_buffer, scan_start_time, scan_end_time)) {
       return;
@@ -515,8 +466,8 @@ public:
     Eigen::Vector3d translation_within_scan = Eigen::Vector3d::Zero();
 
     if (imu_odometry_available) {
-      const geometry_msgs::TransformStamped msg0 = odomNextOf(imu_odometry_queue_, scan_start_time);
-      const geometry_msgs::TransformStamped msg1 = odomNextOf(imu_odometry_queue_, scan_end_time);
+      const auto msg0 = odomNextOf(imu_odometry_queue_, scan_start_time);
+      const auto msg1 = odomNextOf(imu_odometry_queue_, scan_end_time);
 
       cloud_info.scan_start_imu_pose = transformToPose(msg0.transform);
 
@@ -526,8 +477,23 @@ public:
     }
     cloud_info.imu_odometry_available = imu_odometry_available;
 
-    const auto [range_matrix, output_points, imu_available] = projection_.compute(
-      imu_buffer, input_cloud, scan_start_time, scan_end_time, translation_within_scan);
+    const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
+    const bool imu_available = imu_timestamps.size() > 1;
+
+    const Eigen::MatrixXd range_matrix = makeRangeMatrix(
+      input_points, range_min, range_max, N_SCAN, Horizon_SCAN);
+
+    std::vector<pcl::PointXYZ> output_points;
+    if (imu_available) {
+      output_points = projectWithImu(
+        input_points, range_matrix,
+        imu_timestamps, angles,
+        N_SCAN, Horizon_SCAN,
+        scan_start_time, scan_end_time,
+        translation_within_scan);
+    } else {
+      output_points = projectWithoutImu(input_points, range_matrix, N_SCAN, Horizon_SCAN);
+    }
 
     cloud_info.imu_orientation_available = imu_available;
 
