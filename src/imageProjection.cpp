@@ -155,10 +155,10 @@ Eigen::Vector3d calcRotation(
 }
 
 Eigen::Vector3d calcPosition(
-  const Eigen::Vector3d & imu_incremental_odometry,
+  const Eigen::Vector3d & translation_within_scan,
   const double scan_start_time, const double scan_end_time, const double time)
 {
-  return imu_incremental_odometry * time / (scan_end_time - scan_start_time);
+  return translation_within_scan * time / (scan_end_time - scan_start_time);
 }
 
 int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
@@ -266,7 +266,7 @@ std::vector<pcl::PointXYZ> projectWithImu(
   const int N_SCAN, const int Horizon_SCAN,
   const double scan_start_time,
   const double scan_end_time,
-  const Eigen::Vector3d & imu_incremental_odometry)
+  const Eigen::Vector3d & translation_within_scan)
 {
   const auto f = [&](const PointXYZIRT & p) {
       const Eigen::Vector3d q(p.x, p.y, p.z);
@@ -290,7 +290,7 @@ std::vector<pcl::PointXYZ> projectWithImu(
 
     const Eigen::Affine3d transform = makeAffine(
       calcRotation(scan_start_time, angles, imu_timestamps, time),
-      calcPosition(imu_incremental_odometry, scan_start_time, scan_end_time, time)
+      calcPosition(translation_within_scan, scan_start_time, scan_end_time, time)
     );
 
     if (is_first_point) {
@@ -322,7 +322,7 @@ public:
     const pcl::PointCloud<PointXYZIRT> & input_points,
     const double scan_start_time,
     const double scan_end_time,
-    const Eigen::Vector3d & imu_incremental_odometry) const
+    const Eigen::Vector3d & translation_within_scan) const
   {
     const auto [imu_timestamps, angles] = imuIncrementalOdometry(scan_end_time, imu_buffer);
     const bool imu_available = imu_timestamps.size() > 1;
@@ -341,7 +341,7 @@ public:
       imu_timestamps, angles,
       N_SCAN, Horizon_SCAN,
       scan_start_time, scan_end_time,
-      imu_incremental_odometry);
+      translation_within_scan);
     return {range_matrix, output_points, imu_available};
   }
 
@@ -515,7 +515,7 @@ public:
       odomQueue, scan_start_time, scan_end_time
     );
 
-    Eigen::Vector3d imu_incremental_odometry = Eigen::Vector3d::Zero();
+    Eigen::Vector3d translation_within_scan = Eigen::Vector3d::Zero();
 
     if (imu_odometry_available) {
       const geometry_msgs::TransformStamped msg0 = odomNextOf(odomQueue, scan_start_time);
@@ -525,12 +525,12 @@ public:
 
       const Eigen::Affine3d p0 = transformToAffine(msg0.transform);
       const Eigen::Affine3d p1 = transformToAffine(msg1.transform);
-      imu_incremental_odometry = (p0.inverse() * p1).translation();
+      translation_within_scan = (p0.inverse() * p1).translation();
     }
     cloud_info.imu_odometry_available = imu_odometry_available;
 
     const auto [range_matrix, output_points, imu_available] = projection_.compute(
-      imu_buffer, input_cloud, scan_start_time, scan_end_time, imu_incremental_odometry);
+      imu_buffer, input_cloud, scan_start_time, scan_end_time, translation_within_scan);
 
     cloud_info.imu_orientation_available = imu_available;
 
