@@ -47,6 +47,7 @@ const int queueLength = 2000;
 std::mutex imuLock;
 std::mutex odoLock;
 
+// TODO use binary search
 unsigned int indexNextTimeOf(
   const std::deque<geometry_msgs::TransformStamped> & queue,
   const double time)
