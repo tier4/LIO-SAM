@@ -246,37 +246,22 @@ std::unordered_map<int, double> makeRangeMatrix(
 }
 
 std::unordered_map<int, pcl::PointXYZ> projectWithoutImu(
-  const pcl::PointCloud<PointXYZIRT> & input_points,
-  const std::unordered_map<int, double> & range_map,
-  const int N_SCAN, const int Horizon_SCAN)
+  const std::vector<int> & indices,
+  const std::vector<Eigen::Vector3d> points)
 {
-  const auto f = [&](const PointXYZIRT & p) {
-      const Eigen::Vector3d q(p.x, p.y, p.z);
-
-      const int row_index = p.ring;
-      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
-
-      const int index = column_index + row_index * Horizon_SCAN;
-      return std::make_tuple(index, makePointXYZ(q));
-    };
-
-  const auto iterator = input_points | ranges::views::transform(f);
   std::unordered_map<int, pcl::PointXYZ> output_points;
-  for (const auto & [index, q] : iterator) {
-    if (range_map.find(index) == range_map.end()) {
-      continue;
-    }
-    output_points[index] = q;
+  for (const auto & [index, q] : ranges::views::zip(indices, points)) {
+    output_points[index] = makePointXYZ(q);
   }
   return output_points;
 }
 
 std::unordered_map<int, pcl::PointXYZ> projectWithImu(
-  const pcl::PointCloud<PointXYZIRT> & input_points,
-  const std::unordered_map<int, double> & range_map,
+  const std::vector<int> & indices,
+  const std::vector<double> times,
+  const std::vector<Eigen::Vector3d> points,
   const std::vector<double> & timestamps,
   const std::vector<Eigen::Quaterniond> & quaternions,
-  const int Horizon_SCAN,
   const double translation_interval,
   const Eigen::Vector3d & translation_within_scan)
 {
@@ -294,25 +279,9 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
       return interpolate(quaternions[i - 1], quaternions[i], timestamps[i - 1], timestamps[i], t);
     };
 
-  const auto f = [&](const PointXYZIRT & p) {
-      const Eigen::Vector3d q(p.x, p.y, p.z);
-
-      const int row_index = p.ring;
-      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
-
-      const int index = column_index + row_index * Horizon_SCAN;
-      return std::make_tuple(index, q, p.time);
-    };
-
-  const auto iterator = input_points | ranges::views::transform(f);
-
   std::optional<Eigen::Affine3d> start_inverse = std::nullopt;
   std::unordered_map<int, pcl::PointXYZ> output_points;
-  for (const auto & [index, q, time] : iterator) {
-    if (range_map.find(index) == range_map.end()) {
-      continue;
-    }
-
+  for (const auto & [index, q, time] : ranges::views::zip(indices, points, times)) {
     const Eigen::Affine3d transform = makeAffine(rotation(time), translation(time));
 
     if (!start_inverse.has_value()) {
@@ -514,16 +483,13 @@ public:
     const auto [indices, times, points] = extranctElements(
       input_points, range_min, range_max, Horizon_SCAN
     );
-    const auto range_map = makeRangeMatrix(input_points, range_min, range_max, Horizon_SCAN);
-
     std::unordered_map<int, pcl::PointXYZ> output_points;
     if (imu_available && imu_odometry_available) {
       output_points = projectWithImu(
-        input_points, range_map,
-        imu_timestamps, quaternions,
-        Horizon_SCAN, translation_interval, translation_within_scan);
+        indices, times, points, imu_timestamps, quaternions,
+        translation_interval, translation_within_scan);
     } else {
-      output_points = projectWithoutImu(input_points, range_map, N_SCAN, Horizon_SCAN);
+      output_points = projectWithoutImu(indices, points);
     }
 
     cloud_info.imu_orientation_available = imu_available;
@@ -535,6 +501,8 @@ public:
     cloud_info.point_range.assign(N_SCAN * Horizon_SCAN, 0);
 
     pcl::PointCloud<pcl::PointXYZ> cloud;
+    const auto range_map = makeRangeMatrix(input_points, range_min, range_max, Horizon_SCAN);
+
     int count = 0;
     for (int row_index = 0; row_index < N_SCAN; ++row_index) {
       cloud_info.ring_start_indices[row_index] = count + 5;
