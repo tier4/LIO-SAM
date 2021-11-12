@@ -180,6 +180,7 @@ std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalO
 std::tuple<std::vector<int>, std::vector<double>, std::vector<Eigen::Vector3d>>
 extranctElements(
   const pcl::PointCloud<PointXYZIRT> & input_points,
+  const float range_min, const float range_max,
   const int Horizon_SCAN)
 {
   const auto f = [&](const PointXYZIRT & p) {
@@ -197,6 +198,11 @@ extranctElements(
 
   const auto iterator = input_points | ranges::views::transform(f);
   for (const auto & [index, time, point] : iterator) {
+    const double range = point.norm();
+    if (range < range_min || range_max < range) {
+      continue;
+    }
+
     if (unique_indices.find(index) != unique_indices.end()) {
       continue;
     }
@@ -461,7 +467,6 @@ public:
       ros::shutdown();
     }
 
-    const auto [indices, times, points] = extranctElements(input_points, Horizon_SCAN);
     const double scan_start_time = timeInSec(cloud_msg.header);
     const double scan_end_time = scan_start_time + input_points.back().time;
 
@@ -506,6 +511,9 @@ public:
     );
     const bool imu_available = imu_timestamps.size() > 1;
 
+    const auto [indices, times, points] = extranctElements(
+      input_points, range_min, range_max, Horizon_SCAN
+    );
     const auto range_map = makeRangeMatrix(input_points, range_min, range_max, Horizon_SCAN);
 
     std::unordered_map<int, pcl::PointXYZ> output_points;
