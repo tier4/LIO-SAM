@@ -144,6 +144,7 @@ int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
 }
 
 std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalOdometry(
+  const double scan_start_time,
   const double scan_end_time,
   const std::deque<sensor_msgs::Imu> & imu_buffer)
 {
@@ -155,9 +156,9 @@ std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalO
   }
 
   for (const sensor_msgs::Imu & imu : imu_buffer) {
-    const double time = timeInSec(imu.header);
+    const double time = timeInSec(imu.header) - scan_start_time;
 
-    if (time > scan_end_time + 0.01) {
+    if (time > scan_end_time - scan_start_time + 0.01) {
       break;
     }
 
@@ -238,20 +239,17 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
   const std::unordered_map<int, double> & range_map,
   const std::vector<double> & timestamps,
   const std::vector<Eigen::Quaterniond> & quaternions,
-  const int N_SCAN, const int Horizon_SCAN,
-  const double scan_start_time,
-  const double scan_end_time,
+  const int Horizon_SCAN,
+  const double translation_interval,
   const Eigen::Vector3d & translation_within_scan)
 {
   const auto translation = [&](const double time) {
       const Eigen::Vector3d p = translation_within_scan;
       const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
-      const double interval = scan_end_time - scan_start_time;
-      return interpolate3d(zero, p, 0., interval, time);
+      return interpolate3d(zero, p, 0., translation_interval, time);
     };
 
-  const auto rotation = [&](const double time) {
-      const double t = scan_start_time + time;
+  const auto rotation = [&](const double t) {
       const int i = findIndex(timestamps, t);
       if (i == 0 || i == static_cast<int>(timestamps.size()) - 1) {
         return quaternions[i];
@@ -469,7 +467,7 @@ public:
     );
 
     Eigen::Vector3d translation_within_scan = Eigen::Vector3d::Zero();
-
+    double translation_interval = 0.0;
     if (imu_odometry_available) {
       const auto msg0 = odomNextOf(imu_odometry_queue_, scan_start_time);
       const auto msg1 = odomNextOf(imu_odometry_queue_, scan_end_time);
@@ -479,22 +477,23 @@ public:
       const Eigen::Affine3d p0 = transformToAffine(msg0.transform);
       const Eigen::Affine3d p1 = transformToAffine(msg1.transform);
       translation_within_scan = (p0.inverse() * p1).translation();
+      translation_interval = scan_end_time - scan_start_time;
     }
     cloud_info.imu_odometry_available = imu_odometry_available;
 
-    const auto [imu_timestamps, quaternions] = imuIncrementalOdometry(scan_end_time, imu_buffer);
+    const auto [imu_timestamps, quaternions] = imuIncrementalOdometry(
+      scan_start_time, scan_end_time, imu_buffer
+    );
     const bool imu_available = imu_timestamps.size() > 1;
 
     const auto range_map = makeRangeMatrix(input_points, range_min, range_max, Horizon_SCAN);
 
     std::unordered_map<int, pcl::PointXYZ> output_points;
-    if (imu_available) {
+    if (imu_available && imu_odometry_available) {
       output_points = projectWithImu(
         input_points, range_map,
         imu_timestamps, quaternions,
-        N_SCAN, Horizon_SCAN,
-        scan_start_time, scan_end_time,
-        translation_within_scan);
+        Horizon_SCAN, translation_interval, translation_within_scan);
     } else {
       output_points = projectWithoutImu(input_points, range_map, N_SCAN, Horizon_SCAN);
     }
@@ -509,24 +508,18 @@ public:
 
     pcl::PointCloud<pcl::PointXYZ> cloud;
     int count = 0;
-    // extract segmented cloud for lidar odometry
     for (int row_index = 0; row_index < N_SCAN; ++row_index) {
       cloud_info.ring_start_indices[row_index] = count + 5;
 
       for (int column_index = 0; column_index < Horizon_SCAN; ++column_index) {
-
         const int index = column_index + row_index * Horizon_SCAN;
         if (range_map.find(index) == range_map.end()) {
           continue;
         }
 
-        // mark the points' column index for marking occlusion later
         cloud_info.point_column_indices[count] = column_index;
-        // save range info
         cloud_info.point_range[count] = range_map.at(index);
-        // save extracted cloud
         cloud.push_back(output_points[index]);
-        // size of extracted cloud
         count += 1;
       }
 
