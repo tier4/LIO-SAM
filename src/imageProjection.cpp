@@ -180,7 +180,7 @@ std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalO
 std::map<std::pair<int, int>, double> makeRangeMatrix(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const float range_min, const float range_max,
-  const int N_SCAN, const int Horizon_SCAN)
+  const int Horizon_SCAN)
 {
   const auto f = [&](const PointXYZIRT & p) {
       const Eigen::Vector3d q(p.x, p.y, p.z);
@@ -483,8 +483,7 @@ public:
     const auto [imu_timestamps, quaternions] = imuIncrementalOdometry(scan_end_time, imu_buffer);
     const bool imu_available = imu_timestamps.size() > 1;
 
-    const auto range_map = makeRangeMatrix(
-      input_points, range_min, range_max, N_SCAN, Horizon_SCAN);
+    const auto range_map = makeRangeMatrix(input_points, range_min, range_max, Horizon_SCAN);
 
     std::vector<pcl::PointXYZ> output_points;
     if (imu_available) {
