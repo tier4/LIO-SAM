@@ -187,18 +187,18 @@ std::unordered_map<int, double> makeRangeMatrix(
       const Eigen::Vector3d q(p.x, p.y, p.z);
       const int row_index = p.ring;
       const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
-      return std::make_tuple(row_index, column_index, q.norm());
+      const int index = column_index + row_index * Horizon_SCAN;
+      return std::make_tuple(index, q.norm());
     };
 
   const auto iterator = input_points | ranges::views::transform(f);
 
   std::unordered_map<int, double> range_map;
-  for (const auto & [row_index, column_index, range] : iterator) {
+  for (const auto & [index, range] : iterator) {
     if (range < range_min || range_max < range) {
       continue;
     }
 
-    const int index = column_index + row_index * Horizon_SCAN;
     if (range_map.find(index) == range_map.end()) {
       range_map[index] = range;
     }
