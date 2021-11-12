@@ -177,7 +177,7 @@ std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalO
   return {timestamps, quaternions};
 }
 
-Eigen::MatrixXd makeRangeMatrix(
+std::map<std::pair<int, int>, double> makeRangeMatrix(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const float range_min, const float range_max,
   const int N_SCAN, const int Horizon_SCAN)
@@ -186,30 +186,28 @@ Eigen::MatrixXd makeRangeMatrix(
       const Eigen::Vector3d q(p.x, p.y, p.z);
       const int row_index = p.ring;
       const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
-      return std::make_tuple(q.norm(), row_index, column_index);
+      return std::make_tuple(row_index, column_index, q.norm());
     };
 
   const auto iterator = input_points | ranges::views::transform(f);
 
-  Eigen::MatrixXd range_matrix = -1.0 * Eigen::MatrixXd::Ones(N_SCAN, Horizon_SCAN);
-  for (const auto & [range, row_index, column_index] : iterator) {
+  std::map<std::pair<int, int>, double> range_map;
+  for (const auto & [row_index, column_index, range] : iterator) {
     if (range < range_min || range_max < range) {
       continue;
     }
 
-    if (range_matrix(row_index, column_index) >= 0) {
-      continue;
+    if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
+      range_map[std::make_pair(row_index, column_index)] = range;
     }
-
-    range_matrix(row_index, column_index) = range;
   }
 
-  return range_matrix;
+  return range_map;
 }
 
 std::vector<pcl::PointXYZ> projectWithoutImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
-  const Eigen::MatrixXd & range_matrix,
+  const std::map<std::pair<int, int>, double> & range_map,
   const int N_SCAN, const int Horizon_SCAN)
 {
   const auto f = [&](const PointXYZIRT & p) {
@@ -223,7 +221,7 @@ std::vector<pcl::PointXYZ> projectWithoutImu(
   const auto iterator = input_points | ranges::views::transform(f);
   std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
   for (const auto & [q, row_index, column_index] : iterator) {
-    if (range_matrix(row_index, column_index) < 0) {
+    if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
       continue;
     }
 
@@ -235,7 +233,7 @@ std::vector<pcl::PointXYZ> projectWithoutImu(
 
 std::vector<pcl::PointXYZ> projectWithImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
-  const Eigen::MatrixXd & range_matrix,
+  const std::map<std::pair<int, int>, double> & range_map,
   const std::vector<double> & timestamps,
   const std::vector<Eigen::Quaterniond> & quaternions,
   const int N_SCAN, const int Horizon_SCAN,
@@ -243,14 +241,14 @@ std::vector<pcl::PointXYZ> projectWithImu(
   const double scan_end_time,
   const Eigen::Vector3d & translation_within_scan)
 {
-  const auto calcPosition = [&](const double time) {
+  const auto translation = [&](const double time) {
       const Eigen::Vector3d p = translation_within_scan;
       const Eigen::Vector3d zero = Eigen::Vector3d::Zero();
       const double interval = scan_end_time - scan_start_time;
       return interpolate3d(zero, p, 0., interval, time);
     };
 
-  const auto calcRotation = [&](const double time) {
+  const auto rotation = [&](const double time) {
       const double t = scan_start_time + time;
       const int i = findIndex(timestamps, t);
       if (i == 0 || i == static_cast<int>(timestamps.size()) - 1) {
@@ -273,11 +271,11 @@ std::vector<pcl::PointXYZ> projectWithImu(
   std::optional<Eigen::Affine3d> start_inverse = std::nullopt;
   std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
   for (const auto & [q, time, row_index, column_index] : iterator) {
-    if (range_matrix(row_index, column_index) < 0) {
+    if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
       continue;
     }
 
-    const Eigen::Affine3d transform = makeAffine(calcRotation(time), calcPosition(time));
+    const Eigen::Affine3d transform = makeAffine(rotation(time), translation(time));
 
     if (!start_inverse.has_value()) {
       start_inverse = transform.inverse();
@@ -473,19 +471,19 @@ public:
     const auto [imu_timestamps, quaternions] = imuIncrementalOdometry(scan_end_time, imu_buffer);
     const bool imu_available = imu_timestamps.size() > 1;
 
-    const Eigen::MatrixXd range_matrix = makeRangeMatrix(
+    const auto range_map = makeRangeMatrix(
       input_points, range_min, range_max, N_SCAN, Horizon_SCAN);
 
     std::vector<pcl::PointXYZ> output_points;
     if (imu_available) {
       output_points = projectWithImu(
-        input_points, range_matrix,
+        input_points, range_map,
         imu_timestamps, quaternions,
         N_SCAN, Horizon_SCAN,
         scan_start_time, scan_end_time,
         translation_within_scan);
     } else {
-      output_points = projectWithoutImu(input_points, range_matrix, N_SCAN, Horizon_SCAN);
+      output_points = projectWithoutImu(input_points, range_map, N_SCAN, Horizon_SCAN);
     }
 
     cloud_info.imu_orientation_available = imu_available;
@@ -503,15 +501,14 @@ public:
       cloud_info.ring_start_indices[i] = count + 5;
 
       for (int j = 0; j < Horizon_SCAN; ++j) {
-        const float range = range_matrix(i, j);
-        if (range < 0) {
+        if (range_map.find(std::make_pair(i, j)) == range_map.end()) {
           continue;
         }
 
         // mark the points' column index for marking occlusion later
         cloud_info.point_column_indices[count] = j;
         // save range info
-        cloud_info.point_range[count] = range;
+        cloud_info.point_range[count] = range_map.at(std::make_pair(i, j));
         // save extracted cloud
         cloud.push_back(output_points[j + i * Horizon_SCAN]);
         // size of extracted cloud
