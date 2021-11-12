@@ -576,18 +576,18 @@ public:
 
     cloud_info.imu_orientation_available = imu_available;
 
-    cloud_info.ring_start_indices.assign(N_SCAN, 0);
-    cloud_info.end_ring_indices.assign(N_SCAN, 0);
+    std::vector<int> ring_start_indices(N_SCAN, 0);
+    std::vector<int> end_ring_indices(N_SCAN, 0);
 
-    cloud_info.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
-    cloud_info.point_range.assign(N_SCAN * Horizon_SCAN, 0);
+    std::vector<int> column_indices(N_SCAN * Horizon_SCAN, 0);
+    std::vector<float> range(N_SCAN * Horizon_SCAN, 0);
 
     const auto range_map = makeRangeMatrix(indices, points);
     pcl::PointCloud<pcl::PointXYZ> cloud;
 
     int count = 0;
     for (int row_index = 0; row_index < N_SCAN; ++row_index) {
-      cloud_info.ring_start_indices[row_index] = count + 5;
+      ring_start_indices[row_index] = count + 5;
 
       for (int column_index = 0; column_index < Horizon_SCAN; ++column_index) {
         const int index = column_index + row_index * Horizon_SCAN;
@@ -595,18 +595,18 @@ public:
           continue;
         }
 
-        cloud_info.point_column_indices[count] = column_index;
-        cloud_info.point_range[count] = range_map.at(index);
+        column_indices[count] = column_index;
+        range[count] = range_map.at(index);
         cloud.push_back(output_points[index]);
         count += 1;
       }
 
-      cloud_info.end_ring_indices[row_index] = count - 5;
+      end_ring_indices[row_index] = count - 5;
     }
 
     cloud_info.header = cloud_msg.header;
-    cloud_info.cloud_deskewed = toRosMsg(cloud, cloud_msg.header.stamp, lidarFrame);
-    pubExtractedCloud.publish(cloud_info.cloud_deskewed);
+    const auto cloud_deskewed = toRosMsg(cloud, cloud_msg.header.stamp, lidarFrame);
+    pubExtractedCloud.publish(cloud_deskewed);
 
     // used to prevent from labeling a neighbor as surface or edge
     std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
@@ -615,9 +615,6 @@ public:
       neighbor_picked[i] = false;
     }
 
-    const std::vector<float> & range = cloud_info.point_range;
-
-    const std::vector<int> & column_indices = cloud_info.point_column_indices;
     // mark occluded points and parallel beam points
     for (unsigned int i = 5; i < cloud.size() - 6; ++i) {
       // const auto p = points->at(i);
@@ -661,8 +658,7 @@ public:
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan(new pcl::PointCloud<pcl::PointXYZ>());
 
-      const IndexRange index_range(
-        cloud_info.ring_start_indices[i], cloud_info.end_ring_indices[i], N_BLOCKS);
+      const IndexRange index_range(ring_start_indices[i], end_ring_indices[i], N_BLOCKS);
       for (int j = 0; j < N_BLOCKS; j++) {
         const int sp = index_range.begin(j);
         const int ep = index_range.end(j);
@@ -715,7 +711,7 @@ public:
     cloud_info.cloud_edge = toRosMsg(*edge_downsampled, cloud_info.header.stamp, lidarFrame);
     cloud_info.cloud_surface = toRosMsg(*surface_downsampled, cloud_info.header.stamp, lidarFrame);
     // for visualization
-    pubEdgePoints.publish(cloud_info.cloud_deskewed);
+    pubEdgePoints.publish(cloud_deskewed);
     pubSurfacePoints.publish(cloud_info.cloud_surface);
     // publish to mapOptimization
     pubLaserCloudInfo.publish(cloud_info);
