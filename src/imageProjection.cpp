@@ -1,5 +1,8 @@
+#include <pcl/filters/voxel_grid.h>
+
 #include "message.hpp"
 #include "utility.hpp"
+#include "downsample.hpp"
 #include "param_server.h"
 #include "lio_sam/cloud_info.h"
 
@@ -224,7 +227,6 @@ std::unordered_map<int, double> makeRangeMatrix(
   for (const auto & [index, point] : ranges::views::zip(indices, points)) {
     range_map[index] = point.norm();
   }
-
   return range_map;
 }
 
@@ -324,6 +326,99 @@ geometry_msgs::TransformStamped odomNextOf(
   return odomQueue[index];
 }
 
+class by_value
+{
+public:
+  by_value(const std::vector<float> & values)
+  : values_(values) {}
+  bool operator()(const int & left, const int & right)
+  {
+    return values_[left] < values_[right];
+  }
+
+private:
+  std::vector<float> values_;
+};
+
+enum class CurvatureLabel
+{
+  Default = 0,
+  Edge = 1,
+  Surface = -1
+};
+
+void neighborPicked(
+  const std::vector<int> & column_indices,
+  const int index,
+  std::vector<bool> & neighbor_picked)
+{
+  neighbor_picked[index] = true;
+  for (int l = 1; l <= 5; l++) {
+    const int d = std::abs(int(column_indices[index + l] - column_indices[index + l - 1]));
+    if (d > 10) {
+      break;
+    }
+    neighbor_picked[index + l] = true;
+  }
+  for (int l = -1; l >= -5; l--) {
+    const int d = std::abs(int(column_indices[index + l] - column_indices[index + l + 1]));
+    if (d > 10) {
+      break;
+    }
+    neighbor_picked[index + l] = true;
+  }
+}
+
+std::tuple<std::vector<float>, std::vector<int>>
+calcCurvature(
+  const pcl::PointCloud<pcl::PointXYZ> & points,
+  const std::vector<float> & range,
+  const int N_SCAN,
+  const int Horizon_SCAN)
+{
+  std::vector<float> curvature(N_SCAN * Horizon_SCAN);
+  std::vector<int> indices(N_SCAN * Horizon_SCAN, -1);
+  for (unsigned int i = 5; i < points.size() - 5; i++) {
+    const float d =
+      range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
+      range[i] * 10 +
+      range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
+
+    curvature[i] = d * d;
+    indices[i] = i;
+  }
+  return {curvature, indices};
+}
+
+class IndexRange
+{
+public:
+  IndexRange(const int start_index, const int end_index, const int n_blocks)
+  : start_index_(static_cast<double>(start_index)),
+    end_index_(static_cast<double>(end_index)),
+    n_blocks_(static_cast<double>(n_blocks))
+  {
+  }
+
+  int begin(const int j) const
+  {
+    const double n = n_blocks_;
+    return static_cast<int>(start_index_ * (1. - j / n) + end_index_ * j / n);
+  }
+
+  int end(const int j) const
+  {
+    const double n = n_blocks_;
+    const int k = j + 1;
+    return static_cast<int>(start_index_ * (1. - k / n) + end_index_ * k / n - 1.);
+  }
+
+private:
+  const double start_index_;
+  const double end_index_;
+  const double n_blocks_;
+};
+
 class ImageProjection : public ParamServer
 {
 private:
@@ -333,6 +428,9 @@ private:
 
   const ros::Publisher pubExtractedCloud;
   const ros::Publisher pubLaserCloudInfo;
+
+  const ros::Publisher pubEdgePoints;
+  const ros::Publisher pubSurfacePoints;
 
   std::deque<geometry_msgs::TransformStamped> imu_odometry_queue_;
 
@@ -356,8 +454,9 @@ public:
         &ImageProjection::cloudHandler, this, ros::TransportHints().tcpNoDelay())),
     pubExtractedCloud(
       nh.advertise<sensor_msgs::PointCloud2>("lio_sam/deskew/cloud_deskewed", 1)),
-    pubLaserCloudInfo(
-      nh.advertise<lio_sam::cloud_info>("lio_sam/deskew/cloud_info", 1)),
+    pubLaserCloudInfo(nh.advertise<lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1)),
+    pubEdgePoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_edge", 1)),
+    pubSurfacePoints(nh.advertise<sensor_msgs::PointCloud2>("lio_sam/feature/cloud_surface", 1)),
     imu_extrinsic_(IMUExtrinsic(extRot, extQRPY))
   {
     pcl::console::setVerbosityLevel(pcl::console::L_ERROR);
@@ -508,7 +607,119 @@ public:
     cloud_info.header = cloud_msg.header;
     cloud_info.cloud_deskewed = toRosMsg(cloud, cloud_msg.header.stamp, lidarFrame);
     pubExtractedCloud.publish(cloud_info.cloud_deskewed);
+
+    // used to prevent from labeling a neighbor as surface or edge
+    std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
+
+    for (unsigned int i = 5; i < cloud.size() - 5; i++) {
+      neighbor_picked[i] = false;
+    }
+
+    const std::vector<float> & range = cloud_info.point_range;
+
+    const std::vector<int> & column_indices = cloud_info.point_column_indices;
+    // mark occluded points and parallel beam points
+    for (unsigned int i = 5; i < cloud.size() - 6; ++i) {
+      // const auto p = points->at(i);
+      // assert(abs(range[i] - Eigen::Vector3d(p.x, p.y, p.z).norm()) < 1e-4);
+      // occluded points
+      const int d = std::abs(int(column_indices[i + 1] - column_indices[i]));
+
+      // 10 pixel diff in range image
+      if (d < 10 && range[i] - range[i + 1] > 0.3) {
+        for (int j = 0; j <= 5; j++) {
+          neighbor_picked[i - j] = true;
+        }
+      }
+
+      if (d < 10 && range[i + 1] - range[i] > 0.3) {
+        for (int j = 1; j <= 6; j++) {
+          neighbor_picked[i + j] = true;
+        }
+      }
+    }
+
+    for (unsigned int i = 5; i < cloud.size() - 6; ++i) {
+      // parallel beam
+      const float ratio1 = std::abs(range[i - 1] - range[i]) / range[i];
+      const float ratio2 = std::abs(range[i + 1] - range[i]) / range[i];
+
+      if (ratio1 > 0.02 && ratio2 > 0.02) {
+        neighbor_picked[i] = true;
+      }
+    }
+
+    auto [curvature, inds] = calcCurvature(cloud, range, N_SCAN, Horizon_SCAN);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr edge(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr surface(new pcl::PointCloud<pcl::PointXYZ>());
+
+    const int N_BLOCKS = 6;
+
+    std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN, CurvatureLabel::Default);
+
+    for (int i = 0; i < N_SCAN; i++) {
+      pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan(new pcl::PointCloud<pcl::PointXYZ>());
+
+      const IndexRange index_range(
+        cloud_info.ring_start_indices[i], cloud_info.end_ring_indices[i], N_BLOCKS);
+      for (int j = 0; j < N_BLOCKS; j++) {
+        const int sp = index_range.begin(j);
+        const int ep = index_range.end(j);
+        std::sort(inds.begin() + sp, inds.begin() + ep, by_value(curvature));
+
+        int n_picked = 0;
+        for (int k = ep; k >= sp; k--) {
+          const int index = inds[k];
+          if (neighbor_picked[index] || curvature[index] <= edgeThreshold) {
+            continue;
+          }
+
+          if (n_picked >= 20) {
+            break;
+          }
+
+          n_picked++;
+
+          edge->push_back(cloud.at(index));
+          label[index] = CurvatureLabel::Edge;
+
+          neighborPicked(column_indices, index, neighbor_picked);
+        }
+
+        for (int k = sp; k <= ep; k++) {
+          const int index = inds[k];
+          if (neighbor_picked[index] || curvature[index] >= surfThreshold) {
+            continue;
+          }
+
+          label[index] = CurvatureLabel::Surface;
+
+          neighborPicked(column_indices, index, neighbor_picked);
+        }
+
+        for (int k = sp; k <= ep; k++) {
+          if (label[k] == CurvatureLabel::Default || label[k] == CurvatureLabel::Edge) {
+            surface_scan->push_back(cloud.at(k));
+          }
+        }
+      }
+
+      *surface += *downsample<pcl::PointXYZ>(surface_scan, surface_leaf_size);
+    }
+
+    const auto edge_downsampled = downsample<pcl::PointXYZ>(edge, map_edge_leaf_size);
+    const auto surface_downsampled = downsample<pcl::PointXYZ>(surface, map_surface_leaf_size);
+
+    // save newly extracted features
+    cloud_info.cloud_edge = toRosMsg(*edge_downsampled, cloud_info.header.stamp, lidarFrame);
+    cloud_info.cloud_surface = toRosMsg(*surface_downsampled, cloud_info.header.stamp, lidarFrame);
+    // for visualization
+    pubEdgePoints.publish(cloud_info.cloud_deskewed);
+    pubSurfacePoints.publish(cloud_info.cloud_surface);
+    // publish to mapOptimization
     pubLaserCloudInfo.publish(cloud_info);
+
   }
 };
 
