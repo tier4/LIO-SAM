@@ -177,7 +177,7 @@ std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalO
   return {timestamps, quaternions};
 }
 
-std::map<std::pair<int, int>, double> makeRangeMatrix(
+std::unordered_map<int, double> makeRangeMatrix(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const float range_min, const float range_max,
   const int Horizon_SCAN)
@@ -191,14 +191,15 @@ std::map<std::pair<int, int>, double> makeRangeMatrix(
 
   const auto iterator = input_points | ranges::views::transform(f);
 
-  std::map<std::pair<int, int>, double> range_map;
+  std::unordered_map<int, double> range_map;
   for (const auto & [row_index, column_index, range] : iterator) {
     if (range < range_min || range_max < range) {
       continue;
     }
 
-    if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
-      range_map[std::make_pair(row_index, column_index)] = range;
+    const int index = column_index + row_index * Horizon_SCAN;
+    if (range_map.find(index) == range_map.end()) {
+      range_map[index] = range;
     }
   }
 
@@ -207,7 +208,7 @@ std::map<std::pair<int, int>, double> makeRangeMatrix(
 
 std::unordered_map<int, pcl::PointXYZ> projectWithoutImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
-  const std::map<std::pair<int, int>, double> & range_map,
+  const std::unordered_map<int, double> & range_map,
   const int N_SCAN, const int Horizon_SCAN)
 {
   const auto f = [&](const PointXYZIRT & p) {
@@ -221,11 +222,12 @@ std::unordered_map<int, pcl::PointXYZ> projectWithoutImu(
   const auto iterator = input_points | ranges::views::transform(f);
   std::unordered_map<int, pcl::PointXYZ> output_points;
   for (const auto & [q, row_index, column_index] : iterator) {
-    if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
+    const int index = column_index + row_index * Horizon_SCAN;
+
+    if (range_map.find(index) == range_map.end()) {
       continue;
     }
 
-    const int index = column_index + row_index * Horizon_SCAN;
     output_points[index] = q;
   }
   return output_points;
@@ -233,7 +235,7 @@ std::unordered_map<int, pcl::PointXYZ> projectWithoutImu(
 
 std::unordered_map<int, pcl::PointXYZ> projectWithImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
-  const std::map<std::pair<int, int>, double> & range_map,
+  const std::unordered_map<int, double> & range_map,
   const std::vector<double> & timestamps,
   const std::vector<Eigen::Quaterniond> & quaternions,
   const int N_SCAN, const int Horizon_SCAN,
@@ -271,7 +273,8 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
   std::optional<Eigen::Affine3d> start_inverse = std::nullopt;
   std::unordered_map<int, pcl::PointXYZ> output_points;
   for (const auto & [q, time, row_index, column_index] : iterator) {
-    if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
+    const int index = column_index + row_index * Horizon_SCAN;
+    if (range_map.find(index) == range_map.end()) {
       continue;
     }
 
@@ -281,7 +284,6 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
       start_inverse = transform.inverse();
     }
 
-    const int index = column_index + row_index * Horizon_SCAN;
     output_points[index] = makePointXYZ((start_inverse.value() * transform) * q);
   }
 
@@ -508,25 +510,27 @@ public:
     pcl::PointCloud<pcl::PointXYZ> cloud;
     int count = 0;
     // extract segmented cloud for lidar odometry
-    for (int i = 0; i < N_SCAN; ++i) {
-      cloud_info.ring_start_indices[i] = count + 5;
+    for (int row_index = 0; row_index < N_SCAN; ++row_index) {
+      cloud_info.ring_start_indices[row_index] = count + 5;
 
-      for (int j = 0; j < Horizon_SCAN; ++j) {
-        if (range_map.find(std::make_pair(i, j)) == range_map.end()) {
+      for (int column_index = 0; column_index < Horizon_SCAN; ++column_index) {
+
+        const int index = column_index + row_index * Horizon_SCAN;
+        if (range_map.find(index) == range_map.end()) {
           continue;
         }
 
         // mark the points' column index for marking occlusion later
-        cloud_info.point_column_indices[count] = j;
+        cloud_info.point_column_indices[count] = column_index;
         // save range info
-        cloud_info.point_range[count] = range_map.at(std::make_pair(i, j));
+        cloud_info.point_range[count] = range_map.at(index);
         // save extracted cloud
-        cloud.push_back(output_points[j + i * Horizon_SCAN]);
+        cloud.push_back(output_points[index]);
         // size of extracted cloud
         count += 1;
       }
 
-      cloud_info.end_ring_indices[i] = count - 5;
+      cloud_info.end_ring_indices[row_index] = count - 5;
     }
 
     cloud_info.header = cloud_msg.header;
