@@ -136,11 +136,10 @@ int findIndex(const std::vector<double> & imu_timestamps, const double point_tim
 
 int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
 {
-  const float angle = rad2deg(atan2(x, y));
-  const int f = static_cast<int>(Horizon_SCAN * (angle - 90.0) / 360.0);
-  const int c = Horizon_SCAN / 2 - f;
-  const int column_index = c % Horizon_SCAN;
-  return column_index;
+  const double angle = rad2deg(atan2(y, x));  // [-180 ~ 180]
+  const double k = Horizon_SCAN * angle / (180.0 * 2.0);  // [-Horizon_SCAN / 2 ~ Horizon_SCAN / 2]
+  const double u = k + Horizon_SCAN / 2.0;
+  return static_cast<int>(u);
 }
 
 std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalOdometry(
