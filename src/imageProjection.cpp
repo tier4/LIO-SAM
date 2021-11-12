@@ -205,7 +205,7 @@ std::map<std::pair<int, int>, double> makeRangeMatrix(
   return range_map;
 }
 
-std::vector<pcl::PointXYZ> projectWithoutImu(
+std::unordered_map<int, pcl::PointXYZ> projectWithoutImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const std::map<std::pair<int, int>, double> & range_map,
   const int N_SCAN, const int Horizon_SCAN)
@@ -219,7 +219,7 @@ std::vector<pcl::PointXYZ> projectWithoutImu(
       return std::make_tuple(makePointXYZ(q), row_index, column_index);
     };
   const auto iterator = input_points | ranges::views::transform(f);
-  std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
+  std::unordered_map<int, pcl::PointXYZ> output_points;
   for (const auto & [q, row_index, column_index] : iterator) {
     if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
       continue;
@@ -231,7 +231,7 @@ std::vector<pcl::PointXYZ> projectWithoutImu(
   return output_points;
 }
 
-std::vector<pcl::PointXYZ> projectWithImu(
+std::unordered_map<int, pcl::PointXYZ> projectWithImu(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const std::map<std::pair<int, int>, double> & range_map,
   const std::vector<double> & timestamps,
@@ -269,7 +269,7 @@ std::vector<pcl::PointXYZ> projectWithImu(
   const auto iterator = input_points | ranges::views::transform(f);
 
   std::optional<Eigen::Affine3d> start_inverse = std::nullopt;
-  std::vector<pcl::PointXYZ> output_points(N_SCAN * Horizon_SCAN);
+  std::unordered_map<int, pcl::PointXYZ> output_points;
   for (const auto & [q, time, row_index, column_index] : iterator) {
     if (range_map.find(std::make_pair(row_index, column_index)) == range_map.end()) {
       continue;
@@ -485,7 +485,7 @@ public:
 
     const auto range_map = makeRangeMatrix(input_points, range_min, range_max, Horizon_SCAN);
 
-    std::vector<pcl::PointXYZ> output_points;
+    std::unordered_map<int, pcl::PointXYZ> output_points;
     if (imu_available) {
       output_points = projectWithImu(
         input_points, range_map,
