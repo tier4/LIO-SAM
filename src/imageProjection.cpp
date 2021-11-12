@@ -218,17 +218,16 @@ std::unordered_map<int, pcl::PointXYZ> projectWithoutImu(
       const int row_index = p.ring;
       const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
 
-      return std::make_tuple(makePointXYZ(q), row_index, column_index);
+      const int index = column_index + row_index * Horizon_SCAN;
+      return std::make_tuple(index, makePointXYZ(q));
     };
+
   const auto iterator = input_points | ranges::views::transform(f);
   std::unordered_map<int, pcl::PointXYZ> output_points;
-  for (const auto & [q, row_index, column_index] : iterator) {
-    const int index = column_index + row_index * Horizon_SCAN;
-
+  for (const auto & [index, q] : iterator) {
     if (range_map.find(index) == range_map.end()) {
       continue;
     }
-
     output_points[index] = q;
   }
   return output_points;
@@ -263,15 +262,15 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
       const int row_index = p.ring;
       const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
 
-      return std::make_tuple(q, p.time, row_index, column_index);
+      const int index = column_index + row_index * Horizon_SCAN;
+      return std::make_tuple(index, q, p.time);
     };
 
   const auto iterator = input_points | ranges::views::transform(f);
 
   std::optional<Eigen::Affine3d> start_inverse = std::nullopt;
   std::unordered_map<int, pcl::PointXYZ> output_points;
-  for (const auto & [q, time, row_index, column_index] : iterator) {
-    const int index = column_index + row_index * Horizon_SCAN;
+  for (const auto & [index, q, time] : iterator) {
     if (range_map.find(index) == range_map.end()) {
       continue;
     }
