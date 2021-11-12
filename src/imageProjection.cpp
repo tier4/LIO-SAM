@@ -177,6 +177,39 @@ std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalO
   return {timestamps, quaternions};
 }
 
+std::tuple<std::vector<int>, std::vector<double>, std::vector<Eigen::Vector3d>>
+extranctElements(
+  const pcl::PointCloud<PointXYZIRT> & input_points,
+  const int Horizon_SCAN)
+{
+  const auto f = [&](const PointXYZIRT & p) {
+      const int row_index = p.ring;
+      const int column_index = calcColumnIndex(Horizon_SCAN, p.x, p.y);
+      const int index = column_index + row_index * Horizon_SCAN;
+      const Eigen::Vector3d q(p.x, p.y, p.z);
+      return std::make_tuple(index, p.time, q);
+    };
+
+  std::set<int> unique_indices;
+  std::vector<int> indices;
+  std::vector<double> times;
+  std::vector<Eigen::Vector3d> points;
+
+  const auto iterator = input_points | ranges::views::transform(f);
+  for (const auto & [index, time, point] : iterator) {
+    if (unique_indices.find(index) != unique_indices.end()) {
+      continue;
+    }
+
+    unique_indices.insert(index);
+    indices.push_back(index);
+    times.push_back(time);
+    points.push_back(point);
+  }
+
+  return {indices, times, points};
+}
+
 std::unordered_map<int, double> makeRangeMatrix(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const float range_min, const float range_max,
@@ -185,7 +218,7 @@ std::unordered_map<int, double> makeRangeMatrix(
   const auto f = [&](const PointXYZIRT & p) {
       const Eigen::Vector3d q(p.x, p.y, p.z);
       const int row_index = p.ring;
-      const int column_index = calcColumnIndex(Horizon_SCAN, q.x(), q.y());
+      const int column_index = calcColumnIndex(Horizon_SCAN, p.x, p.y);
       const int index = column_index + row_index * Horizon_SCAN;
       return std::make_tuple(index, q.norm());
     };
@@ -413,18 +446,6 @@ public:
 
     const pcl::PointCloud<PointXYZIRT> input_points = msgToPointCloud(cloud_msg, sensor);
 
-    const auto extractPoint = [](const PointXYZIRT & p) {return Eigen::Vector3d(p.x, p.y, p.z);};
-    const std::vector<Eigen::Vector3d> points =
-      input_points | ranges::views::transform(extractPoint) | ranges::to_vector;
-
-    const auto extractTime = [](const PointXYZIRT & p) {return p.time;};
-    const std::vector<float> times =
-      input_points | ranges::views::transform(extractTime) | ranges::to_vector;
-
-    const auto extractRing = [](const PointXYZIRT & p) {return p.ring;};
-    const std::vector<uint16_t> rings =
-      input_points | ranges::views::transform(extractRing) | ranges::to_vector;
-
     if (!input_points.is_dense) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
       ros::shutdown();
@@ -440,8 +461,9 @@ public:
       ros::shutdown();
     }
 
+    const auto [indices, times, points] = extranctElements(input_points, Horizon_SCAN);
     const double scan_start_time = timeInSec(cloud_msg.header);
-    const double scan_end_time = scan_start_time + times.back();
+    const double scan_end_time = scan_start_time + input_points.back().time;
 
     if (!scanTimesAreWithinImu(imu_buffer, scan_start_time, scan_end_time)) {
       return;
