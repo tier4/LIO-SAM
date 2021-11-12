@@ -217,29 +217,12 @@ extranctElements(
 }
 
 std::unordered_map<int, double> makeRangeMatrix(
-  const pcl::PointCloud<PointXYZIRT> & input_points,
-  const float range_min, const float range_max,
-  const int Horizon_SCAN)
+  const std::vector<int> & indices,
+  const std::vector<Eigen::Vector3d> & points)
 {
-  const auto f = [&](const PointXYZIRT & p) {
-      const Eigen::Vector3d q(p.x, p.y, p.z);
-      const int row_index = p.ring;
-      const int column_index = calcColumnIndex(Horizon_SCAN, p.x, p.y);
-      const int index = column_index + row_index * Horizon_SCAN;
-      return std::make_tuple(index, q.norm());
-    };
-
-  const auto iterator = input_points | ranges::views::transform(f);
-
   std::unordered_map<int, double> range_map;
-  for (const auto & [index, range] : iterator) {
-    if (range < range_min || range_max < range) {
-      continue;
-    }
-
-    if (range_map.find(index) == range_map.end()) {
-      range_map[index] = range;
-    }
+  for (const auto & [index, point] : ranges::views::zip(indices, points)) {
+    range_map[index] = point.norm();
   }
 
   return range_map;
@@ -500,8 +483,8 @@ public:
     cloud_info.point_column_indices.assign(N_SCAN * Horizon_SCAN, 0);
     cloud_info.point_range.assign(N_SCAN * Horizon_SCAN, 0);
 
+    const auto range_map = makeRangeMatrix(indices, points);
     pcl::PointCloud<pcl::PointXYZ> cloud;
-    const auto range_map = makeRangeMatrix(input_points, range_min, range_max, Horizon_SCAN);
 
     int count = 0;
     for (int row_index = 0; row_index < N_SCAN; ++row_index) {
