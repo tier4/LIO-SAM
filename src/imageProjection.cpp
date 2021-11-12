@@ -392,7 +392,7 @@ public:
 
   pcl::PointCloud<PointXYZIRT> msgToPointCloud(
     const sensor_msgs::PointCloud2 cloud_msg,
-    const SensorType & sensor)
+    const SensorType & sensor) const
   {
     try {
       return convert(cloud_msg, sensor);
@@ -415,6 +415,18 @@ public:
 
     const pcl::PointCloud<PointXYZIRT> input_points = msgToPointCloud(cloud_msg, sensor);
 
+    const auto extractPoint = [](const PointXYZIRT & p) {return Eigen::Vector3d(p.x, p.y, p.z);};
+    const std::vector<Eigen::Vector3d> points =
+      input_points | ranges::views::transform(extractPoint) | ranges::to_vector;
+
+    const auto extractTime = [](const PointXYZIRT & p) {return p.time;};
+    const std::vector<float> times =
+      input_points | ranges::views::transform(extractTime) | ranges::to_vector;
+
+    const auto extractRing = [](const PointXYZIRT & p) {return p.ring;};
+    const std::vector<uint16_t> rings =
+      input_points | ranges::views::transform(extractRing) | ranges::to_vector;
+
     if (!input_points.is_dense) {
       ROS_ERROR("Point cloud is not in dense format, please remove NaN points first!");
       ros::shutdown();
@@ -431,7 +443,7 @@ public:
     }
 
     const double scan_start_time = timeInSec(cloud_msg.header);
-    const double scan_end_time = scan_start_time + input_points.back().time;
+    const double scan_end_time = scan_start_time + times.back();
 
     if (!scanTimesAreWithinImu(imu_buffer, scan_start_time, scan_end_time)) {
       return;
