@@ -127,7 +127,7 @@ Eigen::Vector3d interpolate3d(
   return v1 * (t - t0) / (t1 - t0) + v0 * (t1 - t) / (t1 - t0);
 }
 
-int findIndex(const std::vector<double> & imu_timestamps, const double point_time)
+int findIndexAfter(const std::vector<double> & imu_timestamps, const double point_time)
 {
   for (unsigned int i = 0; i < imu_timestamps.size() - 1; i++) {
     if (point_time < imu_timestamps[i]) {
@@ -257,7 +257,7 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
     };
 
   const auto rotation = [&](const double t) {
-      const int i = findIndex(timestamps, t);
+      const int i = findIndexAfter(timestamps, t);
       if (i == 0 || i == static_cast<int>(timestamps.size()) - 1) {
         return quaternions[i];
       }
