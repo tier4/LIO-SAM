@@ -525,13 +525,10 @@ public:
       return;
     }
 
-    lio_sam::cloud_info cloud_info;
     {
       std::lock_guard<std::mutex> lock1(imuLock);
       dropBefore(scan_start_time - 0.01, imu_buffer);
     }
-
-    cloud_info.imu_orientation = eigenToVector3(findImuOrientation(imu_buffer, scan_start_time));
 
     {
       std::lock_guard<std::mutex> lock2(odoLock);
@@ -541,6 +538,9 @@ public:
     const bool imu_odometry_available = imuOdometryAvailable(
       imu_odometry_queue_, scan_start_time, scan_end_time
     );
+
+    lio_sam::cloud_info cloud_info;
+    cloud_info.imu_orientation = eigenToVector3(findImuOrientation(imu_buffer, scan_start_time));
 
     Eigen::Vector3d translation_within_scan = Eigen::Vector3d::Zero();
     double translation_interval = 0.0;
