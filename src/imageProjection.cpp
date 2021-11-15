@@ -576,7 +576,7 @@ public:
 
     cloud_info.imu_orientation_available = imu_available;
 
-    std::vector<int> ring_start_indices(N_SCAN, 0);
+    std::vector<int> start_ring_indices(N_SCAN, 0);
     std::vector<int> end_ring_indices(N_SCAN, 0);
 
     std::vector<int> column_indices(N_SCAN * Horizon_SCAN, 0);
@@ -587,7 +587,7 @@ public:
 
     int count = 0;
     for (int row_index = 0; row_index < N_SCAN; ++row_index) {
-      ring_start_indices[row_index] = count + 5;
+      start_ring_indices[row_index] = count + 5;
 
       for (int column_index = 0; column_index < Horizon_SCAN; ++column_index) {
         const int index = column_index + row_index * Horizon_SCAN;
@@ -658,7 +658,7 @@ public:
     for (int i = 0; i < N_SCAN; i++) {
       pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan(new pcl::PointCloud<pcl::PointXYZ>());
 
-      const IndexRange index_range(ring_start_indices[i], end_ring_indices[i], N_BLOCKS);
+      const IndexRange index_range(start_ring_indices[i], end_ring_indices[i], N_BLOCKS);
       for (int j = 0; j < N_BLOCKS; j++) {
         const int sp = index_range.begin(j);
         const int ep = index_range.end(j);
