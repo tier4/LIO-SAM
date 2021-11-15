@@ -617,19 +617,17 @@ public:
 
     // mark occluded points and parallel beam points
     for (unsigned int i = 5; i < cloud.size() - 6; ++i) {
-      // const auto p = points->at(i);
-      // assert(abs(range[i] - Eigen::Vector3d(p.x, p.y, p.z).norm()) < 1e-4);
-      // occluded points
-      const int d = std::abs(int(column_indices[i + 1] - column_indices[i]));
+      if (std::abs(column_indices[i + 1] - column_indices[i]) >= 10) {
+        continue;
+      }
 
-      // 10 pixel diff in range image
-      if (d < 10 && range[i] - range[i + 1] > 0.3) {
+      if (range[i] > range[i + 1] + 0.3) {
         for (int j = 0; j <= 5; j++) {
           mask[i - j] = true;
         }
       }
 
-      if (d < 10 && range[i + 1] - range[i] > 0.3) {
+      if (range[i + 1] > range[i] + 0.3) {
         for (int j = 1; j <= 6; j++) {
           mask[i + j] = true;
         }
