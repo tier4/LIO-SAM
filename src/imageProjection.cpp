@@ -181,7 +181,7 @@ std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> getInceremental
 }
 
 std::tuple<std::vector<int>, std::vector<double>, std::vector<Eigen::Vector3d>>
-extranctElements(
+extractElements(
   const pcl::PointCloud<PointXYZIRT> & input_points,
   const float range_min, const float range_max,
   const int Horizon_SCAN)
@@ -562,7 +562,7 @@ public:
     );
     const bool imu_available = imu_timestamps.size() > 1;
 
-    const auto [indices, times, points] = extranctElements(
+    const auto [indices, times, points] = extractElements(
       input_points, range_min, range_max, Horizon_SCAN
     );
     std::unordered_map<int, pcl::PointXYZ> output_points;
