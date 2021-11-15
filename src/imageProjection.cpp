@@ -350,22 +350,22 @@ enum class CurvatureLabel
 void neighborPicked(
   const std::vector<int> & column_indices,
   const int index,
-  std::vector<bool> & neighbor_picked)
+  std::vector<bool> & mask)
 {
-  neighbor_picked[index] = true;
+  mask[index] = true;
   for (int l = 1; l <= 5; l++) {
     const int d = std::abs(int(column_indices[index + l] - column_indices[index + l - 1]));
     if (d > 10) {
       break;
     }
-    neighbor_picked[index + l] = true;
+    mask[index + l] = true;
   }
   for (int l = -1; l >= -5; l--) {
     const int d = std::abs(int(column_indices[index + l] - column_indices[index + l + 1]));
     if (d > 10) {
       break;
     }
-    neighbor_picked[index + l] = true;
+    mask[index + l] = true;
   }
 }
 
@@ -609,10 +609,10 @@ public:
     pubExtractedCloud.publish(cloud_deskewed);
 
     // used to prevent from labeling a neighbor as surface or edge
-    std::vector<bool> neighbor_picked(N_SCAN * Horizon_SCAN);
+    std::vector<bool> mask(N_SCAN * Horizon_SCAN);
 
     for (unsigned int i = 5; i < cloud.size() - 5; i++) {
-      neighbor_picked[i] = false;
+      mask[i] = false;
     }
 
     // mark occluded points and parallel beam points
@@ -625,13 +625,13 @@ public:
       // 10 pixel diff in range image
       if (d < 10 && range[i] - range[i + 1] > 0.3) {
         for (int j = 0; j <= 5; j++) {
-          neighbor_picked[i - j] = true;
+          mask[i - j] = true;
         }
       }
 
       if (d < 10 && range[i + 1] - range[i] > 0.3) {
         for (int j = 1; j <= 6; j++) {
-          neighbor_picked[i + j] = true;
+          mask[i + j] = true;
         }
       }
     }
@@ -642,7 +642,7 @@ public:
       const float ratio2 = std::abs(range[i + 1] - range[i]) / range[i];
 
       if (ratio1 > 0.02 && ratio2 > 0.02) {
-        neighbor_picked[i] = true;
+        mask[i] = true;
       }
     }
 
@@ -667,7 +667,7 @@ public:
         int n_picked = 0;
         for (int k = ep; k >= sp; k--) {
           const int index = inds[k];
-          if (neighbor_picked[index] || curvature[index] <= edgeThreshold) {
+          if (mask[index] || curvature[index] <= edgeThreshold) {
             continue;
           }
 
@@ -680,18 +680,18 @@ public:
           edge->push_back(cloud.at(index));
           label[index] = CurvatureLabel::Edge;
 
-          neighborPicked(column_indices, index, neighbor_picked);
+          neighborPicked(column_indices, index, mask);
         }
 
         for (int k = sp; k <= ep; k++) {
           const int index = inds[k];
-          if (neighbor_picked[index] || curvature[index] >= surfThreshold) {
+          if (mask[index] || curvature[index] >= surfThreshold) {
             continue;
           }
 
           label[index] = CurvatureLabel::Surface;
 
-          neighborPicked(column_indices, index, neighbor_picked);
+          neighborPicked(column_indices, index, mask);
         }
 
         for (int k = sp; k <= ep; k++) {
