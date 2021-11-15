@@ -145,7 +145,7 @@ int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
   return static_cast<int>(u);
 }
 
-std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> imuIncrementalOdometry(
+std::tuple<std::vector<double>, std::vector<Eigen::Quaterniond>> getIncerementalRotations(
   const double scan_start_time,
   const double scan_end_time,
   const std::deque<sensor_msgs::Imu> & imu_buffer)
@@ -557,7 +557,7 @@ public:
     }
     cloud_info.imu_odometry_available = imu_odometry_available;
 
-    const auto [imu_timestamps, quaternions] = imuIncrementalOdometry(
+    const auto [imu_timestamps, quaternions] = getIncerementalRotations(
       scan_start_time, scan_end_time, imu_buffer
     );
     const bool imu_available = imu_timestamps.size() > 1;
