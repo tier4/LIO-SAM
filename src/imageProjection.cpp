@@ -230,18 +230,18 @@ std::unordered_map<int, double> makeRangeMatrix(
   return range_map;
 }
 
-std::unordered_map<int, pcl::PointXYZ> projectWithoutImu(
+std::unordered_map<int, Eigen::Vector3d> projectWithoutImu(
   const std::vector<int> & indices,
   const std::vector<Eigen::Vector3d> points)
 {
-  std::unordered_map<int, pcl::PointXYZ> output_points;
+  std::unordered_map<int, Eigen::Vector3d> output_points;
   for (const auto & [index, q] : ranges::views::zip(indices, points)) {
-    output_points[index] = makePointXYZ(q);
+    output_points[index] = q;
   }
   return output_points;
 }
 
-std::unordered_map<int, pcl::PointXYZ> projectWithImu(
+std::unordered_map<int, Eigen::Vector3d> projectWithImu(
   const std::vector<int> & indices,
   const std::vector<double> times,
   const std::vector<Eigen::Vector3d> points,
@@ -265,7 +265,7 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
     };
 
   std::optional<Eigen::Affine3d> start_inverse = std::nullopt;
-  std::unordered_map<int, pcl::PointXYZ> output_points;
+  std::unordered_map<int, Eigen::Vector3d> output_points;
   for (const auto & [index, q, time] : ranges::views::zip(indices, points, times)) {
     const Eigen::Affine3d transform = makeAffine(rotation(time), translation(time));
 
@@ -273,7 +273,7 @@ std::unordered_map<int, pcl::PointXYZ> projectWithImu(
       start_inverse = transform.inverse();
     }
 
-    output_points[index] = makePointXYZ((start_inverse.value() * transform) * q);
+    output_points[index] = (start_inverse.value() * transform) * q;
   }
 
   return output_points;
@@ -565,7 +565,7 @@ public:
     const auto [indices, times, points] = extractElements(
       input_points, range_min, range_max, Horizon_SCAN
     );
-    std::unordered_map<int, pcl::PointXYZ> output_points;
+    std::unordered_map<int, Eigen::Vector3d> output_points;
     if (imu_available && imu_odometry_available) {
       output_points = projectWithImu(
         indices, times, points, imu_timestamps, quaternions,
@@ -597,7 +597,7 @@ public:
 
         column_indices[count] = column_index;
         range[count] = range_map.at(index);
-        cloud.push_back(output_points[index]);
+        cloud.push_back(makePointXYZ(output_points[index]));
         count += 1;
       }
 
