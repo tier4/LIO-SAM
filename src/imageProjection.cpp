@@ -354,15 +354,13 @@ void neighborPicked(
 {
   mask[index] = true;
   for (int l = 1; l <= 5; l++) {
-    const int d = std::abs(int(column_indices[index + l] - column_indices[index + l - 1]));
-    if (d > 10) {
+    if (std::abs(column_indices[index + l] - column_indices[index + l - 1]) > 10) {
       break;
     }
     mask[index + l] = true;
   }
   for (int l = -1; l >= -5; l--) {
-    const int d = std::abs(int(column_indices[index + l] - column_indices[index + l + 1]));
-    if (d > 10) {
+    if (std::abs(column_indices[index + l] - column_indices[index + l + 1]) > 10) {
       break;
     }
     mask[index + l] = true;
