@@ -591,7 +591,7 @@ public:
 
       for (int column_index = 0; column_index < Horizon_SCAN; ++column_index) {
         const int index = column_index + row_index * Horizon_SCAN;
-        if (range_map.find(index) == range_map.end()) {
+        if (output_points.find(index) == output_points.end()) {
           continue;
         }
 
