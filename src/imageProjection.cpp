@@ -347,6 +347,11 @@ enum class CurvatureLabel
   Surface = -1
 };
 
+bool isNeighbor(const std::vector<int> & column_indices, const int index1, const int index2)
+{
+  return std::abs(column_indices[index1] - column_indices[index2]) <= 10;
+}
+
 void neighborPicked(
   const std::vector<int> & column_indices,
   const int index,
@@ -354,13 +359,13 @@ void neighborPicked(
 {
   mask[index] = true;
   for (int l = 1; l <= 5; l++) {
-    if (std::abs(column_indices[index + l] - column_indices[index + l - 1]) > 10) {
+    if (!isNeighbor(column_indices, index + l, index + l - 1)) {
       break;
     }
     mask[index + l] = true;
   }
   for (int l = -1; l >= -5; l--) {
-    if (std::abs(column_indices[index + l] - column_indices[index + l + 1]) > 10) {
+    if (!isNeighbor(column_indices, index + l, index + l + 1)) {
       break;
     }
     mask[index + l] = true;
@@ -615,7 +620,7 @@ public:
 
     // mark occluded points and parallel beam points
     for (unsigned int i = 5; i < cloud.size() - 6; ++i) {
-      if (std::abs(column_indices[i + 1] - column_indices[i]) >= 10) {
+      if (!isNeighbor(column_indices, i + 1, i)) {
         continue;
       }
 
