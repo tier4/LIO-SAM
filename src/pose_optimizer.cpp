@@ -9,6 +9,13 @@ Eigen::VectorXd solveLinear(const Eigen::MatrixXd & A, const Eigen::VectorXd & b
   return A.householderQr().solve(b);
 }
 
+bool checkConvergence(const Vector6d & dx)
+{
+  const float dr = rad2deg(dx.head(3)).norm();
+  const float dt = (100 * dx.tail(3)).norm();
+  return dr < 0.05 && dt < 0.05;
+}
+
 bool LMOptimization(
   const std::vector<Eigen::Vector3d> & points,
   const std::vector<Eigen::Vector3d> & coeffs,
@@ -73,13 +80,7 @@ bool LMOptimization(
     posevec += dx;
   }
 
-  const float dr = rad2deg(dx.head(3)).norm();
-  const float dt = (100 * dx.tail(3)).norm();
-
-  if (dr < 0.05 && dt < 0.05) {
-    return true; // converged
-  }
-  return false; // keep optimizing
+  return checkConvergence(dx);
 }
 
 std::tuple<Vector6d, bool> optimizePose(
