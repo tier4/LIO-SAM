@@ -16,6 +16,40 @@ bool checkConvergence(const Vector6d & dx)
   return dr < 0.05 && dt < 0.05;
 }
 
+Eigen::MatrixXd makeMatrixA(
+  const std::vector<Eigen::Vector3d> & points,
+  const std::vector<Eigen::Vector3d> & coeffs,
+  const Eigen::Vector3d & rpy)
+{
+  Eigen::MatrixXd A(points.size(), 6);
+  for (unsigned int i = 0; i < points.size(); i++) {
+    // in camera
+
+    const Eigen::Vector3d p = points.at(i);
+    const Eigen::Vector3d c = coeffs.at(i);
+    const Eigen::Vector3d point_ori(p(1), p(2), p(0));
+    const Eigen::Vector3d coeff_vec(c(1), c(2), c(0));
+
+    const Eigen::Matrix3d MX = dRdx(rpy(0), rpy(2), rpy(1));
+    const float arx = (MX * point_ori).dot(coeff_vec);
+
+    const Eigen::Matrix3d MY = dRdy(rpy(0), rpy(2), rpy(1));
+    const float ary = (MY * point_ori).dot(coeff_vec);
+
+    const Eigen::Matrix3d MZ = dRdz(rpy(0), rpy(2), rpy(1));
+    const float arz = (MZ * point_ori).dot(coeff_vec);
+
+    // lidar -> camera
+    A(i, 0) = arz;
+    A(i, 1) = arx;
+    A(i, 2) = ary;
+    A(i, 3) = c(0);
+    A(i, 4) = c(1);
+    A(i, 5) = c(2);
+  }
+  return A;
+}
+
 bool LMOptimization(
   const std::vector<Eigen::Vector3d> & points,
   const std::vector<Eigen::Vector3d> & coeffs,
@@ -37,32 +71,7 @@ bool LMOptimization(
     return false;
   }
 
-  Eigen::MatrixXd A(points.size(), 6);
-  for (unsigned int i = 0; i < points.size(); i++) {
-    // in camera
-
-    const Eigen::Vector3d p = points.at(i);
-    const Eigen::Vector3d c = coeffs.at(i);
-    const Eigen::Vector3d point_ori(p(1), p(2), p(0));
-    const Eigen::Vector3d coeff_vec(c(1), c(2), c(0));
-
-    const Eigen::Matrix3d MX = dRdx(posevec(0), posevec(2), posevec(1));
-    const float arx = (MX * point_ori).dot(coeff_vec);
-
-    const Eigen::Matrix3d MY = dRdy(posevec(0), posevec(2), posevec(1));
-    const float ary = (MY * point_ori).dot(coeff_vec);
-
-    const Eigen::Matrix3d MZ = dRdz(posevec(0), posevec(2), posevec(1));
-    const float arz = (MZ * point_ori).dot(coeff_vec);
-
-    // lidar -> camera
-    A(i, 0) = arz;
-    A(i, 1) = arx;
-    A(i, 2) = ary;
-    A(i, 3) = c(0);
-    A(i, 4) = c(1);
-    A(i, 5) = c(2);
-  }
+  Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
 
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::VectorXd AtB = A.transpose() * b;
