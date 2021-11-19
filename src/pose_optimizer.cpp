@@ -67,11 +67,8 @@ bool LMOptimization(
   // yaw = pitch          ---     yaw = roll
 
   // lidar -> camera
-  if (points.size() < 50) {
-    return false;
-  }
 
-  Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
+  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
 
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::VectorXd AtB = A.transpose() * b;
@@ -101,6 +98,10 @@ std::tuple<Vector6d, bool> optimizePose(
   bool is_degenerate = false;
   for (int iter = 0; iter < 30; iter++) {
     const auto [points, coeffs, b_vector] = cloud_optimizer.run(posevec);
+    if (points.size() < 50) {
+      continue;
+    }
+
     const Eigen::Map<const Eigen::VectorXd> b(b_vector.data(), b_vector.size());
     if (LMOptimization(points, coeffs, b, iter, is_degenerate, posevec)) {
       break;
