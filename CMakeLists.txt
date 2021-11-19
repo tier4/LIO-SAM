@@ -81,7 +81,7 @@ add_library(util SHARED
 )
 
 target_compile_options(util PRIVATE ${OpenMP_CXX_FLAGS})
-target_link_libraries(util ${catkin_LIBRARIES} gtsam fmt::fmt)
+target_link_libraries(util ${catkin_LIBRARIES} gtsam fmt::fmt range-v3)
 
 ###########
 ## Build ##

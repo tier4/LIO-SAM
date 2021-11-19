@@ -2,6 +2,8 @@
 #include "homogeneous.h"
 #include "utility.hpp"
 
+#include <range/v3/all.hpp>
+
 bool validatePlane(
   const Eigen::Matrix<double, 5, 3> & A,
   const Eigen::Vector3d & x)
@@ -48,16 +50,18 @@ CloudOptimizer::run(const Vector6d & posevec) const
       continue;
     }
 
+    const auto f = [&](int i) {return getXYZ(edge_map_->at(i));};
+    const std::vector<Eigen::Vector3d> neighbors =
+      indices | ranges::views::transform(f) | ranges::to_vector;
+
     Eigen::Vector3d c = Eigen::Vector3d::Zero();
-    for (int j = 0; j < 5; j++) {
-      c += getXYZ(edge_map_->at(indices[j]));
+    for (const Eigen::Vector3d & x : neighbors) {
+      c += x;
     }
     c /= 5.0;
 
     Eigen::Matrix3d sa = Eigen::Matrix3d::Zero();
-
-    for (int j = 0; j < 5; j++) {
-      const Eigen::Vector3d x = getXYZ(edge_map_->at(indices[j]));
+    for (const Eigen::Vector3d & x : neighbors) {
       const Eigen::Vector3d a = x - c;
       sa += a * a.transpose();
     }
