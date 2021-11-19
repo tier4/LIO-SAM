@@ -34,7 +34,6 @@ std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vect
 CloudOptimizer::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
-  std::vector<Eigen::Vector3d> edge_points(edge_->size());
   std::vector<Eigen::Vector3d> edge_coeffs(edge_->size());
   std::vector<double> edge_coeffs_b(edge_->size());
   std::vector<bool> edge_flags(edge_->size(), false);
@@ -42,8 +41,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
   // edge optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_->size(); i++) {
-    const pcl::PointXYZ point = edge_->at(i);
-    const pcl::PointXYZ map_point = transform(point_to_map, point);
+    const pcl::PointXYZ map_point = transform(point_to_map, edge_->at(i));
     const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {
@@ -113,13 +111,11 @@ CloudOptimizer::run(const Vector6d & posevec) const
     }
 
     const double s = 1 - 0.9 * k;
-    edge_points[i] = getXYZ(point);
     edge_coeffs[i] = (s / (l12 * a012)) * v;
     edge_coeffs_b[i] = -(s / l12) * a012;
     edge_flags[i] = true;
   }
 
-  std::vector<Eigen::Vector3d> surface_points(surface_->size());
   std::vector<Eigen::Vector3d> surface_coeffs(surface_->size());
   std::vector<double> surface_coeffs_b(surface_->size());
   std::vector<bool> surface_flags(surface_->size(), false);
@@ -127,8 +123,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < surface_->size(); i++) {
-    const pcl::PointXYZ point = surface_->at(i);
-    const pcl::PointXYZ map_point = transform(point_to_map, point);
+    const pcl::PointXYZ map_point = transform(point_to_map, surface_->at(i));
     const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(map_point, 5);
 
     if (squared_distances[4] >= 1.0) {
@@ -154,7 +149,6 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
     const double s = 1 - 0.9 * k;
 
-    surface_points[i] = getXYZ(point);
     surface_coeffs[i] = (s / x.norm()) * x;
     surface_coeffs_b[i] = -(s / x.norm()) * pd2;
     surface_flags[i] = true;
@@ -166,14 +160,14 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
   for (unsigned int i = 0; i < edge_->size(); ++i) {
     if (edge_flags[i]) {
-      points.push_back(edge_points[i]);
+      points.push_back(getXYZ(edge_->at(i)));
       coeffs.push_back(edge_coeffs[i]);
       b.push_back(edge_coeffs_b[i]);
     }
   }
   for (unsigned int i = 0; i < surface_->size(); ++i) {
     if (surface_flags[i]) {
-      points.push_back(surface_points[i]);
+      points.push_back(getXYZ(surface_->at(i)));
       coeffs.push_back(surface_coeffs[i]);
       b.push_back(surface_coeffs_b[i]);
     }
