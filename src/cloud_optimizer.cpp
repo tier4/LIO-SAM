@@ -32,6 +32,8 @@ Eigen::Matrix<double, 5, 3> makeMatrixA(
   return A;
 }
 
+const int n_neighbors = 5;
+
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
@@ -44,31 +46,21 @@ CloudOptimizer::run(const Vector6d & posevec) const
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_->size(); i++) {
     const pcl::PointXYZ map_point = transform(point_to_map, edge_->at(i));
-    const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(map_point, 5);
+    const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(map_point, n_neighbors);
 
-    if (squared_distances[4] >= 1.0) {
+    if (squared_distances.back() >= 1.0) {
       continue;
     }
 
-    const auto f = [&](int i) {return getXYZ(edge_map_->at(i));};
-    const std::vector<Eigen::Vector3d> neighbors =
-      indices | ranges::views::transform(f) | ranges::to_vector;
-
-    Eigen::Vector3d c = Eigen::Vector3d::Zero();
-    for (const Eigen::Vector3d & x : neighbors) {
-      c += x;
-    }
-    c /= 5.0;
-
-    Eigen::Matrix3d sa = Eigen::Matrix3d::Zero();
-    for (const Eigen::Vector3d & x : neighbors) {
-      const Eigen::Vector3d a = x - c;
-      sa += a * a.transpose();
+    Eigen::Matrix<double, 3, n_neighbors> neighbors;
+    for (int j = 0; j < n_neighbors; j++) {
+      neighbors.col(j) = getXYZ(edge_map_->at(indices[j]));
     }
 
-    sa = sa / 5.0;
-
-    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(sa);
+    const Eigen::Vector3d c = neighbors.rowwise().mean();
+    const Eigen::Matrix<double, 3, n_neighbors> D = neighbors.colwise() - c;
+    const Eigen::Matrix3d DtD = D * D.transpose() / n_neighbors;
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(DtD);
     const Eigen::Vector3d d1 = solver.eigenvalues();
     const Eigen::Matrix3d v1 = solver.eigenvectors();
 
