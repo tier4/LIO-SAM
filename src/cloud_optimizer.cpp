@@ -56,8 +56,8 @@ CloudOptimizer::run(const Vector6d & posevec) const
   // edge optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_->size(); i++) {
-    const pcl::PointXYZ map_point = transform(point_to_map, edge_->at(i));
-    const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(map_point, n_neighbors);
+    const pcl::PointXYZ p = transform(point_to_map, edge_->at(i));
+    const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(p, n_neighbors);
 
     if (squared_distances.back() >= 1.0) {
       continue;
@@ -74,7 +74,7 @@ CloudOptimizer::run(const Vector6d & posevec) const
     if (d1(0) <= 3 * d1(1)) {
       continue;
     }
-    const Eigen::Vector3d p0 = getXYZ(map_point);
+    const Eigen::Vector3d p0 = getXYZ(p);
     const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
     const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
 
@@ -126,8 +126,8 @@ CloudOptimizer::run(const Vector6d & posevec) const
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < surface_->size(); i++) {
-    const pcl::PointXYZ map_point = transform(point_to_map, surface_->at(i));
-    const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(map_point, 5);
+    const pcl::PointXYZ p = transform(point_to_map, surface_->at(i));
+    const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(p, 5);
 
     if (squared_distances[4] >= 1.0) {
       continue;
@@ -142,9 +142,9 @@ CloudOptimizer::run(const Vector6d & posevec) const
     }
 
     const Eigen::Vector4d y = toHomogeneous(x);
-    const Eigen::Vector4d q = toHomogeneous(getXYZ(map_point));
+    const Eigen::Vector4d q = toHomogeneous(getXYZ(p));
     const double pd2 = y.dot(q);
-    const double k = fabs(pd2 / x.norm()) / sqrt(getXYZ(map_point).norm());
+    const double k = fabs(pd2 / x.norm()) / sqrt(getXYZ(p).norm());
 
     if (k >= 1.0) {
       continue;
