@@ -45,6 +45,13 @@ Eigen::MatrixXd get(
   return A;
 }
 
+Eigen::MatrixXd calcCovariance(const Eigen::MatrixXd & X)
+{
+  const Eigen::Vector3d c = X.rowwise().mean();
+  const Eigen::MatrixXd D = X.colwise() - c;
+  return D * D.transpose() / X.cols();
+}
+
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
@@ -64,16 +71,15 @@ CloudOptimizer::run(const Vector6d & posevec) const
     }
 
     const Eigen::MatrixXd neighbors = get(edge_map_, indices);
-    const Eigen::Vector3d c = neighbors.rowwise().mean();
-    const Eigen::MatrixXd D = neighbors.colwise() - c;
-    const Eigen::Matrix3d DtD = D * D.transpose() / n_neighbors;
-    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(DtD);
+    const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(calcCovariance(neighbors));
     const Eigen::Vector3d d1 = solver.eigenvalues();
     const Eigen::Matrix3d v1 = solver.eigenvectors();
 
     if (d1(0) <= 3 * d1(1)) {
       continue;
     }
+
+    const Eigen::Vector3d c = neighbors.rowwise().mean();
     const Eigen::Vector3d p0 = getXYZ(p);
     const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
     const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
