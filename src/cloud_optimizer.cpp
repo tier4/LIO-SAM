@@ -81,8 +81,8 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
     const Eigen::Vector3d c = neighbors.rowwise().mean();
     const Eigen::Vector3d p0 = getXYZ(p);
-    const Eigen::Vector3d p1 = c + 0.1 * v1.row(0).transpose();
-    const Eigen::Vector3d p2 = c - 0.1 * v1.row(0).transpose();
+    const Eigen::Vector3d p1 = c + 0.1 * v1.col(0);
+    const Eigen::Vector3d p2 = c - 0.1 * v1.col(0);
 
     const Eigen::Vector3d d01 = p0 - p1;
     const Eigen::Vector3d d02 = p0 - p2;
