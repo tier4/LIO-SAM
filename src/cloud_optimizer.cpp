@@ -34,6 +34,17 @@ Eigen::Matrix<double, 5, 3> makeMatrixA(
 
 const int n_neighbors = 5;
 
+Eigen::MatrixXd get(
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
+  const std::vector<int> & indices)
+{
+  Eigen::MatrixXd A(3, indices.size());
+  for (const auto & [j, index] : ranges::views::enumerate(indices)) {
+    A.col(j) = getXYZ(pointcloud->at(index));
+  }
+  return A;
+}
+
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
@@ -52,13 +63,9 @@ CloudOptimizer::run(const Vector6d & posevec) const
       continue;
     }
 
-    Eigen::Matrix<double, 3, n_neighbors> neighbors;
-    for (int j = 0; j < n_neighbors; j++) {
-      neighbors.col(j) = getXYZ(edge_map_->at(indices[j]));
-    }
-
+    const Eigen::MatrixXd neighbors = get(edge_map_, indices);
     const Eigen::Vector3d c = neighbors.rowwise().mean();
-    const Eigen::Matrix<double, 3, n_neighbors> D = neighbors.colwise() - c;
+    const Eigen::MatrixXd D = neighbors.colwise() - c;
     const Eigen::Matrix3d DtD = D * D.transpose() / n_neighbors;
     const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(DtD);
     const Eigen::Vector3d d1 = solver.eigenvalues();
