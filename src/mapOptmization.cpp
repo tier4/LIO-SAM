@@ -150,7 +150,7 @@ Vector6d makePosevec(const StampedPose & p)
 }
 
 pcl::PointCloud<pcl::PointXYZ> transform(
-  const pcl::PointCloud<pcl::PointXYZ> & input, const Vector6d & posevec,
+  const Vector6d & posevec, const pcl::PointCloud<pcl::PointXYZ> & input,
   const int n_cores = 2)
 {
   pcl::PointCloud<pcl::PointXYZ> output;
@@ -257,7 +257,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr mapFusion(
 
   for (const int index : indices) {
     const Vector6d v = makePosevec(poses6dof.at(index));
-    *fused += transform(*cloud[index], v);
+    *fused += transform(v, *cloud[index]);
   }
 
   return fused;
@@ -453,7 +453,7 @@ public:
 
     // publish key poses
     pubKeyPoses.publish(toRosMsg(*positions, timestamp, odometryFrame));
-    const auto output = transform(*edge, posevec) + transform(*surface, posevec);
+    const auto output = transform(posevec, *edge) + transform(posevec, *surface);
     pubRecentKeyFrame.publish(toRosMsg(output, timestamp, odometryFrame));
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
