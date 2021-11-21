@@ -72,17 +72,17 @@ CloudOptimizer::run(const Vector6d & posevec) const
 
     const Eigen::MatrixXd neighbors = get(edge_map_, indices);
     const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(calcCovariance(neighbors));
-    const Eigen::Vector3d d1 = solver.eigenvalues();
-    const Eigen::Matrix3d v1 = solver.eigenvectors();
+    const Eigen::Vector3d eigenvalues = solver.eigenvalues();
+    const Eigen::Vector3d eigenvector = solver.eigenvectors().col(0);
 
-    if (d1(0) <= 3 * d1(1)) {
+    if (eigenvalues(0) <= 3 * eigenvalues(1)) {
       continue;
     }
 
     const Eigen::Vector3d c = neighbors.rowwise().mean();
     const Eigen::Vector3d p0 = getXYZ(p);
-    const Eigen::Vector3d p1 = c + 0.1 * v1.col(0);
-    const Eigen::Vector3d p2 = c - 0.1 * v1.col(0);
+    const Eigen::Vector3d p1 = c + 0.1 * eigenvector;
+    const Eigen::Vector3d p2 = c - 0.1 * eigenvector;
 
     const Eigen::Vector3d d01 = p0 - p1;
     const Eigen::Vector3d d02 = p0 - p2;
