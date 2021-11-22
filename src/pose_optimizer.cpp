@@ -83,12 +83,13 @@ Eigen::VectorXd calcUpdate(
 // pitch = roll         ---     pitch = yaw
 // yaw = pitch          ---     yaw = roll
 
-
 std::tuple<Vector6d, bool> optimizePose(
   const CloudOptimizer & cloud_optimizer,
   const Vector6d & initial_posevec)
 {
-  const bool is_degenerate = isDegenerate(cloud_optimizer, initial_posevec);
+  if (isDegenerate(cloud_optimizer, initial_posevec)) {
+    return {initial_posevec, true};
+  }
 
   Vector6d posevec = initial_posevec;
   for (int iter = 0; iter < 30; iter++) {
@@ -100,13 +101,11 @@ std::tuple<Vector6d, bool> optimizePose(
     const Eigen::Map<const Eigen::VectorXd> b(b_vector.data(), b_vector.size());
     const Eigen::VectorXd dx = calcUpdate(points, coeffs, b, posevec.head(3));
 
-    if (!is_degenerate) {
-      posevec += dx;
-    }
+    posevec += dx;
 
     if (checkConvergence(dx)) {
       break;
     }
   }
-  return {posevec, is_degenerate};
+  return {posevec, false};
 }
