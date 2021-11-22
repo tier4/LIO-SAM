@@ -2,7 +2,6 @@
 #define _UTILITY_LIDAR_ODOMETRY_H_
 
 #include "matrix_type.h"
-#include "point_type.hpp"
 
 #include <ros/ros.h>
 
@@ -84,8 +83,6 @@ inline Eigen::Vector3d vector3ToEigen(const geometry_msgs::Vector3 & p)
 {
   return Eigen::Vector3d(p.x, p.y, p.z);
 }
-
-PointType makePoint(const Eigen::Vector3d & point, const float intensity = 0.0);
 
 nav_msgs::Odometry makeOdometry(
   const ros::Time & timestamp,
@@ -177,11 +174,6 @@ inline tf::Transform identityTransform()
 }
 
 inline Eigen::Vector3d getXYZ(const pcl::PointXYZ & point)
-{
-  return Eigen::Vector3d(point.x, point.y, point.z);
-}
-
-inline Eigen::Vector3d getXYZ(const PointType & point)
 {
   return Eigen::Vector3d(point.x, point.y, point.z);
 }

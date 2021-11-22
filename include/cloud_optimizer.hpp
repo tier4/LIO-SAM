@@ -6,7 +6,6 @@
 #include <fmt/format.h>
 #include <pcl/point_cloud.h>
 
-#include "point_type.hpp"
 #include "matrix_type.h"
 #include "kdtree.hpp"
 

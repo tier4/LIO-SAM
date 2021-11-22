@@ -3,7 +3,6 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/filters/voxel_grid.h>
-#include "point_type.hpp"
 
 template<typename T>
 typename pcl::PointCloud<T>::Ptr downsample(
