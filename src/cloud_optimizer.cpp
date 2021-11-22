@@ -70,9 +70,9 @@ bool checkConvergence(const Vector6d & dx)
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
 CloudOptimizer::fromEdge(const Eigen::Affine3d & point_to_map) const
 {
-  std::vector<Eigen::Vector3d> edge_coeffs(edge_->size());
-  std::vector<double> edge_coeffs_b(edge_->size());
-  std::vector<bool> edge_flags(edge_->size(), false);
+  std::vector<Eigen::Vector3d> coeffs(edge_->size());
+  std::vector<double> b(edge_->size());
+  std::vector<bool> flags(edge_->size(), false);
 
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_->size(); i++) {
@@ -112,19 +112,19 @@ CloudOptimizer::fromEdge(const Eigen::Affine3d & point_to_map) const
     }
 
     const double s = 1 - 0.9 * k;
-    edge_coeffs[i] = (s / (l12 * a012)) * v;
-    edge_coeffs_b[i] = -(s / l12) * a012;
-    edge_flags[i] = true;
+    coeffs[i] = (s / (l12 * a012)) * v;
+    b[i] = -(s / l12) * a012;
+    flags[i] = true;
   }
-  return {edge_coeffs, edge_coeffs_b, edge_flags};
+  return {coeffs, b, flags};
 }
 
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
 CloudOptimizer::fromSurface(const Eigen::Affine3d & point_to_map) const
 {
-  std::vector<Eigen::Vector3d> surface_coeffs(surface_->size());
-  std::vector<double> surface_coeffs_b(surface_->size());
-  std::vector<bool> surface_flags(surface_->size(), false);
+  std::vector<Eigen::Vector3d> coeffs(surface_->size());
+  std::vector<double> b(surface_->size());
+  std::vector<bool> flags(surface_->size(), false);
 
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
@@ -136,9 +136,9 @@ CloudOptimizer::fromSurface(const Eigen::Affine3d & point_to_map) const
       continue;
     }
 
-    const Eigen::Matrix<double, 5, 1> b = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
+    const Eigen::Matrix<double, 5, 1> g = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
     const Eigen::Matrix<double, 5, 3> A = makeMatrixA(surface_map_, indices);
-    const Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
+    const Eigen::Vector3d x = A.colPivHouseholderQr().solve(g);
 
     if (!validatePlane(A, x)) {
       continue;
@@ -155,11 +155,11 @@ CloudOptimizer::fromSurface(const Eigen::Affine3d & point_to_map) const
 
     const double s = 1 - 0.9 * k;
 
-    surface_coeffs[i] = (s / x.norm()) * x;
-    surface_coeffs_b[i] = -(s / x.norm()) * pd2;
-    surface_flags[i] = true;
+    coeffs[i] = (s / x.norm()) * x;
+    b[i] = -(s / x.norm()) * pd2;
+    flags[i] = true;
   }
-  return {surface_coeffs, surface_coeffs_b, surface_flags};
+  return {coeffs, b, flags};
 }
 
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
