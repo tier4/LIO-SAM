@@ -60,37 +60,29 @@ bool isDegenerate(const CloudOptimizer & cloud_optimizer, const Vector6d & posev
   return (eigenvalues.array() < 100.0).any();
 }
 
-bool LMOptimization(
+Eigen::VectorXd calcUpdate(
   const std::vector<Eigen::Vector3d> & points,
   const std::vector<Eigen::Vector3d> & coeffs,
   const Eigen::VectorXd & b,
-  const int iter, const bool & is_degenerate, Vector6d & posevec)
+  const Eigen::Vector3d & rpy)
 {
-  // This optimization is from the original loam_velodyne by Ji Zhang,
-  // need to cope with coordinate transformation
-  // lidar <- camera      ---     camera <- lidar
-  // x = z                ---     x = y
-  // y = x                ---     y = z
-  // z = y                ---     z = x
-  // roll = yaw           ---     roll = pitch
-  // pitch = roll         ---     pitch = yaw
-  // yaw = pitch          ---     yaw = roll
-
-  // lidar -> camera
-
-  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
+  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, rpy);
 
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::VectorXd AtB = A.transpose() * b;
-
-  const Eigen::VectorXd dx = solveLinear(AtA, AtB);
-
-  if (!is_degenerate) {
-    posevec += dx;
-  }
-
-  return checkConvergence(dx);
+  return solveLinear(AtA, AtB);
 }
+
+// This optimization is from the original loam_velodyne by Ji Zhang,
+// need to cope with coordinate transformation
+// lidar <- camera      ---     camera <- lidar
+// x = z                ---     x = y
+// y = x                ---     y = z
+// z = y                ---     z = x
+// roll = yaw           ---     roll = pitch
+// pitch = roll         ---     pitch = yaw
+// yaw = pitch          ---     yaw = roll
+
 
 std::tuple<Vector6d, bool> optimizePose(
   const CloudOptimizer & cloud_optimizer,
@@ -106,7 +98,13 @@ std::tuple<Vector6d, bool> optimizePose(
     }
 
     const Eigen::Map<const Eigen::VectorXd> b(b_vector.data(), b_vector.size());
-    if (LMOptimization(points, coeffs, b, iter, is_degenerate, posevec)) {
+    const Eigen::VectorXd dx = calcUpdate(points, coeffs, b, posevec.head(3));
+
+    if (!is_degenerate) {
+      posevec += dx;
+    }
+
+    if (checkConvergence(dx)) {
       break;
     }
   }
