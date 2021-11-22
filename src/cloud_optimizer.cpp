@@ -138,7 +138,7 @@ CloudOptimizer::fromSurface(const Eigen::Affine3d & point_to_map) const
 
     const Eigen::Matrix<double, 5, 1> g = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
     const Eigen::Matrix<double, 5, 3> A = makeMatrixA(surface_map_, indices);
-    const Eigen::Vector3d x = A.colPivHouseholderQr().solve(g);
+    const Eigen::Vector3d x = solveLinear(A, g);
 
     if (!validatePlane(A, x)) {
       continue;
