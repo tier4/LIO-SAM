@@ -67,15 +67,13 @@ bool checkConvergence(const Vector6d & dx)
   return dr < 0.05 && dt < 0.05;
 }
 
-std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
-CloudOptimizer::run(const Vector6d & posevec) const
+std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
+CloudOptimizer::fromEdge(const Eigen::Affine3d & point_to_map) const
 {
-  const Eigen::Affine3d point_to_map = getTransformation(posevec);
   std::vector<Eigen::Vector3d> edge_coeffs(edge_->size());
   std::vector<double> edge_coeffs_b(edge_->size());
   std::vector<bool> edge_flags(edge_->size(), false);
 
-  // edge optimization
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < edge_->size(); i++) {
     const pcl::PointXYZ p = transform(point_to_map, edge_->at(i));
@@ -118,7 +116,12 @@ CloudOptimizer::run(const Vector6d & posevec) const
     edge_coeffs_b[i] = -(s / l12) * a012;
     edge_flags[i] = true;
   }
+  return {edge_coeffs, edge_coeffs_b, edge_flags};
+}
 
+std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
+CloudOptimizer::fromSurface(const Eigen::Affine3d & point_to_map) const
+{
   std::vector<Eigen::Vector3d> surface_coeffs(surface_->size());
   std::vector<double> surface_coeffs_b(surface_->size());
   std::vector<bool> surface_flags(surface_->size(), false);
@@ -156,6 +159,15 @@ CloudOptimizer::run(const Vector6d & posevec) const
     surface_coeffs_b[i] = -(s / x.norm()) * pd2;
     surface_flags[i] = true;
   }
+  return {surface_coeffs, surface_coeffs_b, surface_flags};
+}
+
+std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
+CloudOptimizer::run(const Vector6d & posevec) const
+{
+  const Eigen::Affine3d point_to_map = getTransformation(posevec);
+  const auto [edge_coeffs, edge_coeffs_b, edge_flags] = fromEdge(point_to_map);
+  const auto [surface_coeffs, surface_coeffs_b, surface_flags] = fromSurface(point_to_map);
 
   std::vector<Eigen::Vector3d> points;
   std::vector<Eigen::Vector3d> coeffs;
