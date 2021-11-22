@@ -394,8 +394,8 @@ public:
       const bool is_degenerate = isDegenerate(cloud_optimizer, posevec);
 
       if (
-        (static_cast<int>(edge->size()) > min_edge_cloud ||
-        static_cast<int>(surface->size()) > min_surface_cloud) &&
+        static_cast<int>(edge->size()) > min_edge_cloud &&
+        static_cast<int>(surface->size()) > min_surface_cloud &&
         !is_degenerate)
       {
         posevec = optimizePose(cloud_optimizer, posevec);
