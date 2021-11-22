@@ -1,6 +1,9 @@
 #include "cloud_optimizer.hpp"
 #include "homogeneous.h"
 #include "utility.hpp"
+#include "jacobian.h"
+
+#include <Eigen/Eigenvalues>
 
 #include <range/v3/all.hpp>
 
@@ -52,6 +55,18 @@ Eigen::MatrixXd calcCovariance(const Eigen::MatrixXd & X)
   return D * D.transpose() / X.cols();
 }
 
+Eigen::VectorXd solveLinear(const Eigen::MatrixXd & A, const Eigen::VectorXd & b)
+{
+  return A.householderQr().solve(b);
+}
+
+bool checkConvergence(const Vector6d & dx)
+{
+  const float dr = rad2deg(dx.head(3)).norm();
+  const float dt = (100 * dx.tail(3)).norm();
+  return dr < 0.05 && dt < 0.05;
+}
+
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 CloudOptimizer::run(const Vector6d & posevec) const
 {
@@ -89,9 +104,9 @@ CloudOptimizer::run(const Vector6d & posevec) const
     const Eigen::Vector3d d20 = p2 - p0;
 
     const Eigen::Vector3d u = d20.cross(d01);
+    const Eigen::Vector3d v = d12.cross(u);
     const double a012 = u.norm();
     const double l12 = d12.norm();
-    const Eigen::Vector3d v = d12.cross(u);
 
     const double k = fabs(a012 / l12);
     if (k >= 1.0) {
@@ -162,4 +177,92 @@ CloudOptimizer::run(const Vector6d & posevec) const
   }
 
   return {points, coeffs, b};
+}
+
+Eigen::MatrixXd makeMatrixA(
+  const std::vector<Eigen::Vector3d> & points,
+  const std::vector<Eigen::Vector3d> & coeffs,
+  const Eigen::Vector3d & rpy)
+{
+  Eigen::MatrixXd A(points.size(), 6);
+  for (unsigned int i = 0; i < points.size(); i++) {
+    // in camera
+
+    const Eigen::Vector3d p = points.at(i);
+    const Eigen::Vector3d c = coeffs.at(i);
+    const Eigen::Vector3d point_ori(p(1), p(2), p(0));
+    const Eigen::Vector3d coeff_vec(c(1), c(2), c(0));
+
+    const Eigen::Matrix3d MX = dRdx(rpy(0), rpy(2), rpy(1));
+    const float arx = (MX * point_ori).dot(coeff_vec);
+
+    const Eigen::Matrix3d MY = dRdy(rpy(0), rpy(2), rpy(1));
+    const float ary = (MY * point_ori).dot(coeff_vec);
+
+    const Eigen::Matrix3d MZ = dRdz(rpy(0), rpy(2), rpy(1));
+    const float arz = (MZ * point_ori).dot(coeff_vec);
+
+    // lidar -> camera
+    A(i, 0) = arz;
+    A(i, 1) = arx;
+    A(i, 2) = ary;
+    A(i, 3) = c(0);
+    A(i, 4) = c(1);
+    A(i, 5) = c(2);
+  }
+  return A;
+}
+
+bool isDegenerate(const CloudOptimizer & cloud_optimizer, const Vector6d & posevec)
+{
+  const auto [points, coeffs, b_vector] = cloud_optimizer.run(posevec);
+  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
+  const Eigen::MatrixXd AtA = A.transpose() * A;
+  const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
+  const Eigen::VectorXd eigenvalues = es.eigenvalues();
+  return (eigenvalues.array() < 100.0).any();
+}
+
+Eigen::VectorXd calcUpdate(
+  const std::vector<Eigen::Vector3d> & points,
+  const std::vector<Eigen::Vector3d> & coeffs,
+  const Eigen::VectorXd & b,
+  const Eigen::Vector3d & rpy)
+{
+  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, rpy);
+
+  const Eigen::MatrixXd AtA = A.transpose() * A;
+  const Eigen::VectorXd AtB = A.transpose() * b;
+  return solveLinear(AtA, AtB);
+}
+
+// This optimization is from the original loam_velodyne by Ji Zhang,
+// need to cope with coordinate transformation
+// lidar <- camera      ---     camera <- lidar
+// x = z                ---     x = y
+// y = x                ---     y = z
+// z = y                ---     z = x
+// roll = yaw           ---     roll = pitch
+// pitch = roll         ---     pitch = yaw
+// yaw = pitch          ---     yaw = roll
+
+Vector6d optimizePose(const CloudOptimizer & cloud_optimizer, const Vector6d & initial_posevec)
+{
+  Vector6d posevec = initial_posevec;
+  for (int iter = 0; iter < 30; iter++) {
+    const auto [points, coeffs, b_vector] = cloud_optimizer.run(posevec);
+    if (points.size() < 50) {
+      continue;
+    }
+
+    const Eigen::Map<const Eigen::VectorXd> b(b_vector.data(), b_vector.size());
+    const Eigen::VectorXd dx = calcUpdate(points, coeffs, b, posevec.head(3));
+
+    posevec += dx;
+
+    if (checkConvergence(dx)) {
+      break;
+    }
+  }
+  return posevec;
 }

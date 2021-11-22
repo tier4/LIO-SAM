@@ -390,12 +390,15 @@ public:
       const auto edge_map = downsample<pcl::PointXYZ>(edge_fused, map_edge_leaf_size);
       const auto surface_map = downsample<pcl::PointXYZ>(surface_fused, map_surface_leaf_size);
 
+      const CloudOptimizer cloud_optimizer(n_cores, edge, surface, edge_map, surface_map);
+      const bool is_degenerate = isDegenerate(cloud_optimizer, posevec);
+
       if (
-        static_cast<int>(edge->size()) > min_edge_cloud ||
-        static_cast<int>(surface->size()) > min_surface_cloud)
+        (static_cast<int>(edge->size()) > min_edge_cloud ||
+        static_cast<int>(surface->size()) > min_surface_cloud) &&
+        !is_degenerate)
       {
-        const CloudOptimizer cloud_optimizer(n_cores, edge, surface, edge_map, surface_map);
-        std::tie(posevec, is_degenerate) = optimizePose(cloud_optimizer, posevec);
+        posevec = optimizePose(cloud_optimizer, posevec);
       } else {
         ROS_WARN(
           "Not enough features! Only %d edge and %d planar features available.",

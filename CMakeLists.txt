@@ -76,7 +76,6 @@ include_directories(include)
 add_library(util SHARED
   src/cloud_optimizer.cpp
   src/param_server.cpp
-  src/pose_optimizer.cpp
   src/utility.cpp
 )
 

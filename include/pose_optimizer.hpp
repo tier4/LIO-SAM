@@ -8,8 +8,4 @@
 #include "matrix_type.h"
 #include "kdtree.hpp"
 
-std::tuple<Vector6d, bool> optimizePose(
-  const CloudOptimizer & cloud_optimizer,
-  const Vector6d & initial_posevec);
-
 #endif

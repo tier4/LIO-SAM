@@ -42,4 +42,9 @@ private:
   const KDTree<pcl::PointXYZ> surface_kdtree_;
 };
 
+bool isDegenerate(const CloudOptimizer & cloud_optimizer, const Vector6d & posevec);
+
+Vector6d optimizePose(const CloudOptimizer & cloud_optimizer, const Vector6d & initial_posevec);
+
+
 #endif
