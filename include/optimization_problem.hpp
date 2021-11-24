@@ -14,17 +14,17 @@ class OptimizationProblem
 public:
   OptimizationProblem(
     const int numberOfCores,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map_,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map_)
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_scan,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_scan,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map)
   : numberOfCores(numberOfCores),
-    edge_(edge_),
-    surface_(surface_),
-    edge_map_(edge_map_),
-    surface_map_(surface_map_),
-    edge_kdtree_(KDTree<pcl::PointXYZ>(edge_map_)),
-    surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map_))
+    edge_scan_(edge_scan),
+    surface_scan_(surface_scan),
+    edge_map_(edge_map),
+    surface_map_(surface_map),
+    edge_kdtree_(KDTree<pcl::PointXYZ>(edge_map)),
+    surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map))
   {
   }
 
@@ -38,8 +38,8 @@ public:
 
 private:
   const int numberOfCores;
-  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_;
-  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_scan_;
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_map_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_map_;
   const KDTree<pcl::PointXYZ> edge_kdtree_;

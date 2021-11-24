@@ -70,13 +70,13 @@ bool checkConvergence(const Vector6d & dx)
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
 OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
 {
-  std::vector<Eigen::Vector3d> coeffs(edge_->size());
-  std::vector<double> b(edge_->size());
-  std::vector<bool> flags(edge_->size(), false);
+  std::vector<Eigen::Vector3d> coeffs(edge_scan_->size());
+  std::vector<double> b(edge_scan_->size());
+  std::vector<bool> flags(edge_scan_->size(), false);
 
   #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < edge_->size(); i++) {
-    const pcl::PointXYZ p = transform(point_to_map, edge_->at(i));
+  for (unsigned int i = 0; i < edge_scan_->size(); i++) {
+    const pcl::PointXYZ p = transform(point_to_map, edge_scan_->at(i));
     const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(p, n_neighbors);
 
     if (squared_distances.back() >= 1.0) {
@@ -122,14 +122,14 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
 OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
 {
-  std::vector<Eigen::Vector3d> coeffs(surface_->size());
-  std::vector<double> b(surface_->size());
-  std::vector<bool> flags(surface_->size(), false);
+  std::vector<Eigen::Vector3d> coeffs(surface_scan_->size());
+  std::vector<double> b(surface_scan_->size());
+  std::vector<bool> flags(surface_scan_->size(), false);
 
   // surface optimization
   #pragma omp parallel for num_threads(numberOfCores)
-  for (unsigned int i = 0; i < surface_->size(); i++) {
-    const pcl::PointXYZ p = transform(point_to_map, surface_->at(i));
+  for (unsigned int i = 0; i < surface_scan_->size(); i++) {
+    const pcl::PointXYZ p = transform(point_to_map, surface_scan_->at(i));
     const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(p, n_neighbors);
 
     if (squared_distances.back() >= 1.0) {
@@ -204,15 +204,15 @@ OptimizationProblem::run(const Vector6d & posevec) const
   const auto [surface_coeffs, surface_coeffs_b, surface_flags] = fromSurface(point_to_map);
 
   auto edge_indices =
-    ranges::views::iota(0, static_cast<int>(edge_->size())) |
+    ranges::views::iota(0, static_cast<int>(edge_scan_->size())) |
     ranges::views::filter([&](int i) {return edge_flags[i];});
   auto surface_indices =
-    ranges::views::iota(0, static_cast<int>(surface_->size())) |
+    ranges::views::iota(0, static_cast<int>(surface_scan_->size())) |
     ranges::views::filter([&](int i) {return surface_flags[i];});
 
   const auto points = ranges::views::concat(
-    edge_indices | ranges::views::transform([&](int i) {return getXYZ(edge_->at(i));}),
-    surface_indices | ranges::views::transform([&](int i) {return getXYZ(surface_->at(i));})
+    edge_indices | ranges::views::transform([&](int i) {return getXYZ(edge_scan_->at(i));}),
+    surface_indices | ranges::views::transform([&](int i) {return getXYZ(surface_scan_->at(i));})
     ) | ranges::to_vector;
 
   const auto coeffs = ranges::views::concat(

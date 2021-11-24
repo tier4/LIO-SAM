@@ -376,8 +376,8 @@ public:
       msg->imu_orientation, msg->scan_start_imu_pose
     );
 
-    const auto edge = getPointCloud<pcl::PointXYZ>(msg->cloud_edge);
-    const auto surface = getPointCloud<pcl::PointXYZ>(msg->cloud_surface);
+    const auto edge_scan = getPointCloud<pcl::PointXYZ>(msg->cloud_edge);
+    const auto surface_scan = getPointCloud<pcl::PointXYZ>(msg->cloud_surface);
 
     bool is_degenerate = false;
     if (!positions->empty()) {
@@ -390,19 +390,19 @@ public:
       const auto edge_map = downsample<pcl::PointXYZ>(edge_fused, map_edge_leaf_size);
       const auto surface_map = downsample<pcl::PointXYZ>(surface_fused, map_surface_leaf_size);
 
-      const OptimizationProblem problem(n_cores, edge, surface, edge_map, surface_map);
+      const OptimizationProblem problem(n_cores, edge_scan, surface_scan, edge_map, surface_map);
       const bool is_degenerate = isDegenerate(problem, posevec);
 
       if (
-        static_cast<int>(edge->size()) > min_edge_cloud &&
-        static_cast<int>(surface->size()) > min_surface_cloud &&
+        static_cast<int>(edge_scan->size()) > min_edge_cloud &&
+        static_cast<int>(surface_scan->size()) > min_surface_cloud &&
         !is_degenerate)
       {
         posevec = optimizePose(problem, posevec);
       } else {
         ROS_WARN(
           "Not enough features! Only %d edge and %d planar features available.",
-          edge->size(), surface->size()
+          edge_scan->size(), surface_scan->size()
         );
       }
     }
@@ -419,8 +419,8 @@ public:
       poses6dof_.push_back(makeStampedPose(posevec, curr_time_sec));
 
       // save key frame cloud
-      edge_cloud_.push_back(edge);
-      surface_cloud_.push_back(surface);
+      edge_cloud_.push_back(edge_scan);
+      surface_cloud_.push_back(surface_scan);
 
       path_poses_.push_back(makePoseStamped(makePose(posevec), odometryFrame, curr_time_sec));
     }
@@ -456,7 +456,7 @@ public:
 
     // publish key poses
     pubKeyPoses.publish(toRosMsg(*positions, timestamp, odometryFrame));
-    const auto output = transform(posevec, *edge) + transform(posevec, *surface);
+    const auto output = transform(posevec, *edge_scan) + transform(posevec, *surface_scan);
     pubRecentKeyFrame.publish(toRosMsg(output, timestamp, odometryFrame));
     publishPath(pubPath, odometryFrame, timestamp, path_poses_);
   }
