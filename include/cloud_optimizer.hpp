@@ -9,10 +9,10 @@
 #include "matrix_type.h"
 #include "kdtree.hpp"
 
-class CloudOptimizer
+class OptimizationProblem
 {
 public:
-  CloudOptimizer(
+  OptimizationProblem(
     const int numberOfCores,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_,
@@ -46,9 +46,8 @@ private:
   const KDTree<pcl::PointXYZ> surface_kdtree_;
 };
 
-bool isDegenerate(const CloudOptimizer & cloud_optimizer, const Vector6d & posevec);
+bool isDegenerate(const OptimizationProblem & problem, const Vector6d & posevec);
 
-Vector6d optimizePose(const CloudOptimizer & cloud_optimizer, const Vector6d & initial_posevec);
-
+Vector6d optimizePose(const OptimizationProblem & problem, const Vector6d & initial_posevec);
 
 #endif

@@ -68,7 +68,7 @@ bool checkConvergence(const Vector6d & dx)
 }
 
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
-CloudOptimizer::fromEdge(const Eigen::Affine3d & point_to_map) const
+OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
 {
   std::vector<Eigen::Vector3d> coeffs(edge_->size());
   std::vector<double> b(edge_->size());
@@ -120,7 +120,7 @@ CloudOptimizer::fromEdge(const Eigen::Affine3d & point_to_map) const
 }
 
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
-CloudOptimizer::fromSurface(const Eigen::Affine3d & point_to_map) const
+OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
 {
   std::vector<Eigen::Vector3d> coeffs(surface_->size());
   std::vector<double> b(surface_->size());
@@ -197,7 +197,7 @@ Eigen::MatrixXd makeMatrixA(
 }
 
 std::tuple<Eigen::MatrixXd, Eigen::VectorXd>
-CloudOptimizer::run(const Vector6d & posevec) const
+OptimizationProblem::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
   const auto [edge_coeffs, edge_coeffs_b, edge_flags] = fromEdge(point_to_map);
@@ -230,9 +230,9 @@ CloudOptimizer::run(const Vector6d & posevec) const
   return {A, b};
 }
 
-bool isDegenerate(const CloudOptimizer & cloud_optimizer, const Vector6d & posevec)
+bool isDegenerate(const OptimizationProblem & problem, const Vector6d & posevec)
 {
-  const auto [A, b] = cloud_optimizer.run(posevec);
+  const auto [A, b] = problem.run(posevec);
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
   const Eigen::VectorXd eigenvalues = es.eigenvalues();
@@ -256,11 +256,11 @@ Eigen::VectorXd calcUpdate(const Eigen::MatrixXd & A, const Eigen::VectorXd & b)
 // pitch = roll         ---     pitch = yaw
 // yaw = pitch          ---     yaw = roll
 
-Vector6d optimizePose(const CloudOptimizer & cloud_optimizer, const Vector6d & initial_posevec)
+Vector6d optimizePose(const OptimizationProblem & problem, const Vector6d & initial_posevec)
 {
   Vector6d posevec = initial_posevec;
   for (int iter = 0; iter < 30; iter++) {
-    const auto [A, b] = cloud_optimizer.run(posevec);
+    const auto [A, b] = problem.run(posevec);
     if (A.rows() < 50) {
       continue;
     }
