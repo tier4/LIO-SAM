@@ -130,14 +130,14 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
   #pragma omp parallel for num_threads(numberOfCores)
   for (unsigned int i = 0; i < surface_->size(); i++) {
     const pcl::PointXYZ p = transform(point_to_map, surface_->at(i));
-    const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(p, 5);
+    const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(p, n_neighbors);
 
-    if (squared_distances[4] >= 1.0) {
+    if (squared_distances.back() >= 1.0) {
       continue;
     }
 
-    const Eigen::Matrix<double, 5, 1> g = -1.0 * Eigen::Matrix<double, 5, 1>::Ones();
-    const Eigen::Matrix<double, 5, 3> A = makeMatrixA(surface_map_, indices);
+    const Eigen::VectorXd g = -1.0 * Eigen::VectorXd::Ones(n_neighbors);
+    const Eigen::MatrixXd A = makeMatrixA(surface_map_, indices);
     const Eigen::Vector3d x = solveLinear(A, g);
 
     if (!validatePlane(A, x)) {
