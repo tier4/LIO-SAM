@@ -1,5 +1,5 @@
 #include "comprehend.hpp"
-#include "cloud_optimizer.hpp"
+#include "optimization_problem.hpp"
 #include "message.hpp"
 #include "downsample.hpp"
 #include "utility.hpp"

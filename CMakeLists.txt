@@ -74,7 +74,7 @@ add_subdirectory(thirdparty/range-v3 EXCLUDE_FROM_ALL)
 
 include_directories(include)
 add_library(util SHARED
-  src/cloud_optimizer.cpp
+  src/optimization_problem.cpp
   src/param_server.cpp
   src/utility.cpp
 )

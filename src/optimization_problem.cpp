@@ -1,4 +1,4 @@
-#include "cloud_optimizer.hpp"
+#include "optimization_problem.hpp"
 #include "homogeneous.h"
 #include "utility.hpp"
 #include "jacobian.h"
