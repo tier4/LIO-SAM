@@ -162,38 +162,6 @@ CloudOptimizer::fromSurface(const Eigen::Affine3d & point_to_map) const
   return {coeffs, b, flags};
 }
 
-std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
-CloudOptimizer::run(const Vector6d & posevec) const
-{
-  const Eigen::Affine3d point_to_map = getTransformation(posevec);
-  const auto [edge_coeffs, edge_coeffs_b, edge_flags] = fromEdge(point_to_map);
-  const auto [surface_coeffs, surface_coeffs_b, surface_flags] = fromSurface(point_to_map);
-
-  auto edge_indices =
-    ranges::views::iota(0, static_cast<int>(edge_->size())) |
-    ranges::views::filter([&](int i) {return edge_flags[i];});
-  auto surface_indices =
-    ranges::views::iota(0, static_cast<int>(surface_->size())) |
-    ranges::views::filter([&](int i) {return surface_flags[i];});
-
-  const auto points = ranges::views::concat(
-    edge_indices | ranges::views::transform([&](int i) {return getXYZ(edge_->at(i));}),
-    surface_indices | ranges::views::transform([&](int i) {return getXYZ(surface_->at(i));})
-    ) | ranges::to_vector;
-
-  const auto coeffs = ranges::views::concat(
-    edge_indices | ranges::views::transform([&](int i) {return edge_coeffs[i];}),
-    surface_indices | ranges::views::transform([&](int i) {return surface_coeffs[i];})
-    ) | ranges::to_vector;
-
-  const auto b = ranges::views::concat(
-    edge_indices | ranges::views::transform([&](int i) {return edge_coeffs_b[i];}),
-    surface_indices | ranges::views::transform([&](int i) {return surface_coeffs_b[i];})
-    ) | ranges::to_vector;
-
-  return {points, coeffs, b};
-}
-
 Eigen::MatrixXd makeMatrixA(
   const std::vector<Eigen::Vector3d> & points,
   const std::vector<Eigen::Vector3d> & coeffs,
@@ -228,24 +196,51 @@ Eigen::MatrixXd makeMatrixA(
   return A;
 }
 
+std::tuple<Eigen::MatrixXd, Eigen::VectorXd>
+CloudOptimizer::run(const Vector6d & posevec) const
+{
+  const Eigen::Affine3d point_to_map = getTransformation(posevec);
+  const auto [edge_coeffs, edge_coeffs_b, edge_flags] = fromEdge(point_to_map);
+  const auto [surface_coeffs, surface_coeffs_b, surface_flags] = fromSurface(point_to_map);
+
+  auto edge_indices =
+    ranges::views::iota(0, static_cast<int>(edge_->size())) |
+    ranges::views::filter([&](int i) {return edge_flags[i];});
+  auto surface_indices =
+    ranges::views::iota(0, static_cast<int>(surface_->size())) |
+    ranges::views::filter([&](int i) {return surface_flags[i];});
+
+  const auto points = ranges::views::concat(
+    edge_indices | ranges::views::transform([&](int i) {return getXYZ(edge_->at(i));}),
+    surface_indices | ranges::views::transform([&](int i) {return getXYZ(surface_->at(i));})
+    ) | ranges::to_vector;
+
+  const auto coeffs = ranges::views::concat(
+    edge_indices | ranges::views::transform([&](int i) {return edge_coeffs[i];}),
+    surface_indices | ranges::views::transform([&](int i) {return surface_coeffs[i];})
+    ) | ranges::to_vector;
+
+  auto b_vector = ranges::views::concat(
+    edge_indices | ranges::views::transform([&](int i) {return edge_coeffs_b[i];}),
+    surface_indices | ranges::views::transform([&](int i) {return surface_coeffs_b[i];})
+    ) | ranges::to_vector;
+
+  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
+  const Eigen::Map<Eigen::VectorXd> b(b_vector.data(), b_vector.size());
+  return {A, b};
+}
+
 bool isDegenerate(const CloudOptimizer & cloud_optimizer, const Vector6d & posevec)
 {
-  const auto [points, coeffs, b_vector] = cloud_optimizer.run(posevec);
-  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
+  const auto [A, b] = cloud_optimizer.run(posevec);
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
   const Eigen::VectorXd eigenvalues = es.eigenvalues();
   return (eigenvalues.array() < 100.0).any();
 }
 
-Eigen::VectorXd calcUpdate(
-  const std::vector<Eigen::Vector3d> & points,
-  const std::vector<Eigen::Vector3d> & coeffs,
-  const Eigen::VectorXd & b,
-  const Eigen::Vector3d & rpy)
+Eigen::VectorXd calcUpdate(const Eigen::MatrixXd & A, const Eigen::VectorXd & b)
 {
-  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, rpy);
-
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::VectorXd AtB = A.transpose() * b;
   return solveLinear(AtA, AtB);
@@ -265,13 +260,12 @@ Vector6d optimizePose(const CloudOptimizer & cloud_optimizer, const Vector6d & i
 {
   Vector6d posevec = initial_posevec;
   for (int iter = 0; iter < 30; iter++) {
-    const auto [points, coeffs, b_vector] = cloud_optimizer.run(posevec);
-    if (points.size() < 50) {
+    const auto [A, b] = cloud_optimizer.run(posevec);
+    if (A.rows() < 50) {
       continue;
     }
 
-    const Eigen::Map<const Eigen::VectorXd> b(b_vector.data(), b_vector.size());
-    const Eigen::VectorXd dx = calcUpdate(points, coeffs, b, posevec.head(3));
+    const Eigen::VectorXd dx = calcUpdate(A, b);
 
     posevec += dx;
 
