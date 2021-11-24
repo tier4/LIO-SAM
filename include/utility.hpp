@@ -173,11 +173,6 @@ inline tf::Transform identityTransform()
   return identity;
 }
 
-inline Eigen::Vector3d getXYZ(const pcl::PointXYZ & point)
-{
-  return Eigen::Vector3d(point.x, point.y, point.z);
-}
-
 inline Eigen::MatrixXd rad2deg(const Eigen::MatrixXd & x)
 {
   return x * (180.0 / M_PI);
@@ -190,6 +185,8 @@ pcl::KdTreeFLANN<T> makeKDTree(const typename pcl::PointCloud<T>::Ptr & pointclo
   kdtree.setInputCloud(pointcloud);
   return kdtree;
 }
+
+Eigen::Vector3d getXYZ(const pcl::PointXYZ & point);
 
 pcl::PointXYZ makePointXYZ(const Eigen::Vector3d & v);
 pcl::PointXYZ transform(const Eigen::Affine3d & transform, const pcl::PointXYZ & point);

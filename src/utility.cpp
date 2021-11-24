@@ -1,5 +1,10 @@
 #include "utility.hpp"
 
+Eigen::Vector3d getXYZ(const pcl::PointXYZ & point)
+{
+  return Eigen::Vector3d(point.x, point.y, point.z);
+}
+
 pcl::PointXYZ makePointXYZ(const Eigen::Vector3d & v)
 {
   return pcl::PointXYZ(v(0), v(1), v(2));
