@@ -7,13 +7,11 @@
 
 #include <range/v3/all.hpp>
 
-bool validatePlane(
-  const Eigen::Matrix<double, 5, 3> & A,
-  const Eigen::Vector3d & x)
+bool validatePlane(const Eigen::MatrixXd & A, const Eigen::Vector3d & x)
 {
   const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
 
-  for (int j = 0; j < 5; j++) {
+  for (int j = 0; j < A.rows(); j++) {
     const Eigen::Vector3d p = A.row(j);
     const Eigen::Vector4d q = toHomogeneous(p);
 
@@ -24,18 +22,16 @@ bool validatePlane(
   return true;
 }
 
-Eigen::Matrix<double, 5, 3> makeMatrixA(
+Eigen::MatrixXd makeMatrixA(
   const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
   const std::vector<int> & indices)
 {
-  Eigen::Matrix<double, 5, 3> A = Eigen::Matrix<double, 5, 3>::Zero();
-  for (int j = 0; j < 5; j++) {
-    A.row(j) = getXYZ(pointcloud->at(indices[j]));
+  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(indices.size(), 3);
+  for (const auto [i, index] : ranges::views::enumerate(indices)) {
+    A.row(i) = getXYZ(pointcloud->at(index));
   }
   return A;
 }
-
-const int n_neighbors = 5;
 
 Eigen::MatrixXd get(
   const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
@@ -66,6 +62,8 @@ bool checkConvergence(const Vector6d & dx)
   const float dt = (100 * dx.tail(3)).norm();
   return dr < 0.05 && dt < 0.05;
 }
+
+const int n_neighbors = 5;
 
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
 OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
