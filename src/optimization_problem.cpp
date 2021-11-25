@@ -22,17 +22,6 @@ bool validatePlane(const Eigen::MatrixXd & A, const Eigen::Vector3d & x)
   return true;
 }
 
-Eigen::MatrixXd makeMatrixA(
-  const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
-  const std::vector<int> & indices)
-{
-  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(indices.size(), 3);
-  for (const auto [i, index] : ranges::views::enumerate(indices)) {
-    A.row(i) = getXYZ(pointcloud->at(index));
-  }
-  return A;
-}
-
 Eigen::MatrixXd get(
   const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
   const std::vector<int> & indices)
@@ -131,7 +120,7 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     }
 
     const Eigen::VectorXd g = -1.0 * Eigen::VectorXd::Ones(n_neighbors);
-    const Eigen::MatrixXd A = makeMatrixA(surface_map_, indices);
+    const Eigen::MatrixXd A = get(surface_map_, indices).transpose();
     const Eigen::Vector3d x = solveLinear(A, g);
 
     if (!validatePlane(A, x)) {
