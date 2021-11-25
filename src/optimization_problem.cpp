@@ -108,9 +108,8 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
       continue;
     }
 
-    const double s = 1 - 0.9 * k;
-    coeffs[i] = (s / k) * v;
-    b[i] = -s * k;
+    coeffs[i] = k * v;
+    b[i] = -k;
     flags[i] = true;
   }
   return {coeffs, b, flags};
