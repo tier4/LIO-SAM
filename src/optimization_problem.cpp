@@ -140,13 +140,11 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
       continue;
     }
 
-    const Eigen::Vector4d y = toHomogeneous(x);
-    const Eigen::Vector4d q = toHomogeneous(getXYZ(p));
-    const double pd2 = y.dot(q);
+    const Eigen::Vector3d q = getXYZ(p);
+    const double pd2 = x.dot(q) + 1.0;
     const double norm = x.norm();
-    const double k = fabs(pd2 / norm) / sqrt(getXYZ(p).norm());
 
-    if (k >= 1.0) {
+    if (abs(pd2) >= norm * sqrt(q.norm())) {
       continue;
     }
 
