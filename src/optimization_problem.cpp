@@ -163,6 +163,10 @@ Eigen::MatrixXd makeMatrixA(
   const std::vector<Eigen::Vector3d> & coeffs,
   const Eigen::Vector3d & rpy)
 {
+  const Eigen::Matrix3d MX = dRdx(rpy(0), rpy(2), rpy(1));
+  const Eigen::Matrix3d MY = dRdy(rpy(0), rpy(2), rpy(1));
+  const Eigen::Matrix3d MZ = dRdz(rpy(0), rpy(2), rpy(1));
+
   Eigen::MatrixXd A(points.size(), 6);
   for (unsigned int i = 0; i < points.size(); i++) {
     // in camera
@@ -171,10 +175,6 @@ Eigen::MatrixXd makeMatrixA(
     const Eigen::Vector3d c = coeffs.at(i);
     const Eigen::Vector3d point_ori(p(1), p(2), p(0));
     const Eigen::Vector3d coeff_vec(c(1), c(2), c(0));
-
-    const Eigen::Matrix3d MX = dRdx(rpy(0), rpy(2), rpy(1));
-    const Eigen::Matrix3d MY = dRdy(rpy(0), rpy(2), rpy(1));
-    const Eigen::Matrix3d MZ = dRdz(rpy(0), rpy(2), rpy(1));
 
     const float arx = coeff_vec.dot(MX * point_ori);
     const float ary = coeff_vec.dot(MY * point_ori);
