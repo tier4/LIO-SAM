@@ -143,16 +143,15 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     const Eigen::Vector4d y = toHomogeneous(x);
     const Eigen::Vector4d q = toHomogeneous(getXYZ(p));
     const double pd2 = y.dot(q);
-    const double k = fabs(pd2 / x.norm()) / sqrt(getXYZ(p).norm());
+    const double norm = x.norm();
+    const double k = fabs(pd2 / norm) / sqrt(getXYZ(p).norm());
 
     if (k >= 1.0) {
       continue;
     }
 
-    const double s = 1 - 0.9 * k;
-
-    coeffs[i] = (s / x.norm()) * x;
-    b[i] = -(s / x.norm()) * pd2;
+    coeffs[i] = x / norm;
+    b[i] = -pd2 / norm;
     flags[i] = true;
   }
   return {coeffs, b, flags};
