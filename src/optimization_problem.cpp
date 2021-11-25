@@ -144,7 +144,7 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     const double pd2 = x.dot(q) + 1.0;
     const double norm = x.norm();
 
-    if (abs(pd2) >= norm * sqrt(q.norm())) {
+    if (abs(pd2) >= norm * q.norm()) {
       continue;
     }
 
