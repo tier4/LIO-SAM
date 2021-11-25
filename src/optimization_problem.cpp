@@ -9,13 +9,9 @@
 
 bool validatePlane(const Eigen::MatrixXd & A, const Eigen::Vector3d & x)
 {
-  const Eigen::Vector4d y = toHomogeneous(x) / x.norm();
-
   for (int j = 0; j < A.rows(); j++) {
-    const Eigen::Vector3d p = A.row(j);
-    const Eigen::Vector4d q = toHomogeneous(p);
-
-    if (fabs(y.transpose() * q) > 0.2) {
+    const Eigen::Vector3d a = A.row(j);
+    if (fabs(x.dot(a) + 1.0) / x.norm() > 0.2) {
       return false;
     }
   }
