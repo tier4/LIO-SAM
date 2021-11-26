@@ -50,11 +50,32 @@ bool checkConvergence(const Vector6d & dx)
 
 const int n_neighbors = 5;
 
-std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
+std::vector<int> filteredIndices(const std::vector<bool> & flags)
+{
+  return ranges::views::iota(0, static_cast<int>(flags.size())) |
+         ranges::views::filter([&](int i) {return flags[i];}) |
+         ranges::to_vector;
+}
+
+std::vector<Eigen::Vector3d> filteredCoeffs(
+  const std::vector<int> & indices,
+  const std::vector<Eigen::Vector3d> & coeffs)
+{
+  return indices | ranges::views::transform([&](int i) {return coeffs[i];}) | ranges::to_vector;
+}
+
+std::vector<Eigen::Vector3d> filteredPoints(
+  const std::vector<int> & indices,
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud)
+{
+  const auto f = [&](int i) {return getXYZ(pointcloud->at(i));};
+  return indices | ranges::views::transform(f) | ranges::to_vector;
+}
+
+std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
 {
   std::vector<Eigen::Vector3d> coeffs(edge_scan_->size());
-  std::vector<double> b(edge_scan_->size());
   std::vector<bool> flags(edge_scan_->size(), false);
 
   #pragma omp parallel for num_threads(numberOfCores)
@@ -90,13 +111,17 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
     }
 
     coeffs[i] = d12.cross(u);
-    b[i] = -1.0;
     flags[i] = true;
   }
-  return {coeffs, b, flags};
+
+  const std::vector<int> indices = filteredIndices(flags);
+  const std::vector<Eigen::Vector3d> points = filteredPoints(indices, edge_scan_);
+  const std::vector<Eigen::Vector3d> coeffs_filtered = filteredCoeffs(indices, coeffs);
+  const std::vector<double> b(coeffs_filtered.size(), -1.0);
+  return {points, coeffs_filtered, b};
 }
 
-std::tuple<std::vector<Eigen::Vector3d>, std::vector<double>, std::vector<bool>>
+std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
 {
   std::vector<Eigen::Vector3d> coeffs(surface_scan_->size());
@@ -129,7 +154,13 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     b[i] = -pd2 / norm;
     flags[i] = true;
   }
-  return {coeffs, b, flags};
+
+  const std::vector<int> indices = filteredIndices(flags);
+  const std::vector<Eigen::Vector3d> points = filteredPoints(indices, surface_scan_);
+  const std::vector<Eigen::Vector3d> coeffs_filtered = filteredCoeffs(indices, coeffs);
+  const std::vector<double> b_filtered =
+    indices | ranges::views::transform([&](int i) {return b[i];}) | ranges::to_vector;
+  return {points, coeffs_filtered, b_filtered};
 }
 
 Eigen::MatrixXd makeMatrixA(
@@ -169,31 +200,15 @@ std::tuple<Eigen::MatrixXd, Eigen::VectorXd>
 OptimizationProblem::run(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
-  const auto [edge_coeffs, edge_coeffs_b, edge_flags] = fromEdge(point_to_map);
-  const auto [surface_coeffs, surface_coeffs_b, surface_flags] = fromSurface(point_to_map);
+  const auto [edge_points, edge_coeffs, edge_coeffs_b] = fromEdge(point_to_map);
+  const auto [surface_points, surface_coeffs, surface_coeffs_b] = fromSurface(point_to_map);
 
-  auto edge_indices =
-    ranges::views::iota(0, static_cast<int>(edge_scan_->size())) |
-    ranges::views::filter([&](int i) {return edge_flags[i];});
-  auto surface_indices =
-    ranges::views::iota(0, static_cast<int>(surface_scan_->size())) |
-    ranges::views::filter([&](int i) {return surface_flags[i];});
+  const auto points = ranges::views::concat(edge_points, surface_points) | ranges::to_vector;
+  const auto coeffs = ranges::views::concat(edge_coeffs, surface_coeffs) | ranges::to_vector;
+  auto b_vector = ranges::views::concat(edge_coeffs_b, surface_coeffs_b) | ranges::to_vector;
 
-  const auto points = ranges::views::concat(
-    edge_indices | ranges::views::transform([&](int i) {return getXYZ(edge_scan_->at(i));}),
-    surface_indices | ranges::views::transform([&](int i) {return getXYZ(surface_scan_->at(i));})
-    ) | ranges::to_vector;
-
-  const auto coeffs = ranges::views::concat(
-    edge_indices | ranges::views::transform([&](int i) {return edge_coeffs[i];}),
-    surface_indices | ranges::views::transform([&](int i) {return surface_coeffs[i];})
-    ) | ranges::to_vector;
-
-  auto b_vector = ranges::views::concat(
-    edge_indices | ranges::views::transform([&](int i) {return edge_coeffs_b[i];}),
-    surface_indices | ranges::views::transform([&](int i) {return surface_coeffs_b[i];})
-    ) | ranges::to_vector;
-
+  assert(points.size() == coeffs.size());
+  assert(points.size() == b_vector.size());
   const Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
   const Eigen::Map<Eigen::VectorXd> b(b_vector.data(), b_vector.size());
   return {A, b};
