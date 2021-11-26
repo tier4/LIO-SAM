@@ -84,15 +84,13 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
     const Eigen::Vector3d d20 = p2 - p0;
 
     const Eigen::Vector3d u = d20.cross(d01);
-    const Eigen::Vector3d v = d12.cross(u);
-    const double k = u.norm();
 
-    if (k >= 1.0) {
+    if (u.norm() >= 1.0) {
       continue;
     }
 
-    coeffs[i] = k * v;
-    b[i] = -k;
+    coeffs[i] = d12.cross(u);
+    b[i] = -1.0;
     flags[i] = true;
   }
   return {coeffs, b, flags};
