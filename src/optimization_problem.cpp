@@ -179,7 +179,7 @@ Eigen::MatrixXd makeMatrixA(
     const Eigen::Vector3d p = points.at(i);
     const Eigen::Vector3d c = coeffs.at(i);
     const Eigen::Vector3d point(p(0), p(1), p(2));
-    const Eigen::Vector3d coeff(c(1), c(2), c(0));
+    const Eigen::Vector3d coeff(c(0), c(1), c(2));
 
     const float arx = coeff.dot(MX * point);
     const float ary = coeff.dot(MY * point);
