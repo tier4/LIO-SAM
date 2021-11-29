@@ -7,11 +7,16 @@
 
 #include <range/v3/all.hpp>
 
+double pointPlaneDistance(const Eigen::Vector3d & w, const Eigen::Vector3d & x)
+{
+  return fabs(w.dot(x) + 1.0) / w.norm();
+}
+
 bool validatePlane(const Eigen::MatrixXd & X, const Eigen::Vector3d & w)
 {
   for (int j = 0; j < X.rows(); j++) {
     const Eigen::Vector3d x = X.row(j);
-    if (fabs(w.dot(x) + 1.0) / w.norm() > 0.2) {
+    if (pointPlaneDistance(w, x) > 0.2) {
       return false;
     }
   }
