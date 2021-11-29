@@ -168,9 +168,9 @@ Eigen::MatrixXd makeMatrixA(
   const std::vector<Eigen::Vector3d> & coeffs,
   const Eigen::Vector3d & rpy)
 {
-  const Eigen::Matrix3d MX = dRdx(rpy(0), rpy(2), rpy(1));
-  const Eigen::Matrix3d MY = dRdy(rpy(0), rpy(2), rpy(1));
-  const Eigen::Matrix3d MZ = dRdz(rpy(0), rpy(2), rpy(1));
+  const Eigen::Matrix3d MX = dRdx(rpy(0), rpy(1), rpy(2));
+  const Eigen::Matrix3d MY = dRdy(rpy(0), rpy(1), rpy(2));
+  const Eigen::Matrix3d MZ = dRdz(rpy(0), rpy(1), rpy(2));
 
   Eigen::MatrixXd A(points.size(), 6);
   for (unsigned int i = 0; i < points.size(); i++) {
