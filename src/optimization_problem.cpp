@@ -127,6 +127,12 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
   return {points, coeffs_filtered, b};
 }
 
+Eigen::Vector3d estimatePlaneCoefficients(const Eigen::MatrixXd & X)
+{
+  const Eigen::VectorXd g = -1.0 * Eigen::VectorXd::Ones(X.rows());
+  return solveLinear(X, g);
+}
+
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
 {
@@ -144,9 +150,8 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
       continue;
     }
 
-    const Eigen::VectorXd g = -1.0 * Eigen::VectorXd::Ones(n_neighbors);
     const Eigen::MatrixXd X = get(surface_map_, indices);
-    const Eigen::Vector3d w = solveLinear(X, g);
+    const Eigen::Vector3d w = estimatePlaneCoefficients(X);
 
     if (!validatePlane(X, w)) {
       continue;
