@@ -7,11 +7,11 @@
 
 #include <range/v3/all.hpp>
 
-bool validatePlane(const Eigen::MatrixXd & A, const Eigen::Vector3d & x)
+bool validatePlane(const Eigen::MatrixXd & X, const Eigen::Vector3d & w)
 {
-  for (int j = 0; j < A.rows(); j++) {
-    const Eigen::Vector3d a = A.row(j);
-    if (fabs(x.dot(a) + 1.0) / x.norm() > 0.2) {
+  for (int j = 0; j < X.rows(); j++) {
+    const Eigen::Vector3d x = X.row(j);
+    if (fabs(w.dot(x) + 1.0) / w.norm() > 0.2) {
       return false;
     }
   }
@@ -139,18 +139,18 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     }
 
     const Eigen::VectorXd g = -1.0 * Eigen::VectorXd::Ones(n_neighbors);
-    const Eigen::MatrixXd A = get(surface_map_, indices).transpose();
-    const Eigen::Vector3d x = solveLinear(A, g);
+    const Eigen::MatrixXd X = get(surface_map_, indices).transpose();
+    const Eigen::Vector3d w = solveLinear(X, g);
 
-    if (!validatePlane(A, x)) {
+    if (!validatePlane(X, w)) {
       continue;
     }
 
     const Eigen::Vector3d q = getXYZ(p);
-    const double pd2 = x.dot(q) + 1.0;
-    const double norm = x.norm();
+    const double pd2 = w.dot(q) + 1.0;
+    const double norm = w.norm();
 
-    coeffs[i] = x / norm;
+    coeffs[i] = w / norm;
     b[i] = -pd2 / norm;
     flags[i] = true;
   }
