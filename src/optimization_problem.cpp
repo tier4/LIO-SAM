@@ -158,11 +158,10 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     }
 
     const Eigen::Vector3d q = getXYZ(p);
-    const double pd2 = w.dot(q) + 1.0;
     const double norm = w.norm();
 
     coeffs[i] = w / norm;
-    b[i] = -pd2 / norm;
+    b[i] = -(w.dot(q) + 1.0) / norm;
     flags[i] = true;
   }
 
