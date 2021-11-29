@@ -3,7 +3,7 @@
 
 #include <Eigen/Core>
 
-Eigen::Matrix3d dRdz(const double x, const double y, const double z)
+Eigen::Matrix3d dRdx(const double x, const double y, const double z)
 {
   const double sx = sin(x);
   const double cx = cos(x);
@@ -12,9 +12,9 @@ Eigen::Matrix3d dRdz(const double x, const double y, const double z)
   const double sz = sin(z);
   const double cz = cos(z);
   return (Eigen::Matrix3d() <<
-         -sz * cy, cz * cy * sx, +cz * cy * cx,
-         -sz * sy, cz * sy * sx, +cz * sy * cx,
-         -cz, -sz * sx, -sz * cx
+         0., sy * sx + sz * cy * cx, +sy * cx - sz * cy * sx,
+         0., sz * sy * cx - cy * sx, -cy * cx - sz * sy * sx,
+         0., cz * cx, -cz * sx
   ).finished();
 }
 
@@ -33,7 +33,7 @@ Eigen::Matrix3d dRdy(const double x, const double y, const double z)
   ).finished();
 }
 
-Eigen::Matrix3d dRdx(const double x, const double y, const double z)
+Eigen::Matrix3d dRdz(const double x, const double y, const double z)
 {
   const double sx = sin(x);
   const double cx = cos(x);
@@ -42,9 +42,9 @@ Eigen::Matrix3d dRdx(const double x, const double y, const double z)
   const double sz = sin(z);
   const double cz = cos(z);
   return (Eigen::Matrix3d() <<
-         0., sy * sx + sz * cy * cx, +sy * cx - sz * cy * sx,
-         0., sz * sy * cx - cy * sx, -cy * cx - sz * sy * sx,
-         0., cz * cx, -cz * sx
+         -sz * cy, cz * cy * sx, +cz * cy * cx,
+         -sz * sy, cz * sy * sx, +cz * sy * cx,
+         -cz, -sz * sx, -sz * cx
   ).finished();
 }
 
