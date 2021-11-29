@@ -3,7 +3,7 @@
 
 #include <Eigen/Core>
 
-Eigen::Matrix3d dRdx(const double x, const double y, const double z)
+Eigen::Matrix3d dRdz(const double x, const double y, const double z)
 {
   const double sx = sin(x);
   const double cx = cos(x);
@@ -33,7 +33,7 @@ Eigen::Matrix3d dRdy(const double x, const double y, const double z)
   ).finished();
 }
 
-Eigen::Matrix3d dRdz(const double x, const double y, const double z)
+Eigen::Matrix3d dRdx(const double x, const double y, const double z)
 {
   const double sx = sin(x);
   const double cx = cos(x);

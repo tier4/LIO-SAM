@@ -186,8 +186,8 @@ Eigen::MatrixXd makeMatrixA(
     const float arz = coeff.dot(MZ * point);
 
     // lidar -> camera
-    A(i, 0) = arz;
-    A(i, 1) = arx;
+    A(i, 0) = arx;
+    A(i, 1) = arz;
     A(i, 2) = ary;
     A(i, 3) = c(0);
     A(i, 4) = c(1);
