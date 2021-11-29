@@ -56,7 +56,7 @@ bool checkConvergence(const Vector6d & dx)
 
 const int n_neighbors = 5;
 
-std::vector<int> filteredIndices(const std::vector<bool> & flags)
+std::vector<int> trueIndices(const std::vector<bool> & flags)
 {
   return ranges::views::iota(0, static_cast<int>(flags.size())) |
          ranges::views::filter([&](int i) {return flags[i];}) |
@@ -120,7 +120,7 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
     flags[i] = true;
   }
 
-  const std::vector<int> indices = filteredIndices(flags);
+  const std::vector<int> indices = trueIndices(flags);
   const std::vector<Eigen::Vector3d> points = filteredPoints(indices, edge_scan_);
   const std::vector<Eigen::Vector3d> coeffs_filtered = filteredCoeffs(indices, coeffs);
   const std::vector<double> b(coeffs_filtered.size(), -1.0);
@@ -165,7 +165,7 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     flags[i] = true;
   }
 
-  const std::vector<int> indices = filteredIndices(flags);
+  const std::vector<int> indices = trueIndices(flags);
   const std::vector<Eigen::Vector3d> points = filteredPoints(indices, surface_scan_);
   const std::vector<Eigen::Vector3d> coeffs_filtered = filteredCoeffs(indices, coeffs);
   const std::vector<double> b_filtered =
