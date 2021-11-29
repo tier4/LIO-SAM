@@ -176,10 +176,8 @@ Eigen::MatrixXd makeMatrixA(
   for (unsigned int i = 0; i < points.size(); i++) {
     // in camera
 
-    const Eigen::Vector3d p = points.at(i);
-    const Eigen::Vector3d c = coeffs.at(i);
-    const Eigen::Vector3d point(p(0), p(1), p(2));
-    const Eigen::Vector3d coeff(c(0), c(1), c(2));
+    const Eigen::Vector3d point = points.at(i);
+    const Eigen::Vector3d coeff = coeffs.at(i);
 
     const float arx = coeff.dot(MX * point);
     const float ary = coeff.dot(MY * point);
@@ -187,11 +185,11 @@ Eigen::MatrixXd makeMatrixA(
 
     // lidar -> camera
     A(i, 0) = arx;
-    A(i, 1) = arz;
-    A(i, 2) = ary;
-    A(i, 3) = c(0);
-    A(i, 4) = c(1);
-    A(i, 5) = c(2);
+    A(i, 1) = ary;
+    A(i, 2) = arz;
+    A(i, 3) = coeff(0);
+    A(i, 4) = coeff(1);
+    A(i, 5) = coeff(2);
   }
   return A;
 }

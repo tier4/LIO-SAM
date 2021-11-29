@@ -27,9 +27,9 @@ Eigen::Matrix3d dRdy(const Eigen::Vector3d & rpy)
   const double sz = sin(rpy(2));
   const double cz = cos(rpy(2));
   return (Eigen::Matrix3d() <<
-         -cy * sz, -cz * cx - sy * sz * sx, cz * sx - sy * sz * cx,
-         +cy * cz, +sy * cz * sx - sz * cx, sz * sx + sy * cz * cx,
-         0., 0., 0.
+         -sy * cz, cy * cz * sx, +cy * cz * cx,
+         -sy * sz, cy * sz * sx, +cy * sz * cx,
+         -cy, -sy * sx, -sy * cx
   ).finished();
 }
 
@@ -42,9 +42,9 @@ Eigen::Matrix3d dRdz(const Eigen::Vector3d & rpy)
   const double sz = sin(rpy(2));
   const double cz = cos(rpy(2));
   return (Eigen::Matrix3d() <<
-         -sy * cz, cy * cz * sx, +cy * cz * cx,
-         -sy * sz, cy * sz * sx, +cy * sz * cx,
-         -cy, -sy * sx, -sy * cx
+         -cy * sz, -cz * cx - sy * sz * sx, cz * sx - sy * sz * cx,
+         +cy * cz, +sy * cz * sx - sz * cx, sz * sx + sy * cz * cx,
+         0., 0., 0.
   ).finished();
 }
 
