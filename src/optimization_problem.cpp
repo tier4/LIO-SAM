@@ -27,18 +27,19 @@ Eigen::MatrixXd get(
   const pcl::PointCloud<pcl::PointXYZ>::Ptr & pointcloud,
   const std::vector<int> & indices)
 {
-  Eigen::MatrixXd A(3, indices.size());
+  Eigen::MatrixXd A(indices.size(), 3);
   for (const auto & [j, index] : ranges::views::enumerate(indices)) {
-    A.col(j) = getXYZ(pointcloud->at(index));
+    const Eigen::Vector3d p = getXYZ(pointcloud->at(index));
+    A.row(j) = p.transpose();
   }
   return A;
 }
 
-Eigen::MatrixXd calcCovariance(const Eigen::MatrixXd & X)
+Eigen::Matrix3d calcCovariance(const Eigen::MatrixXd & X)
 {
-  const Eigen::Vector3d c = X.rowwise().mean();
-  const Eigen::MatrixXd D = X.colwise() - c;
-  return D * D.transpose() / X.cols();
+  const Eigen::Vector3d c = X.colwise().mean();
+  const Eigen::MatrixXd D = X.rowwise() - c.transpose();
+  return D.transpose() * D / X.rows();
 }
 
 Eigen::VectorXd solveLinear(const Eigen::MatrixXd & A, const Eigen::VectorXd & b)
@@ -100,7 +101,7 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
       continue;
     }
 
-    const Eigen::Vector3d c = neighbors.rowwise().mean();
+    const Eigen::Vector3d c = neighbors.colwise().mean();
     const Eigen::Vector3d p0 = getXYZ(p);
     const Eigen::Vector3d p1 = c + 0.1 * eigenvector;
     const Eigen::Vector3d p2 = c - 0.1 * eigenvector;
@@ -144,7 +145,7 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
     }
 
     const Eigen::VectorXd g = -1.0 * Eigen::VectorXd::Ones(n_neighbors);
-    const Eigen::MatrixXd X = get(surface_map_, indices).transpose();
+    const Eigen::MatrixXd X = get(surface_map_, indices);
     const Eigen::Vector3d w = solveLinear(X, g);
 
     if (!validatePlane(X, w)) {
