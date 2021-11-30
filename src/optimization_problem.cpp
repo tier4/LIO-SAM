@@ -92,7 +92,7 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
       continue;
     }
 
-    const Eigen::MatrixXd neighbors = get(edge_map_, indices);
+    const Eigen::Matrix<double, n_neighbors, 3> neighbors = get(edge_map_, indices);
     const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(calcCovariance(neighbors));
     const Eigen::Vector3d eigenvalues = solver.eigenvalues();
     const Eigen::Vector3d eigenvector = solver.eigenvectors().col(2);
