@@ -9,7 +9,7 @@
 
 double pointPlaneDistance(const Eigen::Vector3d & w, const Eigen::Vector3d & x)
 {
-  return fabs(w.dot(x) + 1.0) / w.norm();
+  return std::abs(w.dot(x) + 1.0) / w.norm();
 }
 
 bool validatePlane(const Eigen::MatrixXd & X, const Eigen::Vector3d & w)
