@@ -81,6 +81,9 @@ std::vector<Eigen::Vector3d> filteredPoints(
 std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
 OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
 {
+  // f(dx) \approx f(0) + J * dx + dx^T * H * dx
+  // dx can be obtained by solving H * dx = -J
+
   std::vector<Eigen::Vector3d> coeffs(edge_scan_->size());
   std::vector<bool> flags(edge_scan_->size(), false);
 
@@ -189,13 +192,17 @@ Eigen::MatrixXd makeMatrixA(
     const Eigen::Vector3d point = points.at(i);
     const Eigen::Vector3d coeff = coeffs.at(i);
 
+    const Eigen::Vector3d drpdx = JX * point;
+    const Eigen::Vector3d drpdy = JY * point;
+    const Eigen::Vector3d drpdz = JZ * point;
+
     // lidar -> camera
-    A(i, 0) = coeff.dot(JX * point);
-    A(i, 1) = coeff.dot(JY * point);
-    A(i, 2) = coeff.dot(JZ * point);
-    A(i, 3) = coeff(0);
-    A(i, 4) = coeff(1);
-    A(i, 5) = coeff(2);
+    A(i, 0) = coeff.dot(drpdx);  // d ||residual||^2 / d roll
+    A(i, 1) = coeff.dot(drpdy);  // d ||residual||^2 / d pitch
+    A(i, 2) = coeff.dot(drpdz);  // d ||residual||^2 / d yaw
+    A(i, 3) = coeff(0);          // d ||residual||^2 / d tx
+    A(i, 4) = coeff(1);          // d ||residual||^2 / d ty
+    A(i, 5) = coeff(2);          // d ||residual||^2 / d tz
   }
   return A;
 }
