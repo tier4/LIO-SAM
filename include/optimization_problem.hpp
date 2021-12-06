@@ -34,7 +34,7 @@ public:
   std::tuple<std::vector<Eigen::Vector3d>, std::vector<Eigen::Vector3d>, std::vector<double>>
   fromSurface(const Eigen::Affine3d & point_to_map) const;
 
-  std::tuple<Eigen::MatrixXd, Eigen::VectorXd> run(const Vector6d & posevec) const;
+  std::tuple<Eigen::MatrixXd, Eigen::VectorXd> make(const Vector6d & posevec) const;
 
 private:
   const int numberOfCores;

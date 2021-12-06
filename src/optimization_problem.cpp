@@ -201,7 +201,7 @@ Eigen::MatrixXd makeMatrixA(
 }
 
 std::tuple<Eigen::MatrixXd, Eigen::VectorXd>
-OptimizationProblem::run(const Vector6d & posevec) const
+OptimizationProblem::make(const Vector6d & posevec) const
 {
   const Eigen::Affine3d point_to_map = getTransformation(posevec);
   const auto [edge_points, edge_coeffs, edge_coeffs_b] = fromEdge(point_to_map);
@@ -220,7 +220,7 @@ OptimizationProblem::run(const Vector6d & posevec) const
 
 bool isDegenerate(const OptimizationProblem & problem, const Vector6d & posevec)
 {
-  const auto [A, b] = problem.run(posevec);
+  const auto [A, b] = problem.make(posevec);
   const Eigen::MatrixXd AtA = A.transpose() * A;
   const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
   const Eigen::VectorXd eigenvalues = es.eigenvalues();
@@ -248,7 +248,7 @@ Vector6d optimizePose(const OptimizationProblem & problem, const Vector6d & init
 {
   Vector6d posevec = initial_posevec;
   for (int iter = 0; iter < 30; iter++) {
-    const auto [A, b] = problem.run(posevec);
+    const auto [A, b] = problem.make(posevec);
     if (A.rows() < 50) {
       continue;
     }
