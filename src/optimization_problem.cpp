@@ -176,7 +176,7 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
   return {points, coeffs_filtered, b_filtered};
 }
 
-Eigen::MatrixXd makeMatrixA(
+Eigen::MatrixXd makeJacobian(
   const std::vector<Eigen::Vector3d> & points,
   const std::vector<Eigen::Vector3d> & coeffs,
   const Eigen::Vector3d & rpy)
@@ -185,7 +185,7 @@ Eigen::MatrixXd makeMatrixA(
   const Eigen::Matrix3d JY = dRdy(rpy);
   const Eigen::Matrix3d JZ = dRdz(rpy);
 
-  Eigen::MatrixXd A(points.size(), 6);
+  Eigen::MatrixXd J(points.size(), 6);
   for (unsigned int i = 0; i < points.size(); i++) {
     // in camera
 
@@ -197,14 +197,14 @@ Eigen::MatrixXd makeMatrixA(
     const Eigen::Vector3d drpdz = JZ * point;
 
     // lidar -> camera
-    A(i, 0) = coeff.dot(drpdx);  // d ||residual||^2 / d roll
-    A(i, 1) = coeff.dot(drpdy);  // d ||residual||^2 / d pitch
-    A(i, 2) = coeff.dot(drpdz);  // d ||residual||^2 / d yaw
-    A(i, 3) = coeff(0);          // d ||residual||^2 / d tx
-    A(i, 4) = coeff(1);          // d ||residual||^2 / d ty
-    A(i, 5) = coeff(2);          // d ||residual||^2 / d tz
+    J(i, 0) = coeff.dot(drpdx);  // d ||residual||^2 / d roll
+    J(i, 1) = coeff.dot(drpdy);  // d ||residual||^2 / d pitch
+    J(i, 2) = coeff.dot(drpdz);  // d ||residual||^2 / d yaw
+    J(i, 3) = coeff(0);          // d ||residual||^2 / d tx
+    J(i, 4) = coeff(1);          // d ||residual||^2 / d ty
+    J(i, 5) = coeff(2);          // d ||residual||^2 / d tz
   }
-  return A;
+  return J;
 }
 
 std::tuple<Eigen::MatrixXd, Eigen::VectorXd>
@@ -220,25 +220,25 @@ OptimizationProblem::make(const Vector6d & posevec) const
 
   assert(points.size() == coeffs.size());
   assert(points.size() == b_vector.size());
-  const Eigen::MatrixXd A = makeMatrixA(points, coeffs, posevec.head(3));
+  const Eigen::MatrixXd J = makeJacobian(points, coeffs, posevec.head(3));
   const Eigen::Map<Eigen::VectorXd> b(b_vector.data(), b_vector.size());
-  return {A, b};
+  return {J, b};
 }
 
 bool isDegenerate(const OptimizationProblem & problem, const Vector6d & posevec)
 {
-  const auto [A, b] = problem.make(posevec);
-  const Eigen::MatrixXd AtA = A.transpose() * A;
-  const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(AtA);
+  const auto [J, b] = problem.make(posevec);
+  const Eigen::MatrixXd JtJ = J.transpose() * J;
+  const Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(JtJ);
   const Eigen::VectorXd eigenvalues = es.eigenvalues();
   return (eigenvalues.array() < 100.0).any();
 }
 
-Eigen::VectorXd calcUpdate(const Eigen::MatrixXd & A, const Eigen::VectorXd & b)
+Eigen::VectorXd calcUpdate(const Eigen::MatrixXd & J, const Eigen::VectorXd & b)
 {
-  const Eigen::MatrixXd AtA = A.transpose() * A;
-  const Eigen::VectorXd AtB = A.transpose() * b;
-  return solveLinear(AtA, AtB);
+  const Eigen::MatrixXd JtJ = J.transpose() * J;
+  const Eigen::VectorXd JtB = J.transpose() * b;
+  return solveLinear(JtJ, JtB);
 }
 
 // This optimization is from the original loam_velodyne by Ji Zhang,
@@ -255,12 +255,12 @@ Vector6d optimizePose(const OptimizationProblem & problem, const Vector6d & init
 {
   Vector6d posevec = initial_posevec;
   for (int iter = 0; iter < 30; iter++) {
-    const auto [A, b] = problem.make(posevec);
-    if (A.rows() < 50) {
+    const auto [J, b] = problem.make(posevec);
+    if (J.rows() < 50) {
       continue;
     }
 
-    const Eigen::VectorXd dx = calcUpdate(A, b);
+    const Eigen::VectorXd dx = calcUpdate(J, b);
 
     posevec += dx;
 
