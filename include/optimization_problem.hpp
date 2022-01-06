@@ -13,18 +13,18 @@ class OptimizationProblem
 {
 public:
   OptimizationProblem(
-    const int n_threads,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_scan,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_scan,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map,
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map)
-  : n_threads_(n_threads),
-    edge_scan_(edge_scan),
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map,
+    const int n_threads)
+  : edge_scan_(edge_scan),
     surface_scan_(surface_scan),
     edge_map_(edge_map),
     surface_map_(surface_map),
     edge_kdtree_(KDTree<pcl::PointXYZ>(edge_map)),
-    surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map))
+    surface_kdtree_(KDTree<pcl::PointXYZ>(surface_map)),
+    n_threads_(n_threads)
   {
   }
 
@@ -37,13 +37,13 @@ public:
   std::tuple<Eigen::MatrixXd, Eigen::VectorXd> make(const Vector6d & posevec) const;
 
 private:
-  const int n_threads_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_scan_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_map_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_map_;
   const KDTree<pcl::PointXYZ> edge_kdtree_;
   const KDTree<pcl::PointXYZ> surface_kdtree_;
+  const int n_threads_;
 };
 
 bool isDegenerate(const OptimizationProblem & problem, const Vector6d & posevec);

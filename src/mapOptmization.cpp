@@ -390,7 +390,7 @@ public:
       const auto edge_map = downsample<pcl::PointXYZ>(edge_fused, map_edge_leaf_size);
       const auto surface_map = downsample<pcl::PointXYZ>(surface_fused, map_surface_leaf_size);
 
-      const OptimizationProblem problem(n_cores, edge_scan, surface_scan, edge_map, surface_map);
+      const OptimizationProblem problem(edge_scan, surface_scan, edge_map, surface_map, n_cores);
       const bool is_degenerate = isDegenerate(problem, posevec);
 
       if (
