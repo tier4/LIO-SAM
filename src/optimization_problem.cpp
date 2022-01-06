@@ -87,7 +87,7 @@ OptimizationProblem::fromEdge(const Eigen::Affine3d & point_to_map) const
   std::vector<Eigen::Vector3d> coeffs(edge_scan_->size());
   std::vector<bool> flags(edge_scan_->size(), false);
 
-  #pragma omp parallel for num_threads(numberOfCores)
+  #pragma omp parallel for num_threads(n_threads_)
   for (unsigned int i = 0; i < edge_scan_->size(); i++) {
     const pcl::PointXYZ p = transform(point_to_map, edge_scan_->at(i));
     const auto [indices, squared_distances] = edge_kdtree_.nearestKSearch(p, n_neighbors);
@@ -144,7 +144,7 @@ OptimizationProblem::fromSurface(const Eigen::Affine3d & point_to_map) const
   std::vector<bool> flags(surface_scan_->size(), false);
 
   // surface optimization
-  #pragma omp parallel for num_threads(numberOfCores)
+  #pragma omp parallel for num_threads(n_threads_)
   for (unsigned int i = 0; i < surface_scan_->size(); i++) {
     const pcl::PointXYZ p = transform(point_to_map, surface_scan_->at(i));
     const auto [indices, squared_distances] = surface_kdtree_.nearestKSearch(p, n_neighbors);

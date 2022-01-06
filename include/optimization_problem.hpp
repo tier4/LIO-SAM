@@ -13,12 +13,12 @@ class OptimizationProblem
 {
 public:
   OptimizationProblem(
-    const int numberOfCores,
+    const int n_threads,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_scan,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_scan,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & edge_map,
     const pcl::PointCloud<pcl::PointXYZ>::Ptr & surface_map)
-  : numberOfCores(numberOfCores),
+  : n_threads_(n_threads),
     edge_scan_(edge_scan),
     surface_scan_(surface_scan),
     edge_map_(edge_map),
@@ -37,7 +37,7 @@ public:
   std::tuple<Eigen::MatrixXd, Eigen::VectorXd> make(const Vector6d & posevec) const;
 
 private:
-  const int numberOfCores;
+  const int n_threads_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_scan_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan_;
   const pcl::PointCloud<pcl::PointXYZ>::Ptr edge_map_;
