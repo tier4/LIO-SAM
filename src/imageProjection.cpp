@@ -139,8 +139,7 @@ int findIndexAfter(const std::vector<double> & imu_timestamps, const double poin
 
 int calcColumnIndex(const int Horizon_SCAN, const double x, const double y)
 {
-  const double angle = rad2deg(atan2(y, x));  // [-180 ~ 180]
-  const double k = Horizon_SCAN * angle / (180.0 * 2.0);  // [-Horizon_SCAN / 2 ~ Horizon_SCAN / 2]
+  const double k = Horizon_SCAN * atan2(y, x) / (2.0 * M_PI);
   const double u = k + Horizon_SCAN / 2.0;
   return static_cast<int>(u);
 }
