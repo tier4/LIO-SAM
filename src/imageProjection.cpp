@@ -695,7 +695,7 @@ public:
         }
 
         for (int k = sp; k <= ep; k++) {
-          if (label[k] == CurvatureLabel::Default || label[k] == CurvatureLabel::Edge) {
+          if (label[k] == CurvatureLabel::Default || label[k] == CurvatureLabel::Surface) {
             surface_scan->push_back(cloud.at(k));
           }
         }
