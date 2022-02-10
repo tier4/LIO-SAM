@@ -218,17 +218,6 @@ extractElements(
   return {indices, times, points};
 }
 
-std::unordered_map<int, double> makeRangeMatrix(
-  const std::vector<int> & indices,
-  const std::vector<Eigen::Vector3d> & points)
-{
-  std::unordered_map<int, double> range_map;
-  for (const auto & [index, point] : ranges::views::zip(indices, points)) {
-    range_map[index] = point.norm();
-  }
-  return range_map;
-}
-
 std::unordered_map<int, Eigen::Vector3d> projectWithoutImu(
   const std::vector<int> & indices,
   const std::vector<Eigen::Vector3d> points)
@@ -328,7 +317,7 @@ geometry_msgs::TransformStamped odomNextOf(
 class by_value
 {
 public:
-  by_value(const std::vector<float> & values)
+  by_value(const std::vector<double> & values)
   : values_(values) {}
   bool operator()(const int & left, const int & right)
   {
@@ -336,7 +325,7 @@ public:
   }
 
 private:
-  std::vector<float> values_;
+  std::vector<double> values_;
 };
 
 enum class CurvatureLabel
@@ -371,17 +360,17 @@ void neighborPicked(
   }
 }
 
-std::tuple<std::vector<float>, std::vector<int>>
+std::tuple<std::vector<double>, std::vector<int>>
 calcCurvature(
   const pcl::PointCloud<pcl::PointXYZ> & points,
-  const std::vector<float> & range,
+  const std::vector<double> & range,
   const int N_SCAN,
   const int Horizon_SCAN)
 {
-  std::vector<float> curvature(N_SCAN * Horizon_SCAN);
+  std::vector<double> curvature(N_SCAN * Horizon_SCAN);
   std::vector<int> indices(N_SCAN * Horizon_SCAN, -1);
   for (unsigned int i = 5; i < points.size() - 5; i++) {
-    const float d =
+    const double d =
       range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
       range[i] * 10 +
       range[i + 1] + range[i + 2] + range[i + 3] + range[i + 4] + range[i + 5];
@@ -582,9 +571,11 @@ public:
     std::vector<int> end_ring_indices(N_SCAN, 0);
 
     std::vector<int> column_indices(N_SCAN * Horizon_SCAN, 0);
-    std::vector<float> range(N_SCAN * Horizon_SCAN, 0);
 
-    const auto range_map = makeRangeMatrix(indices, points);
+    auto calc_norm = [](const pcl::PointXYZ & p) {
+        return Eigen::Vector3d(p.x, p.y, p.z).norm();
+      };
+
     pcl::PointCloud<pcl::PointXYZ> cloud;
 
     int count = 0;
@@ -598,13 +589,17 @@ public:
         }
 
         column_indices[count] = column_index;
-        range[count] = range_map.at(index);
         cloud.push_back(makePointXYZ(output_points[index]));
         count += 1;
       }
 
       end_ring_indices[row_index] = count - 5;
     }
+
+    const std::vector<double> range = cloud |
+      ranges::views::transform(calc_norm) |
+      ranges::to_vector;
+    assert(output_points.size() == cloud.size());
 
     cloud_info.header = cloud_msg.header;
     const auto cloud_deskewed = toRosMsg(cloud, cloud_msg.header.stamp, lidarFrame);
