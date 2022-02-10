@@ -46,6 +46,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
 using PointXYZIRT = VelodynePointXYZIRT;
 
 const int queueLength = 2000;
+const int N_BLOCKS = 6;
 
 std::mutex imuLock;
 std::mutex odoLock;
@@ -362,14 +363,13 @@ void neighborPicked(
 
 std::tuple<std::vector<double>, std::vector<int>>
 calcCurvature(
-  const pcl::PointCloud<pcl::PointXYZ> & points,
   const std::vector<double> & range,
   const int N_SCAN,
   const int Horizon_SCAN)
 {
   std::vector<double> curvature(N_SCAN * Horizon_SCAN);
   std::vector<int> indices(N_SCAN * Horizon_SCAN, -1);
-  for (unsigned int i = 5; i < points.size() - 5; i++) {
+  for (unsigned int i = 5; i < range.size() - 5; i++) {
     const double d =
       range[i - 5] + range[i - 4] + range[i - 3] + range[i - 2] + range[i - 1] -
       range[i] * 10 +
@@ -384,6 +384,11 @@ calcCurvature(
 class IndexRange
 {
 public:
+  IndexRange()
+  : start_index_(-1.),
+    end_index_(-1.),
+    n_blocks_(-1.) {}
+
   IndexRange(const int start_index, const int end_index, const int n_blocks)
   : start_index_(static_cast<double>(start_index)),
     end_index_(static_cast<double>(end_index)),
@@ -567,9 +572,6 @@ public:
 
     cloud_info.imu_orientation_available = imu_available;
 
-    std::vector<int> start_ring_indices(N_SCAN, 0);
-    std::vector<int> end_ring_indices(N_SCAN, 0);
-
     std::vector<int> column_indices(N_SCAN * Horizon_SCAN, 0);
 
     auto calc_norm = [](const pcl::PointXYZ & p) {
@@ -578,9 +580,10 @@ public:
 
     pcl::PointCloud<pcl::PointXYZ> cloud;
 
+    std::vector<IndexRange> index_ranges;
     int count = 0;
     for (int row_index = 0; row_index < N_SCAN; ++row_index) {
-      start_ring_indices[row_index] = count + 5;
+      const int start_index = count + 5;
 
       for (int column_index = 0; column_index < Horizon_SCAN; ++column_index) {
         const int index = column_index + row_index * Horizon_SCAN;
@@ -593,13 +596,14 @@ public:
         count += 1;
       }
 
-      end_ring_indices[row_index] = count - 5;
+      const int end_index = count - 5;
+      const IndexRange index_range(start_index, end_index, N_BLOCKS);
+      index_ranges.push_back(index_range);
     }
 
     const std::vector<double> range = cloud |
       ranges::views::transform(calc_norm) |
       ranges::to_vector;
-    assert(output_points.size() == cloud.size());
 
     cloud_info.header = cloud_msg.header;
     const auto cloud_deskewed = toRosMsg(cloud, cloud_msg.header.stamp, lidarFrame);
@@ -641,19 +645,16 @@ public:
       }
     }
 
-    auto [curvature, inds] = calcCurvature(cloud, range, N_SCAN, Horizon_SCAN);
+    auto [curvature, inds] = calcCurvature(range, N_SCAN, Horizon_SCAN);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr edge(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::PointCloud<pcl::PointXYZ>::Ptr surface(new pcl::PointCloud<pcl::PointXYZ>());
 
-    const int N_BLOCKS = 6;
-
     std::vector<CurvatureLabel> label(N_SCAN * Horizon_SCAN, CurvatureLabel::Default);
 
-    for (int i = 0; i < N_SCAN; i++) {
+    for (const IndexRange & index_range : index_ranges) {
       pcl::PointCloud<pcl::PointXYZ>::Ptr surface_scan(new pcl::PointCloud<pcl::PointXYZ>());
 
-      const IndexRange index_range(start_ring_indices[i], end_ring_indices[i], N_BLOCKS);
       for (int j = 0; j < N_BLOCKS; j++) {
         const int sp = index_range.begin(j);
         const int ep = index_range.end(j);
